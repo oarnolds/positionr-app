@@ -52,12 +52,29 @@ export const modules = pgTable("modules", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ── Clients ────────────────────────────────────────────────────────
+// Per gebruiker: bedrijven die geanalyseerd worden. Kennishub.
+// `facts` JSONB groeit met output van module-runs (canonieke staat).
+
+export const clients = pgTable("clients", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull(), // = auth.users.id
+  name: text("name").notNull(),
+  websiteUrl: text("website_url"),
+  kvk: text("kvk"),
+  sector: text("sector"),
+  facts: jsonb("facts").$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ── Sessions ────────────────────────────────────────────────────────
 // Eén tabel voor ALLE module-runs. input/output zijn JSONB.
 
 export const sessions = pgTable("sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").notNull(), // → auth.users.id
+  clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }),
   moduleSlug: text("module_slug")
     .notNull()
     .references(() => modules.slug),
@@ -88,5 +105,7 @@ export const sessions = pgTable("sessions", {
 
 export type Profile = typeof profiles.$inferSelect;
 export type Module = typeof modules.$inferSelect;
+export type Client = typeof clients.$inferSelect;
+export type NewClient = typeof clients.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
