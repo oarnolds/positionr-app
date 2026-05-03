@@ -142,8 +142,9 @@ export function InputForm({ clients }: { clients: ClientOption[] }) {
                 required={mode === "new"}
               />
               <Input
-                type="url"
-                placeholder="https://example.com"
+                type="text"
+                inputMode="url"
+                placeholder="www.example.com of https://example.com"
                 value={newClientUrl}
                 onChange={(e) => setNewClientUrl(e.target.value)}
                 required={mode === "new"}
