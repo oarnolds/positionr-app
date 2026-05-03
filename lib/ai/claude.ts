@@ -1,7 +1,20 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ZodType } from "zod";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+// Lazy-init: pas bij eerste call wordt de env-var gelezen.
+// Voorkomt dat Turbopack op import-time een lege key inleest.
+let _client: Anthropic | null = null;
+function getClient(): Anthropic {
+  if (_client) return _client;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey || apiKey.length < 20) {
+    throw new Error(
+      "ANTHROPIC_API_KEY ontbreekt of is ongeldig in .env.local — herstart de dev-server na wijziging."
+    );
+  }
+  _client = new Anthropic({ apiKey });
+  return _client;
+}
 
 const MODEL = "claude-sonnet-4-6";
 const MAX_TOKENS = 4000;
@@ -28,7 +41,7 @@ export async function analyzeWithCachedSystem<T>(args: {
   user: string;
   schema: ZodType<T>;
 }): Promise<AnalyzeResult<T>> {
-  const response = await client.messages.create({
+  const response = await getClient().messages.create({
     model: MODEL,
     max_tokens: MAX_TOKENS,
     system: [
