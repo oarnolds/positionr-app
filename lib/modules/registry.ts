@@ -130,7 +130,8 @@ export const MODULES: ModuleMeta[] = [
     borderColor: "border-cyan-200",
     bgLight: "bg-cyan-50",
     iconColor: "text-cyan-600",
-    status: "soon",
+    status: "active",
+    href: "/modules/icp-analyse",
   },
   {
     slug: "klantcase-analyse",
