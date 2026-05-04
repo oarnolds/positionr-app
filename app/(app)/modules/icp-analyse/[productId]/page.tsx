@@ -23,16 +23,19 @@ export default async function ICPModeSelectPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [product] = await db
+  const [productData] = await db
     .select()
     .from(icpProducts)
-    .innerJoin(clients, eq(clients.id, icpProducts.clientId))
     .where(eq(icpProducts.id, productId))
     .limit(1);
-  if (!product || product.clients.userId !== user.id) notFound();
+  if (!productData) notFound();
 
-  const productData = product.icp_products;
-  const clientData = product.clients;
+  const [clientData] = await db
+    .select()
+    .from(clients)
+    .where(eq(clients.id, productData.clientId))
+    .limit(1);
+  if (!clientData || clientData.userId !== user.id) notFound();
 
   // Eerdere sessies voor dit product
   const previousSessions = await db
