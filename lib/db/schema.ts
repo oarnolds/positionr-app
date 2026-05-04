@@ -68,6 +68,26 @@ export const clients = pgTable("clients", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ── ICP Products ────────────────────────────────────────────────────
+// Per klant: catalogus van producten/diensten. Auto-gedetecteerd via
+// website-scan of handmatig toegevoegd. Elk product kan meerdere
+// ICP-analyses hebben (sessions met productId).
+
+export const prominentie = pgEnum("prominentie", ["hoog", "middel", "laag"]);
+
+export const icpProducts = pgTable("icp_products", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  websiteUrl: text("website_url"),
+  prominentie: prominentie("prominentie").default("middel").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ── Sessions ────────────────────────────────────────────────────────
 // Eén tabel voor ALLE module-runs. input/output zijn JSONB.
 
@@ -75,6 +95,7 @@ export const sessions = pgTable("sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").notNull(), // → auth.users.id
   clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }),
+  productId: uuid("product_id").references(() => icpProducts.id, { onDelete: "cascade" }),
   moduleSlug: text("module_slug")
     .notNull()
     .references(() => modules.slug),
@@ -107,5 +128,7 @@ export type Profile = typeof profiles.$inferSelect;
 export type Module = typeof modules.$inferSelect;
 export type Client = typeof clients.$inferSelect;
 export type NewClient = typeof clients.$inferInsert;
+export type IcpProduct = typeof icpProducts.$inferSelect;
+export type NewIcpProduct = typeof icpProducts.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
