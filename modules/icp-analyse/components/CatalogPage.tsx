@@ -40,23 +40,17 @@ export function CatalogPage({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [scanUrl, setScanUrl] = useState(activeClient?.websiteUrl ?? "");
-  const [newClientOpen, setNewClientOpen] = useState(clients.length === 0);
   const [error, setError] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [creatingProduct, setCreatingProduct] = useState(false);
-
-  function selectClient(id: string) {
-    router.push(`/modules/icp-analyse?clientId=${id}`);
-  }
 
   async function handleCreateClient(formData: FormData) {
     setError(null);
     try {
       const result = await createClientForUser(formData);
       router.push(`/modules/icp-analyse?clientId=${result.id}`);
-      setNewClientOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Klant aanmaken mislukt");
+      setError(err instanceof Error ? err.message : "Opslaan mislukt");
     }
   }
 
@@ -82,61 +76,53 @@ export function CatalogPage({
 
   return (
     <div className="space-y-6">
-      {/* Klant-kiezer */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-gray-700">Klant:</span>
-          {clients.length > 0 && (
-            <select
-              value={activeClient?.id ?? ""}
-              onChange={(e) => selectClient(e.target.value)}
-              className="rounded-lg border border-gray-300 px-2 py-1 text-sm"
-            >
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          )}
-          <button
-            type="button"
-            onClick={() => setNewClientOpen(true)}
-            className="rounded-lg bg-gray-100 px-3 py-1 text-sm text-gray-700 hover:bg-gray-200"
-          >
-            + Nieuwe klant
-          </button>
-          {activeClient && (
-            <span className="ml-auto text-xs text-gray-500">
-              {activeClient.websiteUrl}
+      {/* Bedrijfsprofiel — read-only of inline-aanmaak voor nieuwe gebruikers */}
+      {activeClient ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className="text-xs uppercase tracking-wide text-gray-500">
+              Uw bedrijf
             </span>
-          )}
+            <span className="text-base font-semibold text-gray-900">
+              {activeClient.name}
+            </span>
+            {activeClient.websiteUrl && (
+              <span className="text-sm text-gray-500">
+                — {activeClient.websiteUrl}
+              </span>
+            )}
+          </div>
         </div>
-        {newClientOpen && (
+      ) : (
+        <div className="rounded-2xl border-2 border-dashed border-cyan-200 bg-cyan-50/50 p-5">
+          <h2 className="text-base font-semibold text-gray-900">
+            Vul eerst je bedrijfsgegevens in
+          </h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Eén keer instellen — daarna start je analyses op je eigen website.
+          </p>
           <form
             action={handleCreateClient}
-            className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3"
+            className="mt-3 flex flex-wrap gap-2"
           >
-            <Input name="name" placeholder="Bedrijfsnaam" required className="flex-1 min-w-[180px]" />
+            <Input
+              name="name"
+              placeholder="Bedrijfsnaam"
+              required
+              className="flex-1 min-w-[180px] bg-white"
+            />
             <Input
               name="websiteUrl"
               placeholder="www.example.com"
               required
-              className="flex-1 min-w-[180px]"
+              className="flex-1 min-w-[180px] bg-white"
             />
             <Button type="submit" size="default">
-              Aanmaken
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setNewClientOpen(false)}
-            >
-              Annuleren
+              Opslaan
             </Button>
           </form>
-        )}
-      </div>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
