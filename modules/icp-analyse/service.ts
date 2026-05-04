@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { clients, sessions } from "@/lib/db/schema";
+import { clients, modules, sessions } from "@/lib/db/schema";
 import { analyzeWithCachedSystem } from "@/lib/ai/claude";
 import { scrapeForIcp } from "./scraper";
 import { buildSystemPrompt, buildUserPrompt } from "./prompt";
@@ -12,6 +12,25 @@ import {
 } from "./schema";
 
 const MODULE_SLUG = "icp-analyse";
+
+/**
+ * Haalt de actieve system prompt op:
+ * - Uit DB (modules.defaultPrompt) als die niet leeg is
+ * - Anders fallback naar code-prompt (buildSystemPrompt)
+ *
+ * Hierdoor kan admin de prompt editen zonder code-deploy.
+ */
+async function getEffectiveSystemPrompt(): Promise<string> {
+  const [m] = await db
+    .select({ defaultPrompt: modules.defaultPrompt })
+    .from(modules)
+    .where(eq(modules.slug, MODULE_SLUG))
+    .limit(1);
+  if (m?.defaultPrompt && m.defaultPrompt.trim().length > 50) {
+    return m.defaultPrompt;
+  }
+  return buildSystemPrompt();
+}
 
 /**
  * Voer ICP-analyse uit voor een klant + product.
@@ -60,7 +79,7 @@ export async function runICPAnalysis(
         ? cachedSnapshot
         : await scrapeForIcp(client.websiteUrl);
 
-    const system = buildSystemPrompt();
+    const system = await getEffectiveSystemPrompt();
     const user = buildUserPrompt({
       bedrijfsnaam: client.name,
       product: input.product,
