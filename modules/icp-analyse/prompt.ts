@@ -1,159 +1,193 @@
-import type { WebsiteSnapshot } from "./schema";
+import type { Phase1Output, WebformAnswers, WebsiteSnapshot } from "./schema";
 
-export function buildSystemPrompt(): string {
-  return `Je bent een B2B-marketingexpert met 15+ jaar ervaring in waardepropositie en
-positionering. Je definieert Ideale Klantprofielen (ICP) op basis van scraped website-content
-en een korte productomschrijving van de aanbieder. Je werkt vanuit het perspectief van de
-prospect, niet de aanbieder.
+// ── Scan website voor producten/diensten ────────────────────────────────────
 
-# Doel
-Lever een Ideale Klantprofiel met vier secties: banner, firmografisch, pijnpunten/triggers,
-dienst-focus. Output is geldig JSON.
+export function buildScanProductsSystemPrompt(): string {
+  return `Je bent een expert in B2B marketing. Extraheer alle producten en diensten van de
+website. Antwoord altijd in het Nederlands. Geef alleen geldige JSON terug.
 
----
-
-# Schrijf-principes (BELANGRIJK)
-
-## 1. Outside-in: schrijf vanuit beleving van de prospect, niet de aanbieder
-- FOUT: "Wij leveren CRM-software voor MKB"
-- GOED: "Acquisitiemanagers in MKB-financieel die nu in spreadsheets pijplijn bijhouden"
-
-## 2. Specifiek > generiek (CRITICAL)
-- FOUT: "zakelijke dienstverlening", "MKB", "betere processen"
-- GOED: "MKB-accountantskantoren met 5-30 fte in Randstad", "Hoofd Operations bij
-  productiebedrijven 50-250 fte", "rapportages kosten 4 dagen/maand"
-
-## 3. Pijnpunten zijn PROBLEMEN, geen wensen
-- FOUT: "wil betere rapportages", "wil schaalbare oplossing"
-- GOED: "rapportages kosten 4 dagen per maand handmatig werk", "30% van klantcontacten
-  verloren in inboxes"
-
-## 4. Triggers zijn EVENTS, geen statische pijnpunten
-- FOUT: "groei van het bedrijf", "behoefte aan beter inzicht"
-- GOED: "Nieuwe AVG-uitvoeringswet treedt in werking", "Bedrijf opent tweede vestiging",
-  "Directielid CFO start nieuwe rol"
-
-## 5. Banner-samenvatting begint met wat de KLANT wint
-- FOUT: "Datapas levert SaaS voor datapaspoort-management"
-- GOED: "Voor MKB-financieel die voldoen aan datatraceerbaarheid willen — Datapas elimineert
-  Excel-rondzendingen en zorgt dat audit-vragen binnen één klik beantwoord zijn"
-
----
-
-# Output-secties — gedetailleerd
-
-## 1. Banner
-- **samenvatting**: 2-3 zinnen positionering. Outside-in. Eerste deel = doelgroep + winst,
-  tweede deel = aanbieder + concrete uitkomst.
-- **sectorPositie**: korte typering positie in markt. Bv: "Niche-speler in MKB-financieel
-  met focus op AVG-compliance" of "Generalist in zakelijke dienstverlening met regionale focus"
-- **websiteAnalyseScore** (0-100): hoe rijk was de scrape-input?
-  - 0-30 = website was vrijwel leeg of irrelevant
-  - 30-60 = homepage en wat losse blokjes
-  - 60-85 = meerdere goed-gevulde pagina's
-  - 85-100 = volledig diensten-overzicht + cases + over-ons
-
-## 2. Firmografisch profiel
-Allemaal SPECIFIEKE waarden, geen generieke labels.
-- **sector**: hoofdcategorie. Bv. "Financiële dienstverlening" niet "Diensten"
-- **subsector**: deelsector. Bv. "MKB-accountantskantoren" niet "Accountants"
-- **bedrijfsgrootte**: bv. "10-50 fte" of "€2-10M jaaromzet"
-- **contactpersoon**: typische rol die als eerste contact zoekt. Bv. "Hoofd Operations"
-- **beslisser**: rol met finale tekenbevoegdheid. Bv. "CFO" of "Algemeen Directeur"
-- **contractwaarde**: jaarlijks. Bv. "€5k-15k/jaar SaaS" of "€25-100k eenmalig project"
-- **geografie**: bv. "Nederland (focus Randstad)" of "Benelux"
-
-## 3. Pijnpunten & Triggers
-- **pijnpunten**: 3-7 concrete problemen. Concreet meetbaar (uren, %, euros) waar mogelijk.
-- **triggers**: 3-7 events. Tijd-specifiek (gebeurt op moment X). Geen wensen.
-
-## 4. Dienst-focus
-- **kernBelofte**: outside-in, één zin. "Wat krijgt de klant uiteindelijk?"
-  Bv: "Audit-bewijslast die altijd up-to-date is, zonder Excel-rondzendingen"
-- **prijsindicatie**: zelfde range als contractwaarde. Bv. "Vanaf €750/maand per gebruiker".
-- **onderscheidend**: wat is anders dan generieke alternatieven? Bv: "Diepgaande integratie
-  met Exact en Snelstart waar concurrent X dat niet kan".
-
----
-
-# Voorbeeld-output (referentie)
-
-Voor: bedrijf "Datapas", product "Datapas Cloud" (SaaS voor datapaspoorten in MKB-financieel):
-
-\`\`\`json
+Output-formaat (STRIKT):
 {
-  "bedrijfsnaam": "Datapas",
-  "product": "Datapas Cloud",
-  "banner": {
-    "samenvatting": "Voor MKB-accountantskantoren die voldoen aan AVG-datatraceerbaarheid willen — Datapas Cloud elimineert handmatige Excel-rondzendingen en zorgt dat audit-vragen binnen één klik beantwoord zijn. Klanten besparen gemiddeld 3 dagen/maand aan compliance-werk.",
-    "sectorPositie": "Niche-speler in MKB-financieel met focus op AVG-compliance",
-    "websiteAnalyseScore": 75
-  },
+  "producten": [
+    { "naam": string, "beschrijving": string (max 100 woorden), "prominentie": "hoog" | "middel" | "laag" }
+  ]
+}
+
+Prominentie bepaal je op basis van hoe prominent het op de website staat:
+- "hoog" = expliciet als hoofdaanbod gepresenteerd, herhaaldelijk genoemd
+- "middel" = duidelijk aanwezig, maar onderdeel van breder aanbod
+- "laag" = zijdelings genoemd, niet de focus
+
+Geef ALLEEN het JSON-object terug, geen toelichting.`;
+}
+
+export function buildScanProductsUserPrompt(snapshot: WebsiteSnapshot): string {
+  return `Analyseer de volgende websitecontent en extraheer alle producten en diensten die
+dit bedrijf aanbiedt.
+
+WEBSITECONTENT (${snapshot.url}):
+"""
+${snapshot.bodyExcerpt}
+"""
+
+Geef het JSON-object met de "producten"-array.`;
+}
+
+// ── Phase 1: initiële website-analyse ───────────────────────────────────────
+
+export function buildPhase1SystemPrompt(): string {
+  return `Je bent een expert in B2B marketing en ICP-analyse. Je analyseert websitecontent
+en extraheert gestructureerde informatie over de ideale klant. Antwoord altijd in het
+Nederlands. Geef alleen geldige JSON terug.
+
+# Output-velden
+
+- **diensten**: array van { naam, prominentie ("hoog"|"middel"|"laag"), beschrijving }
+- **primaire_doelgroep**: { sector, subsector, bedrijfsgrootte, functietitels (array), geografische_focus }
+- **pijnpunten**: array van strings (concrete problemen)
+- **usp**: string (waardepropositie zoals te lezen uit de website)
+- **klantvoorbeelden**: array van strings (genoemde klantnamen)
+- **trigger_events**: array van strings (events die kopen veroorzaken)
+- **tone_of_voice**: string (korte typering)
+- **betrouwbaarheid_score**: number 0-100 (hoeveel info beschikbaar was)
+- **ontbrekende_informatie**: array van strings (wat AI niet kon vinden — eerlijk!)
+- **icp_inschatting**:
+  - industrieen: array van strings (waarschijnlijke sectoren)
+  - bedrijfsgrootte: array van strings (passende groottes)
+  - kernprocessen: array van strings (sales/HR/finance/operations)
+  - dmu: array van { rol, invloed: "beslisser"|"beïnvloeder"|"gebruiker" }
+  - samenvatting: string (kort: ideale klant)
+
+# Schrijf-principes
+- Specifiek > generiek: "MKB-accountantskantoren met 10-50 fte" beter dan "zakelijke dienstverlening"
+- Pijnpunten zijn PROBLEMEN, geen wensen
+- Wees eerlijk over wat ontbreekt — vul niet zomaar in
+
+Geef ALLEEN het JSON-object. Geen markdown-fences, geen toelichting.`;
+}
+
+export function buildPhase1UserPrompt(snapshot: WebsiteSnapshot): string {
+  return `Analyseer de volgende websitecontent en extraheer informatie om het Ideal Customer
+Profile (ICP) te bepalen.
+
+WEBSITECONTENT (${snapshot.url}):
+"""
+${snapshot.bodyExcerpt}
+"""
+
+Geef een gestructureerde JSON-output. Schat de betrouwbaarheid_score (0-100) op basis van
+hoeveel informatie beschikbaar was. Vermeld onder "ontbrekende_informatie" wat de AI niet
+kon afleiden.
+
+Voeg ook een 'icp_inschatting' toe: een eerste inschatting van het Ideal Customer Profile
+op basis van alle geanalyseerde informatie.
+
+Geef ALLEEN geldige JSON terug, geen andere tekst.`;
+}
+
+// ── Final ICP (Phase 3) ─────────────────────────────────────────────────────
+
+export function buildFinalIcpSystemPrompt(): string {
+  return `Je bent een expert B2B-marketingstrateeg. Genereer een volledig ICP-profiel met
+concrete, actionable inzichten. Alle teksten in het Nederlands. Geef alleen geldige JSON
+terug.
+
+# Output-shape
+
+\`\`\`
+{
+  "heroTekst": string (positionering 2-3 zinnen, outside-in: begin met doelgroep + winst),
   "firmografisch": {
-    "sector": "Financiële dienstverlening",
-    "subsector": "MKB-accountantskantoren",
-    "bedrijfsgrootte": "10-50 fte",
-    "contactpersoon": "Hoofd Compliance",
-    "beslisser": "Managing Partner / CFO",
-    "contractwaarde": "€8k-25k/jaar SaaS",
-    "geografie": "Nederland (focus Randstad)"
+    "sector": string,
+    "subsector": string,
+    "bedrijfsgrootte": string[] (bijv ["50-250 FTE", "250+ FTE"]),
+    "contactfunctie": string,
+    "beslisser": string,
+    "contractwaarde": string,
+    "vindkanalen": string[]
   },
-  "pijnpunten": [
-    "Compliance-rapportages kosten 4 dagen/maand handmatig werk",
-    "Audit-vragen vereisen 2-3 dagen verzamelwerk in mailboxes en Excels",
-    "30% van klantgegevens versnipperd over meerdere systemen"
-  ],
-  "triggers": [
-    "Nieuwe AVG-uitvoeringswet treedt in werking",
-    "Externe audit aangekondigd voor over 6 maanden",
-    "Nieuwe Managing Partner met focus op operationele efficiency"
-  ],
+  "pijnpuntenTriggers": {
+    "pijnpunt": string (HET primaire pijnpunt — kies één scherp),
+    "triggers": string[] (events die kopen veroorzaken)
+  },
+  "usp": string,
   "dienstFocus": {
-    "kernBelofte": "Audit-bewijslast die altijd up-to-date is, zonder Excel-rondzendingen.",
-    "prijsindicatie": "Vanaf €750/maand voor 5 gebruikers",
-    "onderscheidend": "Diepere integratie met Exact en Snelstart dan concurrenten; native AVG-compliance-templates."
-  }
+    "dienst": string (naam strategische dienst/product),
+    "contractwaarde": string,
+    "icpMatch": string (waarom dit past bij dit ICP)
+  },
+  "negatieveIcp": {
+    "dealbreakers": string[] (wanneer is het GEEN match?),
+    "disqualificatievraag": string (één vraag die snel disqualificeert)
+  },
+  "marketingVertaalslag": {
+    "kanalen": [{ "kanaal": string, "prioriteit": string ("hoog"|"middel"|"laag"), "reden": string }],
+    "kernboodschap": {
+      "bewustwording": string (boodschap voor awareness-fase),
+      "overweging": string (boodschap voor consideration-fase),
+      "beslissing": string (boodschap voor decision-fase)
+    },
+    "contentAanbevelingen": {
+      "artikel": string (concreet artikel-onderwerp),
+      "linkedin": string (LinkedIn-postsuggestie),
+      "email": string (cold-email-onderwerp + opening)
+    }
+  },
+  "volgendStappen": string[] (3-5 concrete acties),
+  "positionering": "verticaal" | "horizontaal"
 }
 \`\`\`
 
----
+# Principes
+- Outside-in: schrijf vanuit perspectief van prospect
+- Concreet > abstract
+- Disqualificatievraag is één scherpe ja/nee-vraag
+- Triggers zijn events met tijd-element
 
-# Outputformaat (STRIKT)
-
-Geef je antwoord als geldig JSON-object met EXACT deze top-level keys:
-- bedrijfsnaam (string)
-- product (string)
-- banner (object: samenvatting, sectorPositie, websiteAnalyseScore)
-- firmografisch (object: sector, subsector, bedrijfsgrootte, contactpersoon, beslisser, contractwaarde, geografie)
-- pijnpunten (array van 3-7 strings)
-- triggers (array van 3-7 strings)
-- dienstFocus (object: kernBelofte, prijsindicatie, onderscheidend)
-
-Geef ALLEEN het JSON-object. Geen toelichting ervoor of erna. Geen markdown-fences.`;
+Geef ALLEEN het JSON-object. Geen markdown-fences, geen toelichting.`;
 }
 
-export function buildUserPrompt(args: {
-  bedrijfsnaam: string;
-  product: string;
-  productDescription: string;
-  snapshot: WebsiteSnapshot;
+export function buildFinalIcpUserPrompt(args: {
+  phase1: Phase1Output;
+  answers: WebformAnswers;
+  companyName: string;
 }): string {
-  return `# Bedrijf
-${args.bedrijfsnaam}
+  const { phase1, answers, companyName } = args;
 
-# Hoofdproduct/-dienst
-Naam: ${args.product}
-Omschrijving: ${args.productDescription}
+  const sectorStr = answers.sectoren
+    .map((s) => `${s.hoofdsector} > ${s.subsector}`)
+    .join(", ");
 
-# Website-snapshot (${args.snapshot.url})
-Titel: ${args.snapshot.title || "(leeg)"}
-Meta-description: ${args.snapshot.metaDescription || "(leeg)"}
-Hero/koppen: ${args.snapshot.heroText || "(geen H1/H2 gevonden)"}
+  const isVerticaal =
+    answers.sectoren.length === 1 ||
+    (answers.sectoren.length <= 2 &&
+      answers.sectoren.every(
+        (s) => s.hoofdsector === answers.sectoren[0]?.hoofdsector
+      ));
 
-Body-uittreksel (${args.snapshot.bodyExcerpt.length} tekens, mogelijk meerdere pagina's):
-"""
-${args.snapshot.bodyExcerpt || "(leeg)"}
-"""
+  return `Genereer een volledig ICP (Ideal Customer Profile) voor ${companyName} op basis
+van de volgende gegevens.
 
-Definieer de Ideale Klantprofiel volgens de structuur en geef het JSON-object terug.`;
+# FASE 1 ANALYSE (uit website-scan):
+${JSON.stringify(phase1, null, 2)}
+
+# WEBFORM ANTWOORDEN:
+- Sectoren: ${sectorStr || "(niet ingevuld — gebruik Phase 1 inschatting)"}
+- Bedrijfsgrootte: ${answers.bedrijfsgrootte.join(", ") || "(niet ingevuld)"}
+- Contactfunctie: ${answers.contactfunctie || "(niet ingevuld)"}
+- Beslisser: ${answers.zelfdePersoon ? answers.contactfunctie : answers.beslisser || "(niet ingevuld)"}
+- Primair pijnpunt: ${answers.pijnpunt || "(niet ingevuld)"}
+- Trigger events: ${answers.triggers.join(", ") || "(niet ingevuld)"}
+- Strategische dienst: ${answers.strategischeDienst}
+- Contractwaarde: ${answers.contractwaarde || "(niet ingevuld)"}
+- Ideale kenmerken: ${answers.idealeKenmerken.join(", ") || "(niet ingevuld)"}
+- Dealbreakers: ${answers.dealbreakers.join(", ") || "(niet ingevuld)"}
+- Vindkanalen: ${answers.vindkanalen.map((v) => v.kanaal).join(", ") || "(niet ingevuld)"}
+- USP: ${answers.usp || "(niet ingevuld — gebruik Phase 1)"}
+- Eigen beschrijving: ${answers.eigenBeschrijving || "(niet ingevuld)"}
+- Positionering: ${isVerticaal ? "verticaal" : "horizontaal"}
+
+NB: bij velden die niet ingevuld zijn (Snel-modus), leun je op de Phase 1 analyse.
+
+Genereer een volledig ICP-profiel in het Nederlands. Geef ALLEEN geldige JSON terug.`;
 }

@@ -7,6 +7,13 @@ let _client: Anthropic | null = null;
 function getClient(): Anthropic {
   if (_client) return _client;
   const apiKey = process.env.ANTHROPIC_API_KEY;
+  console.log("[claude.ts] DEBUG keys aanwezig:", {
+    ANTHROPIC_API_KEY_len: apiKey?.length ?? 0,
+    ANTHROPIC_API_KEY_first8: apiKey?.slice(0, 8) ?? "(undef)",
+    NEXT_PUBLIC_SUPABASE_URL_present: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    DATABASE_URL_present: !!process.env.DATABASE_URL,
+    cwd: process.cwd(),
+  });
   if (!apiKey || apiKey.length < 20) {
     throw new Error(
       "ANTHROPIC_API_KEY ontbreekt of is ongeldig in .env.local — herstart de dev-server na wijziging."

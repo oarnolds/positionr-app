@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { ArrowLeft, UserCheck } from "lucide-react";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
-import { clients } from "@/lib/db/schema";
-import { InputForm } from "@/modules/icp-analyse/components/InputForm";
+import { clients, icpProducts } from "@/lib/db/schema";
+import { CatalogPage } from "@/modules/icp-analyse/components/CatalogPage";
 
-export default async function ICPInputPage({
+export default async function ICPCatalogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ clientId?: string; error?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { clientId: selectedClientId, error } = await searchParams;
 
   const supabase = await createClient();
   const {
@@ -20,6 +20,7 @@ export default async function ICPInputPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Klanten van deze user
   const myClients = await db
     .select({
       id: clients.id,
@@ -30,8 +31,22 @@ export default async function ICPInputPage({
     .where(eq(clients.userId, user.id))
     .orderBy(clients.name);
 
+  // Actieve klant: uit query of eerste in lijst
+  const activeClientId = selectedClientId ?? myClients[0]?.id ?? null;
+
+  // Producten van actieve klant
+  const products = activeClientId
+    ? await db
+        .select()
+        .from(icpProducts)
+        .where(eq(icpProducts.clientId, activeClientId))
+        .orderBy(desc(icpProducts.createdAt))
+    : [];
+
+  const activeClient = myClients.find((c) => c.id === activeClientId) ?? null;
+
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
+    <div className="mx-auto max-w-5xl px-6 py-12">
       <Link
         href="/modules"
         className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
@@ -44,10 +59,10 @@ export default async function ICPInputPage({
           <UserCheck className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold">Ideale Klant (ICP) Analyse</h1>
+          <h1 className="text-3xl font-bold">Producten &amp; Diensten Catalogus</h1>
           <p className="text-gray-600">
-            Definieer het ideale klantprofiel voor jouw product op basis van je
-            website en een korte productomschrijving.
+            Beheer hier producten en diensten per klant. Per item kun je een ICP-analyse
+            uitvoeren.
           </p>
         </div>
       </div>
@@ -59,7 +74,11 @@ export default async function ICPInputPage({
       )}
 
       <div className="mt-8">
-        <InputForm clients={myClients} />
+        <CatalogPage
+          clients={myClients}
+          activeClient={activeClient}
+          products={products}
+        />
       </div>
     </div>
   );
