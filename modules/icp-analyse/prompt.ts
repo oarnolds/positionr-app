@@ -151,8 +151,9 @@ export function buildFinalIcpUserPrompt(args: {
   phase1: Phase1Output;
   answers: WebformAnswers;
   companyName: string;
+  analysisMode?: "snel" | "volledig";
 }): string {
-  const { phase1, answers, companyName } = args;
+  const { phase1, answers, companyName, analysisMode = "volledig" } = args;
 
   const sectorStr = answers.sectoren
     .map((s) => `${s.hoofdsector} > ${s.subsector}`)
@@ -165,29 +166,49 @@ export function buildFinalIcpUserPrompt(args: {
         (s) => s.hoofdsector === answers.sectoren[0]?.hoofdsector
       ));
 
-  return `Genereer een volledig ICP (Ideal Customer Profile) voor ${companyName} op basis
-van de volgende gegevens.
+  const modeBlok =
+    analysisMode === "volledig"
+      ? `# Modus: VOLLEDIG (gebruiker heeft vragenlijst ingevuld)
+
+BELANGRIJK: de webform-antwoorden hieronder zijn DOOR DE GEBRUIKER zelf ingevuld
+en zijn AUTORITATIEF. Waar webform-antwoorden conflicteren met Phase 1 (die op
+website-analyse berust), VOLG JE DE WEBFORM-ANTWOORDEN. Phase 1 is alleen aanvulling
+voor velden die de gebruiker leeg liet of niet expliciet noemt (zoals tone_of_voice,
+ontbrekende DMU-rollen, klantvoorbeelden).
+
+Maak het profiel SCHERPER en SPECIFIEKER dan de Phase 1-inschatting — gebruik de
+zekerheid uit de webform-antwoorden.`
+      : `# Modus: SNEL (geen webform-input — gebruik Phase 1 als basis)
+
+De webform-antwoorden hieronder zijn LEEG (Snel-modus). Werk volledig op basis van
+Phase 1. Wees expliciet over wat afgeleid is en wat onzeker is.`;
+
+  return `Genereer een volledig ICP (Ideal Customer Profile) voor ${companyName}.
+
+${modeBlok}
 
 # FASE 1 ANALYSE (uit website-scan):
 ${JSON.stringify(phase1, null, 2)}
 
-# WEBFORM ANTWOORDEN:
-- Sectoren: ${sectorStr || "(niet ingevuld — gebruik Phase 1 inschatting)"}
-- Bedrijfsgrootte: ${answers.bedrijfsgrootte.join(", ") || "(niet ingevuld)"}
-- Contactfunctie: ${answers.contactfunctie || "(niet ingevuld)"}
-- Beslisser: ${answers.zelfdePersoon ? answers.contactfunctie : answers.beslisser || "(niet ingevuld)"}
-- Primair pijnpunt: ${answers.pijnpunt || "(niet ingevuld)"}
-- Trigger events: ${answers.triggers.join(", ") || "(niet ingevuld)"}
+# WEBFORM ANTWOORDEN${analysisMode === "snel" ? " (LEEG — Snel-modus)" : ""}:
+- Sectoren: ${sectorStr || "(leeg)"}
+- Bedrijfsgrootte: ${answers.bedrijfsgrootte.join(", ") || "(leeg)"}
+- Contactfunctie: ${answers.contactfunctie || "(leeg)"}
+- Beslisser: ${answers.zelfdePersoon ? answers.contactfunctie : answers.beslisser || "(leeg)"}
+- Primair pijnpunt: ${answers.pijnpunt || "(leeg)"}
+- Trigger events: ${answers.triggers.join(", ") || "(leeg)"}
 - Strategische dienst: ${answers.strategischeDienst}
-- Contractwaarde: ${answers.contractwaarde || "(niet ingevuld)"}
-- Ideale kenmerken: ${answers.idealeKenmerken.join(", ") || "(niet ingevuld)"}
-- Dealbreakers: ${answers.dealbreakers.join(", ") || "(niet ingevuld)"}
-- Vindkanalen: ${answers.vindkanalen.map((v) => v.kanaal).join(", ") || "(niet ingevuld)"}
-- USP: ${answers.usp || "(niet ingevuld — gebruik Phase 1)"}
-- Eigen beschrijving: ${answers.eigenBeschrijving || "(niet ingevuld)"}
-- Positionering: ${isVerticaal ? "verticaal" : "horizontaal"}
-
-NB: bij velden die niet ingevuld zijn (Snel-modus), leun je op de Phase 1 analyse.
+- Contractwaarde: ${answers.contractwaarde || "(leeg)"}
+- Ideale kenmerken: ${answers.idealeKenmerken.join(", ") || "(leeg)"}
+- Dealbreakers: ${answers.dealbreakers.join(", ") || "(leeg)"}
+- Vindkanalen (op prioriteit): ${
+    answers.vindkanalen
+      .map((v) => `${v.prioriteit}. ${v.kanaal}`)
+      .join(" · ") || "(leeg)"
+  }
+- USP (door gebruiker): ${answers.usp || "(leeg)"}
+- Eigen beschrijving: ${answers.eigenBeschrijving || "(leeg)"}
+- Positionering (afgeleid uit sectoren): ${isVerticaal ? "verticaal" : "horizontaal"}
 
 Genereer een volledig ICP-profiel in het Nederlands. Geef ALLEEN geldige JSON terug.`;
 }

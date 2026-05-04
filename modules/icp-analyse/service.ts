@@ -195,6 +195,7 @@ export async function runSnelAnalysis(
         phase1: phase1Result.data,
         answers: webformDefaults,
         companyName: client.name,
+        analysisMode: "snel",
       }),
       schema: FinalIcp,
     });
@@ -432,6 +433,7 @@ export async function runVolledigPhase3(
         phase1,
         answers: parsed.data,
         companyName: client.name,
+        analysisMode: "volledig",
       }),
       schema: FinalIcp,
     });
