@@ -3,23 +3,23 @@
 import { useState, useTransition } from "react";
 import { Zap, ClipboardList, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { startSnelAnalyse } from "@/app/(app)/modules/icp-analyse/actions";
+import {
+  startSnelAnalyse,
+  startVolledigAnalyse,
+} from "@/app/(app)/modules/icp-analyse/actions";
 
 export function ModeSelector({ productId }: { productId: string }) {
   const [mode, setMode] = useState<"snel" | "volledig">("snel");
   const [pending, startTransition] = useTransition();
 
   function handleStart() {
-    if (mode === "snel") {
-      startTransition(() => {
+    startTransition(() => {
+      if (mode === "snel") {
         startSnelAnalyse(productId);
-      });
-    } else {
-      // B2 — placeholder
-      alert(
-        "Volledige analyse (met vragenlijst) komt in de volgende fase. Kies voor nu Snelle analyse."
-      );
-    }
+      } else {
+        startVolledigAnalyse(productId);
+      }
+    });
   }
 
   return (
@@ -40,7 +40,6 @@ export function ModeSelector({ productId }: { productId: string }) {
           title="Volledige analyse"
           subtitle="Website-analyse gecombineerd met vragenlijst voor scherper profiel."
           bullets={["Meest nauwkeurig", "Website + vragenlijst", "~10-15 min"]}
-          comingSoon
         />
       </div>
 

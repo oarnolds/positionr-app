@@ -117,11 +117,17 @@ export default async function ICPModeSelectPage({
                   })
                 : "";
               const isFailed = s.status === "failed";
-              const link = isFailed
-                ? null
-                : input.analysisMode === "snel"
-                ? `/modules/icp-analyse/${productId}/snel/${s.id}`
-                : null;
+              let link: string | null = null;
+              if (!isFailed) {
+                if (input.analysisMode === "snel" && s.status === "approved") {
+                  link = `/modules/icp-analyse/${productId}/snel/${s.id}`;
+                } else if (input.analysisMode === "volledig") {
+                  if (s.status === "approved")
+                    link = `/modules/icp-analyse/${productId}/volledig/${s.id}/profiel`;
+                  else if (s.status === "review")
+                    link = `/modules/icp-analyse/${productId}/volledig/${s.id}/phase1`;
+                }
+              }
               return (
                 <li
                   key={s.id}

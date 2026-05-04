@@ -10,8 +10,11 @@ import { clients, icpProducts } from "@/lib/db/schema";
 import {
   scanWebsiteForProducts as scanService,
   runSnelAnalysis,
+  runVolledigPhase1,
+  saveWebformAnswersPartial,
+  runVolledigPhase3,
 } from "@/modules/icp-analyse/service";
-import { Prominentie } from "@/modules/icp-analyse/schema";
+import { Prominentie, WebformAnswers } from "@/modules/icp-analyse/schema";
 
 async function getUser() {
   const supabase = await createSupabaseClient();
@@ -162,4 +165,67 @@ export async function startSnelAnalyse(productId: string) {
     );
   }
   redirect(`/modules/icp-analyse/${productId}/snel/${sessionId}`);
+}
+
+// ── Volledige flow ───────────────────────────────────────────────────────────
+
+export async function startVolledigAnalyse(productId: string) {
+  const user = await getUser();
+  let sessionId: string;
+  try {
+    sessionId = await runVolledigPhase1(user.id, productId);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Analyse mislukt";
+    redirect(
+      `/modules/icp-analyse/${productId}?error=${encodeURIComponent(msg)}`
+    );
+  }
+  redirect(
+    `/modules/icp-analyse/${productId}/volledig/${sessionId}/phase1`
+  );
+}
+
+export async function confirmPhase1(productId: string, sessionId: string) {
+  await getUser();
+  redirect(
+    `/modules/icp-analyse/${productId}/volledig/${sessionId}/webform`
+  );
+}
+
+export async function saveWebformStep(
+  sessionId: string,
+  partial: Partial<unknown>,
+  step: number
+): Promise<void> {
+  const user = await getUser();
+  // Tolerant: valideer alleen velden die aanwezig zijn (partial)
+  await saveWebformAnswersPartial(
+    user.id,
+    sessionId,
+    partial as Partial<import("@/modules/icp-analyse/schema").WebformAnswers>,
+    step
+  );
+}
+
+export async function submitWebform(
+  productId: string,
+  sessionId: string,
+  finalAnswers: unknown
+) {
+  const user = await getUser();
+  // Valideer volledig
+  const parsed = WebformAnswers.parse(finalAnswers);
+  // Sla eerst alle antwoorden op zodat phase3 ze kan lezen
+  await saveWebformAnswersPartial(user.id, sessionId, parsed, 5);
+  try {
+    await runVolledigPhase3(user.id, sessionId);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Analyse mislukt";
+    redirect(
+      `/modules/icp-analyse/${productId}/volledig/${sessionId}/webform?error=${encodeURIComponent(msg)}`
+    );
+  }
+  redirect(
+    `/modules/icp-analyse/${productId}/volledig/${sessionId}/profiel`
+  );
 }

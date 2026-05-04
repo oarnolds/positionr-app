@@ -15,8 +15,8 @@ import {
   ScannedProducts,
   Phase1Output,
   FinalIcp,
+  WebformAnswers,
   type WebsiteSnapshot,
-  type WebformAnswers,
   type ICPFactEntry,
   type ScannedProduct,
 } from "./schema";
@@ -270,10 +270,234 @@ export async function runSnelAnalysis(
   }
 }
 
-// ── 3/4. Volledig-modus orchestrators (B2 — placeholder) ────────────────────
+// ── 3. Volledig-modus: Phase 1 (review) ─────────────────────────────────────
 
-// Phase 1 only — voor Volledig-flow review-pagina. Wordt B2 ingevuld.
-// export async function runVolledigPhase1(userId: string, productId: string): Promise<string> {...}
+/**
+ * Volledig-modus stap 1: scrape + Phase 1. Sessie krijgt status `review`
+ * (wachten op user-review). Gebruiker bevestigt en gaat naar webform.
+ */
+export async function runVolledigPhase1(
+  userId: string,
+  productId: string
+): Promise<string> {
+  const product = await getProductOrThrow(productId, userId);
+  const client = await getClientOrThrow(product.clientId, userId);
 
-// Phase 3 — na webform submit. B2.
-// export async function runVolledigPhase3(userId: string, sessionId: string): Promise<void> {...}
+  const url = product.websiteUrl ?? client.websiteUrl;
+  if (!url) throw new Error("Geen website-URL voor dit product/klant");
+
+  const [session] = await db
+    .insert(sessions)
+    .values({
+      userId,
+      clientId: client.id,
+      productId: product.id,
+      moduleSlug: MODULE_SLUG,
+      status: "running",
+      input: { productId, analysisMode: "volledig" } as unknown as Record<
+        string,
+        unknown
+      >,
+    })
+    .returning();
+
+  try {
+    const { snapshot, cached } = await getOrFreshSnapshot(client.id, url);
+    if (!cached) await persistSnapshot(client.id, snapshot);
+
+    const phase1Result = await analyzeWithCachedSystem({
+      system: buildPhase1SystemPrompt(),
+      user: buildPhase1UserPrompt(snapshot),
+      schema: Phase1Output,
+    });
+
+    await db
+      .update(sessions)
+      .set({
+        status: "review",
+        output: {
+          phase1Output: phase1Result.data,
+          webformAnswers: null,
+          finalIcp: null,
+          betrouwbaarheid: phase1Result.data.betrouwbaarheid_score,
+        } as unknown as Record<string, unknown>,
+        promptUsed: phase1Result.promptUsed,
+        llmModel: phase1Result.llmModel,
+        llmInputTokens: phase1Result.llmInputTokens,
+        llmOutputTokens: phase1Result.llmOutputTokens,
+        llmCostCents: phase1Result.llmCostCents,
+      })
+      .where(eq(sessions.id, session.id));
+
+    return session.id;
+  } catch (err) {
+    await db
+      .update(sessions)
+      .set({
+        status: "failed",
+        errorMessage: err instanceof Error ? err.message : String(err),
+        completedAt: new Date(),
+      })
+      .where(eq(sessions.id, session.id));
+    throw err;
+  }
+}
+
+// ── 4. Sla webform-antwoorden op (partial save voor resume) ─────────────────
+
+export async function saveWebformAnswersPartial(
+  userId: string,
+  sessionId: string,
+  answers: Partial<WebformAnswers>,
+  step: number
+): Promise<void> {
+  const [session] = await db
+    .select()
+    .from(sessions)
+    .where(eq(sessions.id, sessionId))
+    .limit(1);
+  if (!session) throw new Error("Sessie niet gevonden");
+  if (session.userId !== userId) throw new Error("Geen toegang");
+
+  const currentOutput = (session.output ?? {}) as Record<string, unknown>;
+  const currentAnswers = (currentOutput.webformAnswers ?? {}) as Partial<WebformAnswers>;
+  const merged = { ...currentAnswers, ...answers };
+
+  await db
+    .update(sessions)
+    .set({
+      output: {
+        ...currentOutput,
+        webformAnswers: merged,
+        webformStep: step,
+      } as unknown as Record<string, unknown>,
+    })
+    .where(eq(sessions.id, sessionId));
+}
+
+// ── 5. Volledig-modus: Phase 3 (final) ──────────────────────────────────────
+
+/**
+ * Volledig-modus stap 2: combineer Phase 1 + webform-antwoorden → FinalIcp.
+ * Gebruikt opgeslagen sessie-data. Status van running → approved.
+ */
+export async function runVolledigPhase3(
+  userId: string,
+  sessionId: string
+): Promise<void> {
+  const [session] = await db
+    .select()
+    .from(sessions)
+    .where(eq(sessions.id, sessionId))
+    .limit(1);
+  if (!session) throw new Error("Sessie niet gevonden");
+  if (session.userId !== userId) throw new Error("Geen toegang");
+  if (!session.productId || !session.clientId) {
+    throw new Error("Sessie mist product- of klant-koppeling");
+  }
+
+  const output = (session.output ?? {}) as Record<string, unknown>;
+  const phase1 = output.phase1Output as Phase1Output | undefined;
+  const rawAnswers = output.webformAnswers as
+    | Partial<WebformAnswers>
+    | undefined;
+
+  if (!phase1) throw new Error("Phase 1 ontbreekt — eerst website-analyse uitvoeren");
+  if (!rawAnswers) throw new Error("Webform-antwoorden ontbreken");
+
+  // Valideer met zod (tolerant voor optional eigenBeschrijving)
+  const parsed = WebformAnswers.safeParse(rawAnswers);
+  if (!parsed.success) {
+    throw new Error(
+      `Webform-antwoorden onvolledig: ${parsed.error.issues
+        .slice(0, 3)
+        .map((i) => i.path.join(".") + " " + i.message)
+        .join(", ")}`
+    );
+  }
+
+  const product = await getProductOrThrow(session.productId, userId);
+  const client = await getClientOrThrow(session.clientId, userId);
+
+  // Status → running
+  await db
+    .update(sessions)
+    .set({ status: "running" })
+    .where(eq(sessions.id, sessionId));
+
+  try {
+    const finalResult = await analyzeWithCachedSystem({
+      system: buildFinalIcpSystemPrompt(),
+      user: buildFinalIcpUserPrompt({
+        phase1,
+        answers: parsed.data,
+        companyName: client.name,
+      }),
+      schema: FinalIcp,
+    });
+
+    // Combineer telemetrie met bestaande Phase 1
+    const totalInput =
+      (session.llmInputTokens ?? 0) + finalResult.llmInputTokens;
+    const totalOutput =
+      (session.llmOutputTokens ?? 0) + finalResult.llmOutputTokens;
+    const totalCost =
+      (session.llmCostCents ?? 0) + finalResult.llmCostCents;
+
+    await db
+      .update(sessions)
+      .set({
+        status: "approved",
+        output: {
+          ...output,
+          webformAnswers: parsed.data,
+          finalIcp: finalResult.data,
+          positionering: finalResult.data.positionering,
+        } as unknown as Record<string, unknown>,
+        promptUsed: `${session.promptUsed ?? ""}\n\n=== FINAL ICP CALL ===\n${finalResult.promptUsed}`,
+        llmInputTokens: totalInput,
+        llmOutputTokens: totalOutput,
+        llmCostCents: totalCost,
+        completedAt: new Date(),
+      })
+      .where(eq(sessions.id, sessionId));
+
+    // Promote naar clients.facts.icp[]
+    const [refreshedClient] = await db
+      .select()
+      .from(clients)
+      .where(eq(clients.id, client.id))
+      .limit(1);
+    const facts = (refreshedClient?.facts ?? {}) as Record<string, unknown>;
+    const existingIcp = (facts.icp as ICPFactEntry[] | undefined) ?? [];
+    const newEntry: ICPFactEntry = {
+      productId: product.id,
+      productName: product.name,
+      sessionId,
+      finalIcp: finalResult.data,
+      runAt: new Date().toISOString(),
+      analysisMode: "volledig",
+    };
+    const idx = existingIcp.findIndex((e) => e.productId === product.id);
+    const updatedIcp =
+      idx >= 0
+        ? [
+            ...existingIcp.slice(0, idx),
+            newEntry,
+            ...existingIcp.slice(idx + 1),
+          ]
+        : [...existingIcp, newEntry];
+    facts.icp = updatedIcp;
+    await db.update(clients).set({ facts }).where(eq(clients.id, client.id));
+  } catch (err) {
+    await db
+      .update(sessions)
+      .set({
+        status: "failed",
+        errorMessage: err instanceof Error ? err.message : String(err),
+        completedAt: new Date(),
+      })
+      .where(eq(sessions.id, sessionId));
+    throw err;
+  }
+}
