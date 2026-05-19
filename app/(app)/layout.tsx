@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db/client";
+import { profiles } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { LogOut, Settings } from "lucide-react";
 import { signOut } from "./actions";
@@ -19,8 +22,12 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  // Admin-rol check (later via profiles.role)
-  const isAdmin = user.email === "olivier@eclectik.co" || user.email === "martijn@dehaasbcd.nl";
+  const [profile] = await db
+    .select({ role: profiles.role })
+    .from(profiles)
+    .where(eq(profiles.id, user.id))
+    .limit(1);
+  const isAdmin = profile?.role === "admin";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
