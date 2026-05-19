@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db/client";
+import { profiles } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { LogOut, FileText, Wand2, Users, ArrowLeft } from "lucide-react";
 import { signOut } from "../(app)/actions";
@@ -23,10 +26,12 @@ export default async function AdminLayout({
 
   if (!user) redirect("/login?next=/admin");
 
-  // Tijdelijke check tot profiles.role gevuld is via seed
-  const isAdmin =
-    user.email === "olivier@eclectik.co" || user.email === "martijn@dehaasbcd.nl";
-  if (!isAdmin) redirect("/modules");
+  const [profile] = await db
+    .select({ role: profiles.role })
+    .from(profiles)
+    .where(eq(profiles.id, user.id))
+    .limit(1);
+  if (profile?.role !== "admin") redirect("/modules");
 
   return (
     <div className="flex min-h-screen bg-slate-50">
