@@ -33,3 +33,6 @@ pnpm-debug.log*
 # editor
 .vscode/
 .idea/
+
+# brainstorm visual companion
+.superpowers/
