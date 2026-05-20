@@ -73,7 +73,10 @@ export function RichPromptEditor({
   minHeight = 400,
   editorRef,
 }: Props) {
-  const lastEmittedValue = useRef(value);
+  // Sentinel waarmee de useEffect 'value !== lastEmittedValue.current' bij
+  // mount WAAR is, zodat de initiële setContent wèl wordt uitgevoerd. Na de
+  // eerste hydration zet onUpdate dit op de canonieke roundtrip-MD.
+  const lastEmittedValue = useRef<string | null>(null);
   // Suppress de allereerste onUpdate-emit (en die na elke programmatische
   // setContent), zodat de MD→HTML→MD-roundtrip de dirty-state niet onnodig
   // triggert. Alleen écht gebruikersinput moet onChange aanroepen.

@@ -108,7 +108,7 @@ export default async function PromptEditorPage({
   return (
     <div className="flex h-[calc(100vh-60px)]">
       <PromptsSidebar activeSlug={slug} />
-      <div className="flex flex-1 flex-col">
+      <div className="flex-1 overflow-y-auto">
         <EditorPane
           slug={slug}
           moduleName={meta.name}

@@ -84,7 +84,7 @@ export function EditorPane({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-6">
+    <div className="px-8 py-6">
       <div className="flex items-baseline gap-3">
         <h1 className="text-2xl font-bold">{moduleName}</h1>
         <span
