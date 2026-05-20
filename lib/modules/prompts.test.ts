@@ -69,10 +69,18 @@ describe("getModulePrompt", () => {
     expect(result).toEqual({ prompt: "Hallo {x}", provider: "perplexity" });
   });
 
-  it("valt terug op FALLBACK_PROMPTS als defaultPrompt leeg is", async () => {
+  it("valt terug op FALLBACK_PROMPTS-placeholder als defaultPrompt leeg is", async () => {
+    // 'marktonderzoek' is een 'soon'-module dus heeft SOON_PLACEHOLDER-tekst
+    setMockRows([{ defaultPrompt: "", provider: "perplexity" }]);
+    const result = await getModulePrompt("marktonderzoek");
+    expect(result.prompt).toContain("Placeholder");
+    expect(result.provider).toBe("perplexity");
+  });
+
+  it("valt terug op de echte Website Check FALLBACK_PROMPT als die slug leeg is", async () => {
     setMockRows([{ defaultPrompt: "", provider: "claude" }]);
     const result = await getModulePrompt("website-check");
-    expect(result.prompt).toContain("Placeholder"); // SOON_PLACEHOLDER-tekst
+    expect(result.prompt).toContain("B2B website analyse");
     expect(result.provider).toBe("claude");
   });
 

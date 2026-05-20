@@ -8,13 +8,15 @@
 // Voor 'soon' modules: simpele placeholders. Voor actieve modules: import
 // van de echte FALLBACK_PROMPT uit modules/<slug>/prompt.ts.
 
+import { FALLBACK_PROMPT as websiteCheckFallback } from "@/modules/website-check/prompt";
+
 const SOON_PLACEHOLDER = (name: string) =>
   `[Placeholder prompt voor ${name} — vul aan via de admin-editor zodra deze module gebouwd wordt.]`;
 
 export const FALLBACK_PROMPTS: Record<string, string> = {
-  // ACTIVE — wordt in Task 6 overschreven met echte import (website-check)
-  "website-check": SOON_PLACEHOLDER("Website Check"),
-  "icp-analyse": SOON_PLACEHOLDER("ICP Analyse"),
+  // ACTIVE
+  "website-check": websiteCheckFallback,
+  "icp-analyse": SOON_PLACEHOLDER("ICP Analyse"), // migratie van ICP komt later
 
   // SOON
   "website-check-concurrenten": SOON_PLACEHOLDER("Website Check + Concurrenten"),
