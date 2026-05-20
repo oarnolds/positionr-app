@@ -12,6 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "seed:modules": "tsx scripts/seed-modules.ts",
+    "seed:prompts": "tsx scripts/seed-prompts.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
