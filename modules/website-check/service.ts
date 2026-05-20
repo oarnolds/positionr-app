@@ -23,17 +23,10 @@ export const defaultDeps: ServiceDeps = {
   analyze: ({ system, user }) =>
     analyzeWithCachedSystem({ system, user, schema: WebsiteCheckOutputSchema }),
   updateSession: async (id, patch) => {
-    const { eq, and } = await import("drizzle-orm");
+    const { eq } = await import("drizzle-orm");
     const { db } = await import("@/lib/db/client");
     const { sessions } = await import("@/lib/db/schema");
-    // WHERE-guard op status='running' beschermt tegen overschrijven van een
-    // sessie die ondertussen door de gebruiker is geannuleerd of door auto-fail
-    // op timeout is gezet — anders zou een late achtergrond-update die failed
-    // state weer naar approved kunnen flippen.
-    await db
-      .update(sessions)
-      .set(patch)
-      .where(and(eq(sessions.id, id), eq(sessions.status, "running")));
+    await db.update(sessions).set(patch).where(eq(sessions.id, id));
   },
 };
 

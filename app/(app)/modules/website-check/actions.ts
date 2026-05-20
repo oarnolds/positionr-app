@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
 import { profiles, sessions } from "@/lib/db/schema";
@@ -56,30 +56,6 @@ export async function startAnalysis(formData: FormData): Promise<void> {
 
   revalidatePath("/modules/website-check");
   redirect(`/modules/website-check/${sessionId}`);
-}
-
-export async function cancelAnalysis(formData: FormData): Promise<void> {
-  const user = await requireUser();
-  const sessionId = String(formData.get("sessionId") ?? "");
-  // Markeer alleen als gefaald wanneer 'ie nog daadwerkelijk loopt — anders
-  // overschrijven we mogelijk een ondertussen voltooid resultaat.
-  await db
-    .update(sessions)
-    .set({
-      status: "failed",
-      errorMessage: "Geannuleerd door gebruiker.",
-      completedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(sessions.id, sessionId),
-        eq(sessions.userId, user.id),
-        eq(sessions.moduleSlug, MODULE_SLUG),
-        eq(sessions.status, "running"),
-      ),
-    );
-  revalidatePath("/modules/website-check");
-  redirect("/modules/website-check");
 }
 
 export async function regenerateAnalysis(formData: FormData): Promise<void> {

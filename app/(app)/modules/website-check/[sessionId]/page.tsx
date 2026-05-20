@@ -2,17 +2,14 @@
 import Link from "next/link";
 import { ArrowLeft, Globe, Loader2, CheckCircle2, Circle } from "lucide-react";
 import { redirect, notFound } from "next/navigation";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
 import { sessions } from "@/lib/db/schema";
 import { WebsiteCheckOutputSchema } from "@/modules/website-check/schema";
 import { WebsiteCheckResultView } from "@/modules/website-check/components/WebsiteCheckResultView";
 import { MODULE_SLUG } from "@/modules/website-check";
-import { cancelAnalysis, regenerateAnalysis } from "../actions";
-import { RunningPoll } from "./running-poll";
-
-const STUCK_THRESHOLD_SECONDS = 6 * 60; // maxDuration=300 + grace
+import { regenerateAnalysis } from "../actions";
 
 export default async function WebsiteCheckResultPage({
   params,
@@ -24,31 +21,8 @@ export default async function WebsiteCheckResultPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=/modules/website-check/${sessionId}`);
 
-  const rows = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
-  if (rows.length === 0 || rows[0].userId !== user.id || rows[0].moduleSlug !== MODULE_SLUG) {
-    notFound();
-  }
-  let row = rows[0];
-
-  // Auto-fail: een 'running' sessie ouder dan 6 min is verloren — de Vercel
-  // serverless function is dan al gekilled (maxDuration=300s + grace). Markeer
-  // 'm als failed zodat de gebruiker een nette foutpagina ziet i.p.v. een
-  // eindeloze spinner. WHERE-guard op status='running' voorkomt race met een
-  // late background-update.
-  if (row.status === "running") {
-    const elapsedSec = Math.floor(
-      (Date.now() - new Date(row.createdAt).getTime()) / 1000,
-    );
-    if (elapsedSec > STUCK_THRESHOLD_SECONDS) {
-      const failedAt = new Date();
-      const msg = "Analyse onderbroken (timeout). Probeer opnieuw.";
-      await db
-        .update(sessions)
-        .set({ status: "failed", errorMessage: msg, completedAt: failedAt })
-        .where(and(eq(sessions.id, row.id), eq(sessions.status, "running")));
-      row = { ...row, status: "failed", errorMessage: msg, completedAt: failedAt };
-    }
-  }
+  const [row] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
+  if (!row || row.userId !== user.id || row.moduleSlug !== MODULE_SLUG) notFound();
 
   const header = (
     <div className="mx-auto max-w-4xl px-6 pt-6">
@@ -75,8 +49,8 @@ export default async function WebsiteCheckResultPage({
 
     return (
       <>
-        {/* Polling via client component (geen full page reload zoals <meta refresh>). */}
-        <RunningPoll />
+        {/* auto-refresh elke 3s tot status wijzigt */}
+        <meta httpEquiv="refresh" content="3" />
         {header}
         <div className="mx-auto max-w-3xl px-6 py-12">
           <div className="flex items-center gap-3">
@@ -131,21 +105,10 @@ export default async function WebsiteCheckResultPage({
             </ul>
           </div>
 
-          <div className="mt-4 flex items-center justify-between gap-3">
-            <p className="text-xs text-gray-500">
-              Je kan vrij weg navigeren — de analyse loopt door op de achtergrond. Je vindt 'm
-              terug onder &quot;Eerdere checks&quot;.
-            </p>
-            <form action={cancelAnalysis}>
-              <input type="hidden" name="sessionId" value={row.id} />
-              <button
-                type="submit"
-                className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Annuleer analyse
-              </button>
-            </form>
-          </div>
+          <p className="mt-4 text-xs text-gray-500">
+            De pagina ververst zichzelf elke 3 seconden. Je kan dit tabblad open laten staan of later
+            terugkomen — de analyse loopt door op de achtergrond.
+          </p>
         </div>
       </>
     );

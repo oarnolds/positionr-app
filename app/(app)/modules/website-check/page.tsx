@@ -8,12 +8,9 @@ import { profiles, sessions } from "@/lib/db/schema";
 import { MODULE_SLUG } from "@/modules/website-check";
 import { startAnalysis } from "./actions";
 
-// Vercel Pro: max 300s. De action ZELF is snel (~1s, redirect direct),
-// maar runAnalysis loopt via after() in dezelfde function lifecycle, dus
-// dit budget geldt ook voor de achtergrond-analyse. 60s was te krap voor
-// grotere sites — daarom 300s zodat ook complexe pagina's binnen budget
-// passen. [sessionId]/page.tsx markeert "running > 6 min" alsnog als failed.
-export const maxDuration = 300;
+// Verleng max-duur naar 60s zodat de action (incl. background runAnalysis) ruim valt
+// binnen Vercel's serverless functie-budget.
+export const maxDuration = 60;
 
 export default async function WebsiteCheckHomePage() {
   const supabase = await createClient();
