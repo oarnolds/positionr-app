@@ -1,6 +1,6 @@
 // app/(app)/modules/website-check/[sessionId]/page.tsx
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Globe, Loader2, CheckCircle2, Circle } from "lucide-react";
 import { redirect, notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
@@ -33,14 +33,82 @@ export default async function WebsiteCheckResultPage({
   );
 
   if (row.status === "running") {
+    const input = (row.input as { websiteUrl?: string }) ?? {};
+    const elapsed = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(row.createdAt).getTime()) / 1000),
+    );
+    const elapsedLabel =
+      elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`;
+    const steps = [
+      { label: "Pagina ophalen", doneAt: 8 },
+      { label: "Inhoud analyseren met AI", doneAt: 45 },
+      { label: "Resultaat opmaken", doneAt: Number.POSITIVE_INFINITY },
+    ];
+    const currentStepIdx = steps.findIndex((s) => elapsed < s.doneAt);
+
     return (
       <>
         {/* auto-refresh elke 3s tot status wijzigt */}
         <meta httpEquiv="refresh" content="3" />
         {header}
-        <div className="mx-auto max-w-4xl px-6 py-16 text-center">
-          <p className="text-lg font-semibold">Bezig met analyseren…</p>
-          <p className="mt-1 text-sm text-gray-600">Dit duurt ongeveer 20-50 seconden. De pagina ververst zichzelf elke 3 seconden.</p>
+        <div className="mx-auto max-w-3xl px-6 py-12">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-purple-100 p-3 text-purple-600">
+              <Globe className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">Website Check</h1>
+              <p className="text-gray-600">We analyseren je website — dit duurt 20-50 seconden.</p>
+            </div>
+          </div>
+
+          <div className="mt-8 rounded-2xl border-2 border-purple-200 bg-purple-50 p-6">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
+              <span className="font-semibold text-gray-900">Bezig met analyseren…</span>
+              <span className="ml-auto text-sm tabular-nums text-gray-600">{elapsedLabel}</span>
+            </div>
+
+            {input.websiteUrl && (
+              <p className="mt-4 truncate text-sm text-gray-700">
+                <span className="font-semibold">URL:</span>{" "}
+                <span className="text-purple-700">{input.websiteUrl}</span>
+              </p>
+            )}
+
+            <ul className="mt-5 space-y-2">
+              {steps.map((step, i) => {
+                const state =
+                  i < currentStepIdx ? "done" : i === currentStepIdx ? "current" : "pending";
+                return (
+                  <li key={step.label} className="flex items-center gap-2 text-sm">
+                    {state === "done" && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                    {state === "current" && (
+                      <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                    )}
+                    {state === "pending" && <Circle className="h-4 w-4 text-gray-300" />}
+                    <span
+                      className={
+                        state === "pending"
+                          ? "text-gray-400"
+                          : state === "current"
+                            ? "font-semibold text-gray-900"
+                            : "text-gray-700"
+                      }
+                    >
+                      {step.label}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <p className="mt-4 text-xs text-gray-500">
+            De pagina ververst zichzelf elke 3 seconden. Je kan dit tabblad open laten staan of later
+            terugkomen — de analyse loopt door op de achtergrond.
+          </p>
         </div>
       </>
     );
