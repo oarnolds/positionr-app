@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { ArrowLeft, Globe, Loader2, CheckCircle2, Circle } from "lucide-react";
 import { redirect, notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
 import { sessions } from "@/lib/db/schema";
@@ -11,6 +11,8 @@ import { WebsiteCheckResultView } from "@/modules/website-check/components/Websi
 import { MODULE_SLUG } from "@/modules/website-check";
 import { regenerateAnalysis } from "../actions";
 import { RunningPoll } from "./running-poll";
+
+const STUCK_THRESHOLD_SECONDS = 6 * 60; // maxDuration=300s + 1 min grace
 
 export default async function WebsiteCheckResultPage({
   params,
@@ -22,8 +24,30 @@ export default async function WebsiteCheckResultPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=/modules/website-check/${sessionId}`);
 
-  const [row] = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
-  if (!row || row.userId !== user.id || row.moduleSlug !== MODULE_SLUG) notFound();
+  const rows = await db.select().from(sessions).where(eq(sessions.id, sessionId)).limit(1);
+  if (rows.length === 0 || rows[0].userId !== user.id || rows[0].moduleSlug !== MODULE_SLUG) {
+    notFound();
+  }
+  let row = rows[0];
+
+  // Auto-fail: een 'running' sessie ouder dan 6 min is verloren — de Vercel
+  // serverless function is dan al gekilled. Markeer 'm als failed zodat de
+  // gebruiker een nette foutpagina ziet i.p.v. een eindeloze spinner.
+  // WHERE-guard op status='running' voorkomt race met een late background-update.
+  if (row.status === "running") {
+    const elapsedSec = Math.floor(
+      (Date.now() - new Date(row.createdAt).getTime()) / 1000,
+    );
+    if (elapsedSec > STUCK_THRESHOLD_SECONDS) {
+      const failedAt = new Date();
+      const msg = "Analyse onderbroken (timeout). Probeer opnieuw.";
+      await db
+        .update(sessions)
+        .set({ status: "failed", errorMessage: msg, completedAt: failedAt })
+        .where(and(eq(sessions.id, row.id), eq(sessions.status, "running")));
+      row = { ...row, status: "failed", errorMessage: msg, completedAt: failedAt };
+    }
+  }
 
   const header = (
     <div className="mx-auto max-w-4xl px-6 pt-6">
