@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ZodType } from "zod";
+import type { AdapterArgs, AnalyzeResult as AnalyzeResultV2 } from "./analyze";
+import { calculateCostCents, PRICING } from "./pricing";
 
 // Lazy-init: pas bij eerste call wordt de env-var gelezen.
 // Voorkomt dat Turbopack op import-time een lege key inleest.
@@ -100,5 +102,45 @@ export async function analyzeWithCachedSystem<T>(args: {
     llmInputTokens: totalInput,
     llmOutputTokens: output,
     llmCostCents: costCents,
+  };
+}
+
+/**
+ * Single-message Claude call (geen system/user split, dus geen prompt-caching).
+ * Gebruikt voor het nieuwe admin-prompt-editor-patroon waar de prompt al
+ * compleet uit de DB komt en uniformiteit met Perplexity belangrijker is dan
+ * caching-besparing. Zie docs/superpowers/specs/2026-05-20-admin-prompt-editor-design.md §3.
+ */
+export async function analyzeClaude<T>(
+  args: AdapterArgs<T>,
+): Promise<AnalyzeResultV2<T>> {
+  const response = await getClient().messages.create({
+    model: PRICING.claude.model,
+    max_tokens: MAX_TOKENS,
+    messages: [{ role: "user", content: args.prompt }],
+  });
+
+  const block = response.content[0];
+  const text = block?.type === "text" ? block.text : "";
+  const cleaned = text.replace(/```json\s*|\s*```/g, "").trim();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new Error(`Claude returnde geen geldige JSON: ${text.slice(0, 200)}`);
+  }
+  const data = args.schema.parse(parsed);
+
+  const inputTokens = response.usage.input_tokens ?? 0;
+  const outputTokens = response.usage.output_tokens ?? 0;
+
+  return {
+    data,
+    promptUsed: args.prompt,
+    llmModel: PRICING.claude.model,
+    llmInputTokens: inputTokens,
+    llmOutputTokens: outputTokens,
+    llmCostCents: calculateCostCents("claude", inputTokens, outputTokens),
   };
 }

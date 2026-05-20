@@ -12,7 +12,7 @@ export const PRICING: Record<
   claude: {
     inputPerMTokUsd: 3,
     outputPerMTokUsd: 15,
-    model: "claude-sonnet-4-5",
+    model: "claude-sonnet-4-6",
   },
   perplexity: {
     inputPerMTokUsd: 3,
