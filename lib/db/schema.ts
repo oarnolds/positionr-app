@@ -118,6 +118,9 @@ export const sessions = pgTable("sessions", {
   // Foutafhandeling
   errorMessage: text("error_message"),
 
+  // Deelbare link (publieke read-only URL)
+  shareSlug: text("share_slug").unique(),
+
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });
