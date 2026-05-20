@@ -10,6 +10,7 @@ import { WebsiteCheckOutputSchema } from "@/modules/website-check/schema";
 import { WebsiteCheckResultView } from "@/modules/website-check/components/WebsiteCheckResultView";
 import { MODULE_SLUG } from "@/modules/website-check";
 import { regenerateAnalysis } from "../actions";
+import { RunningPoll } from "./running-poll";
 
 export default async function WebsiteCheckResultPage({
   params,
@@ -49,8 +50,8 @@ export default async function WebsiteCheckResultPage({
 
     return (
       <>
-        {/* auto-refresh elke 3s tot status wijzigt */}
-        <meta httpEquiv="refresh" content="3" />
+        {/* Polling via client component (geen full page reload zoals <meta refresh>), zodat de gebruiker vrij kan weg navigeren. */}
+        <RunningPoll />
         {header}
         <div className="mx-auto max-w-3xl px-6 py-12">
           <div className="flex items-center gap-3">
@@ -106,8 +107,8 @@ export default async function WebsiteCheckResultPage({
           </div>
 
           <p className="mt-4 text-xs text-gray-500">
-            De pagina ververst zichzelf elke 3 seconden. Je kan dit tabblad open laten staan of later
-            terugkomen — de analyse loopt door op de achtergrond.
+            Je kan vrij weg navigeren — de analyse loopt door op de achtergrond. Je vindt 'm
+            terug onder &quot;Eerdere checks&quot; op de modulepagina.
           </p>
         </div>
       </>
