@@ -23,7 +23,8 @@ minimaal gedeeld profiel), niet het hele systeem.
 
 **In v1:**
 - Eén eigen bedrijf per gebruiker (geen multi-client/agency-model)
-- Minimaal gedeeld profiel (`company_profiles`): bedrijfsnaam + website-URL
+- Per-gebruiker bedrijfsprofiel via **bestaande `profiles`-velden**
+  (`companyName`, `websiteUrl`) — geen nieuwe tabel
 - Getrouwe port van de Manus-analyse (11 onderdelen, scores 1-10, overall,
   samenvatting, sterk/verbeter, top-5 acties)
 - Schermpresentatie (hybride: één scrolbaar rapport + prominente score +
@@ -63,30 +64,32 @@ Spiegelt de bestaande ICP-analyse-module 1-op-1.
 **`app/r/[shareSlug]/page.tsx`** — publieke, auth-loze read-only resultaatroute
 
 **Datamodel:**
-- **Nieuw `company_profiles`** (1 rij per gebruiker): `userId` (PK, =
-  `auth.users.id`), `companyName`, `websiteUrl`, `createdAt`, `updatedAt`.
-  RLS: eigen rij lezen/schrijven (zelfde patroon als `clients`).
+- **Geen nieuwe tabel.** Het per-gebruiker bedrijfsprofiel = bestaande
+  **`profiles`**-velden `companyName` + `websiteUrl` (al aanwezig; `profiles`
+  is al 1-op-1 met `auth.users` en heeft RLS "users update own profile").
+  Eerste gebruik = eigen `profiles`-rij bijwerken; voor-invullen leest daaruit.
 - **Hergebruik `sessions`**: per run één rij — `userId`, `moduleSlug =
   'website-check'`, `clientId/productId = NULL`, `input = {websiteUrl,
-  companyName}`, `output = ` analyse-JSON, `status` (conceptueel
-  draft→running→complete/error — gebruik de **bestaande `sessionStatus`-enum
-  uit `lib/db/schema.ts`**, geen nieuwe waarden verzinnen; map op de
-  dichtstbijzijnde bestaande leden, zoals de ICP-module doet), `shareSlug`
-  (bij aanmaak gegenereerd), telemetrie
-  (`llmModel/llmInputTokens/llmOutputTokens/llmCostCents`), `promptUsed`,
-  `errorMessage`, `completedAt`.
-- Migratie via **`pnpm db:push`** (projectconventie — geen migratiebestanden) +
-  RLS-SQL voor `company_profiles` (zelfde stijl als bestaande `drizzle/*_rls.sql`).
+  companyName}`, `output = ` analyse-JSON. `status` gebruikt de **bestaande
+  `sessionStatus`-enum** (`draft·running·review·approved·failed`):
+  `running` tijdens analyse → **`approved`** bij succes → **`failed`** bij
+  fout. `shareSlug` bij aanmaak gegenereerd; telemetrie
+  (`llmModel/llmInputTokens/llmOutputTokens/llmCostCents`) + `promptUsed`
+  uit `analyzeWithCachedSystem`; `errorMessage`, `completedAt`.
+- Geen schema-migratie nodig (geen nieuwe tabel/kolom; `sessions` en
+  `profiles` bestaan al). Geen nieuwe RLS nodig (bestaande profiel- en
+  sessie-RLS dekken het).
 
 ## 4. User-flow
 
-1. **Eerste gebruik** — geen `company_profiles`-rij → kort formulier
-   (bedrijfsnaam + website-URL), eenmalig. Wel profiel → URL voor-ingevuld.
+1. **Eerste gebruik** — `profiles.websiteUrl` leeg → kort formulier
+   (bedrijfsnaam + website-URL) dat de eigen `profiles`-rij bijwerkt, eenmalig.
+   Al ingevuld → URL voor-ingevuld uit `profiles`.
 2. **Startpagina** — URL-veld (aanpasbaar) + knop "Analyseer website" +
    historie-lijst (datum · URL · overall score).
 3. **Analyse** — submit → `sessions`-rij (`status=running`) → redirect naar
    `[sessionId]` met "Bezig met analyseren…"-staat. Server: scrape → Claude →
-   output opslaan (`complete`) of `error`. Synchroon met laadindicator.
+   output opslaan (`approved`) of `failed`. Synchroon met laadindicator.
 4. **Resultaat** (`[sessionId]`) — hybride weergave + "Opnieuw analyseren"
    (nieuwe sessie/versie) + "Deel" (kopieer `shareSlug`-link).
 5. **Deellink** — `/r/[shareSlug]`: zelfde weergave, read-only, geen auth/knoppen.
@@ -96,7 +99,7 @@ Spiegelt de bestaande ICP-analyse-module 1-op-1.
 
 - **Scrape** (`scraper.ts`): URL normaliseren (https:// prefix), server-fetch
   (normale UA + time-out ~10-15s), HTML → leesbare tekst (scripts/styles/nav
-  eruit), afkappen ~6000 tekens. Faalt → sessie `error` + `errorMessage`.
+  eruit), afkappen ~6000 tekens. Faalt → sessie `failed` + `errorMessage`.
 - **AI** via bestaande `lib/ai/claude.ts` → `analyzeWithCachedSystem({ system,
   user, schema })`:
   - `system` = port Manus system-prompt ("expert in B2B website analyse en
@@ -106,9 +109,9 @@ Spiegelt de bestaande ICP-analyse-module 1-op-1.
     onderdelen + overall + samenvatting + top-3 sterk + top-3 verbeter + top-5
     acties (impact hoog/middel/laag).
   - `schema` = Zod (zie §7); helper valideert + geeft typed data + tokengebruik.
-- Opslaan: succes → `output`, `status=complete`, `completedAt`, telemetrie,
-  `promptUsed`. Fout/parse-fail → `status=error`, `errorMessage`. Geen
-  auto-retry in v1.
+- Opslaan: succes → `output`, `status=approved`, `completedAt`, telemetrie +
+  `promptUsed` (uit `analyzeWithCachedSystem`). Fout/parse-fail →
+  `status=failed`, `errorMessage`. Geen auto-retry in v1.
 
 ## 6. Resultaatpresentatie (hybride — goedgekeurd)
 
@@ -165,7 +168,7 @@ De 11 onderdelen (vaste volgorde): 1 Waardepropositie · 2 Klantvoordelen ·
 
 ## 9. Foutafhandeling
 
-Alle fouten → sessie `status=error` + `errorMessage`; resultaatpagina toont
+Alle fouten → sessie `status=failed` + `errorMessage`; resultaatpagina toont
 vriendelijke melding + "Opnieuw / andere URL". Gevallen: ongeldige/onbereikbare
 URL, scrape-fout/lege content, LLM-fout, Zod-parse-fout, time-outs. Telemetrie/
 kosten worden per sessie vastgelegd (kolommen bestaan). Geen auto-retry in v1.
