@@ -17,6 +17,15 @@ import { cn } from "@/lib/utils";
 type Provider = "claude" | "perplexity";
 type Placeholder = { key: string; label: string; example: string };
 
+// Modules waarvan de runtime al via getModulePrompt() de DB raadpleegt.
+// Bij een module die actief is maar hier NIET in staat (zoals ICP Analyse
+// in v1) toont de editor een waarschuwing dat wijzigingen wel worden
+// bewaard maar nog niet door de runtime gebruikt.
+const MODULES_USING_DB_PROMPT = new Set<string>([
+  "website-check",
+  // ICP Analyse migratie volgt in latere PR
+]);
+
 interface Props {
   slug: string;
   moduleName: string;
@@ -108,6 +117,15 @@ export function EditorPane({
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           Deze module heeft nog geen runtime — je wijzigingen worden bewaard
           maar nog niet gebruikt totdat de module is geïmplementeerd.
+        </div>
+      )}
+
+      {moduleStatus === "active" && !MODULES_USING_DB_PROMPT.has(slug) && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          Deze module is actief, maar gebruikt op runtime nog z&apos;n hardcoded
+          prompts uit de code. Je wijzigingen hier worden wel bewaard en
+          getoond in de version-history, maar nog niet door de analyses
+          gebruikt totdat de runtime-migratie is uitgevoerd.
         </div>
       )}
 

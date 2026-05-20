@@ -1,6 +1,6 @@
 import { test, expect, vi } from "vitest";
 import { runAnalysis, type ServiceDeps } from "./service";
-import type { WebsiteCheckOutput } from "./schema";
+import { WebsiteCheckOutputSchema, type WebsiteCheckOutput } from "./schema";
 
 const mkOutput = (): WebsiteCheckOutput => ({
   companyName: "Datapas B.V.",
@@ -14,11 +14,16 @@ const mkOutput = (): WebsiteCheckOutput => ({
   topActies: [{ actie: "fix", impact: "hoog", toelichting: "nu" }],
 });
 
-function makeDeps(): ServiceDeps & { _state: { updates: any[] } } {
-  const state = { updates: [] as any[] };
+function makeDeps(): ServiceDeps & { _state: { updates: { id: string; patch: Record<string, unknown> }[] } } {
+  const state = { updates: [] as { id: string; patch: Record<string, unknown> }[] };
   return {
     _state: state,
     scrape: vi.fn().mockResolvedValue("scraped text"),
+    fetchPrompt: vi.fn().mockResolvedValue({
+      prompt:
+        "Analyseer {websiteUrl} van {companyName}. Inhoud:\n{scrapedContent}",
+      provider: "claude" as const,
+    }),
     analyze: vi.fn().mockResolvedValue({
       data: mkOutput(),
       promptUsed: "p", llmModel: "claude-sonnet-4-6",
@@ -28,19 +33,29 @@ function makeDeps(): ServiceDeps & { _state: { updates: any[] } } {
   };
 }
 
-test("runAnalysis: succes → update met status=approved + output + telemetrie", async () => {
+test("runAnalysis: scrape + fetchPrompt + substitute + analyze + updateSession", async () => {
   const deps = makeDeps();
   await runAnalysis(
     { sessionId: "s1", websiteUrl: "https://datapas.nl", companyName: "Datapas B.V." },
     deps,
   );
+
   expect(deps.scrape).toHaveBeenCalledWith("https://datapas.nl");
-  expect(deps.analyze).toHaveBeenCalled();
+  expect(deps.fetchPrompt).toHaveBeenCalledWith("website-check");
+  expect(deps.analyze).toHaveBeenCalledWith({
+    provider: "claude",
+    prompt: expect.stringContaining(
+      "Analyseer https://datapas.nl van Datapas B.V.",
+    ),
+    schema: WebsiteCheckOutputSchema,
+  });
+
   expect(deps._state.updates).toHaveLength(1);
   const patch = deps._state.updates[0].patch;
   expect(patch.status).toBe("approved");
   expect(patch.output).toBeDefined();
   expect(patch.llmModel).toBe("claude-sonnet-4-6");
+  expect(patch.llmInputTokens).toBe(100);
   expect(patch.completedAt).toBeInstanceOf(Date);
 });
 
@@ -54,4 +69,27 @@ test("runAnalysis: scrape-fout → status=failed + errorMessage", async () => {
   const patch = deps._state.updates[0].patch;
   expect(patch.status).toBe("failed");
   expect(patch.errorMessage).toMatch(/boom/);
+});
+
+test("runAnalysis: fetchPrompt-fout → status=failed", async () => {
+  const deps = makeDeps();
+  deps.fetchPrompt = vi.fn().mockRejectedValue(new Error("DB onbereikbaar"));
+  await runAnalysis(
+    { sessionId: "s2", websiteUrl: "https://x.nl", companyName: "X" },
+    deps,
+  );
+  const patch = deps._state.updates[0].patch;
+  expect(patch.status).toBe("failed");
+  expect(patch.errorMessage).toMatch(/DB onbereikbaar/);
+});
+
+test("runAnalysis: substitueert placeholders met fallback voor lege waarden", async () => {
+  const deps = makeDeps();
+  await runAnalysis(
+    { sessionId: "s3", websiteUrl: "https://x.nl", companyName: "" },
+    deps,
+  );
+  // companyName "" → wordt "Onbekend"
+  const analyzeArgs = (deps.analyze as ReturnType<typeof vi.fn>).mock.calls[0][0];
+  expect(analyzeArgs.prompt).toContain("van Onbekend");
 });

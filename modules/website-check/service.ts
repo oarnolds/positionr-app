@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { analyzeWithCachedSystem, type AnalyzeResult } from "@/lib/ai/claude";
+import { analyze, type AnalyzeArgs } from "@/lib/ai/analyze";
+import { getModulePrompt, substitutePlaceholders } from "@/lib/modules/prompts";
 import { scrapeWebsite } from "./scraper";
-import { SYSTEM_PROMPT, buildUserPrompt } from "./prompt";
 import {
   WebsiteCheckOutputSchema,
   type WebsiteCheckOutput,
@@ -10,7 +10,10 @@ import { MODULE_SLUG } from "./index";
 
 export type ServiceDeps = {
   scrape: (url: string) => Promise<string>;
-  analyze: (args: { system: string; user: string }) => Promise<AnalyzeResult<WebsiteCheckOutput>>;
+  fetchPrompt: typeof getModulePrompt;
+  analyze: (
+    args: AnalyzeArgs<WebsiteCheckOutput>,
+  ) => ReturnType<typeof analyze<WebsiteCheckOutput>>;
   updateSession: (id: string, patch: Record<string, unknown>) => Promise<void>;
 };
 
@@ -20,8 +23,8 @@ function generateShareSlug(): string {
 
 export const defaultDeps: ServiceDeps = {
   scrape: scrapeWebsite,
-  analyze: ({ system, user }) =>
-    analyzeWithCachedSystem({ system, user, schema: WebsiteCheckOutputSchema }),
+  fetchPrompt: getModulePrompt,
+  analyze: (args) => analyze<WebsiteCheckOutput>(args),
   updateSession: async (id, patch) => {
     const { eq, and } = await import("drizzle-orm");
     const { db } = await import("@/lib/db/client");
@@ -62,13 +65,27 @@ export async function runAnalysis(
   deps: ServiceDeps = defaultDeps,
 ): Promise<void> {
   try {
+    // 1. Scrape de website (zelfde als voorheen)
     const scraped = await deps.scrape(args.websiteUrl);
-    const user = buildUserPrompt({
-      companyName: args.companyName,
+
+    // 2. Haal de actieve prompt + provider uit de DB (met code-fallback)
+    const { prompt: template, provider } = await deps.fetchPrompt(MODULE_SLUG);
+
+    // 3. Substitueer placeholders met runtime-waarden
+    const prompt = substitutePlaceholders(template, {
       websiteUrl: args.websiteUrl,
-      scrapedContent: scraped,
+      companyName: args.companyName || "Onbekend",
+      scrapedContent: scraped || "(Kon website niet laden)",
     });
-    const result = await deps.analyze({ system: SYSTEM_PROMPT, user });
+
+    // 4. Provider-agnostic analyze (routeert naar Claude of Perplexity)
+    const result = await deps.analyze({
+      provider,
+      prompt,
+      schema: WebsiteCheckOutputSchema,
+    });
+
+    // 5. Sessie afronden
     await deps.updateSession(args.sessionId, {
       status: "approved",
       output: result.data,
