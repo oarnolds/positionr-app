@@ -23,12 +23,10 @@ function impactBadge(impact: "hoog" | "middel" | "laag") {
 
 export function WebsiteCheckResultView({
   data,
-  readOnly = false,
 }: {
   data: WebsiteCheckOutput;
   readOnly?: boolean;
 }) {
-  const overall = scoreColor(data.overallScore);
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       {/* Hero */}
@@ -112,11 +110,6 @@ export function WebsiteCheckResultView({
         ))}
       </ol>
 
-      {!readOnly && (
-        <p className="mt-8 text-xs text-gray-500">
-          Knoppen "Opnieuw analyseren" + "Deel" worden op de resultaatpagina toegevoegd (Task 9).
-        </p>
-      )}
     </div>
   );
 }

@@ -35,7 +35,6 @@ export async function createWebsiteCheckSession(input: {
   websiteUrl: string;
   companyName: string;
 }): Promise<{ sessionId: string; shareSlug: string }> {
-  const { eq: _eq } = await import("drizzle-orm");
   const { db } = await import("@/lib/db/client");
   const { sessions } = await import("@/lib/db/schema");
   const shareSlug = generateShareSlug();
