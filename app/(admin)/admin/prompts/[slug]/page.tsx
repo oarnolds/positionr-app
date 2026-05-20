@@ -17,6 +17,7 @@ import { getModule } from "@/lib/modules/registry";
 import { PromptsSidebar } from "./sidebar";
 import { EditorPane } from "./editor-pane";
 import { VersionHistory, type HistoryEntry } from "./version-history";
+import { PlaceholderReference } from "./placeholder-reference";
 
 type Placeholder = { key: string; label: string; example: string };
 
@@ -118,6 +119,9 @@ export default async function PromptEditorPage({
         />
         <div className="border-t border-gray-200 px-8 py-4">
           <VersionHistory slug={slug} entries={historyEntries} />
+        </div>
+        <div className="px-8 pb-8">
+          <PlaceholderReference />
         </div>
       </div>
     </div>

@@ -74,6 +74,10 @@ export function RichPromptEditor({
   editorRef,
 }: Props) {
   const lastEmittedValue = useRef(value);
+  // Suppress de allereerste onUpdate-emit (en die na elke programmatische
+  // setContent), zodat de MD→HTML→MD-roundtrip de dirty-state niet onnodig
+  // triggert. Alleen écht gebruikersinput moet onChange aanroepen.
+  const suppressNextEmit = useRef(true);
 
   const editor = useEditor({
     extensions: [
@@ -88,6 +92,14 @@ export function RichPromptEditor({
     ],
     content: "",
     onUpdate({ editor }) {
+      if (suppressNextEmit.current) {
+        suppressNextEmit.current = false;
+        // Update baseline naar wat TipTap nu in z'n state heeft — dat is
+        // de canonieke roundtrip-versie. Hieraan vergelijken we volgende
+        // user-edits.
+        lastEmittedValue.current = htmlToMarkdown(editor.getHTML());
+        return;
+      }
       const md = htmlToMarkdown(editor.getHTML());
       if (md !== lastEmittedValue.current) {
         lastEmittedValue.current = md;
@@ -104,7 +116,8 @@ export function RichPromptEditor({
     let cancelled = false;
     markdownToHtml(value).then((html) => {
       if (cancelled) return;
-      editor.commands.setContent(html, { emitUpdate: false });
+      suppressNextEmit.current = true;
+      editor.commands.setContent(html);
       lastEmittedValue.current = value;
     });
     return () => {
