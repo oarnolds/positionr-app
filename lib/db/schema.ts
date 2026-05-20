@@ -26,6 +26,8 @@ export const moduleStatus = pgEnum("module_status", [
   "disabled",
 ]);
 
+export const providerEnum = pgEnum("provider", ["claude", "perplexity"]);
+
 // ── Profiles ────────────────────────────────────────────────────────
 // 1-op-1 met auth.users via id (RLS koppelt op auth.uid())
 
@@ -48,6 +50,7 @@ export const modules = pgTable("modules", {
   description: text("description").notNull(),
   status: moduleStatus("status").default("soon").notNull(),
   defaultPrompt: text("default_prompt").notNull().default(""),
+  provider: providerEnum("provider").default("claude").notNull(),
   outputSchema: jsonb("output_schema"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -125,6 +128,21 @@ export const sessions = pgTable("sessions", {
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });
 
+// ── Module Prompt History ───────────────────────────────────────────
+// Snapshot van elke save/reset/restore-actie op modules.defaultPrompt.
+// Wordt geschreven door admin-server-actions; gelezen door de version-history UI.
+
+export const modulePromptHistory = pgTable("module_prompt_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  moduleSlug: text("module_slug")
+    .notNull()
+    .references(() => modules.slug, { onDelete: "cascade" }),
+  prompt: text("prompt").notNull(),
+  provider: providerEnum("provider").notNull(),
+  savedBy: uuid("saved_by").notNull(), // = auth.users.id (admin)
+  savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ── Types ──────────────────────────────────────────────────────────
 
 export type Profile = typeof profiles.$inferSelect;
@@ -135,3 +153,5 @@ export type IcpProduct = typeof icpProducts.$inferSelect;
 export type NewIcpProduct = typeof icpProducts.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
+export type ModulePromptHistory = typeof modulePromptHistory.$inferSelect;
+export type NewModulePromptHistory = typeof modulePromptHistory.$inferInsert;
