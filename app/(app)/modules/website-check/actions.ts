@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { unstable_after as after } from "next/server";
 import { eq } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
@@ -43,12 +44,15 @@ export async function startAnalysis(formData: FormData): Promise<void> {
     companyName: parsed.companyName ?? "",
   });
 
-  // 3) Synchroon analyseren (slik fouten — sessie krijgt status=failed)
-  await runAnalysis({
-    sessionId,
-    websiteUrl: parsed.websiteUrl,
-    companyName: parsed.companyName ?? "",
-  });
+  // 3) Analyseren op de achtergrond ná het response (Next 15 unstable_after).
+  //    Sessie staat al op 'running'; runAnalysis vangt fouten en zet 'failed'.
+  after(() =>
+    runAnalysis({
+      sessionId,
+      websiteUrl: parsed.websiteUrl,
+      companyName: parsed.companyName ?? "",
+    }),
+  );
 
   revalidatePath("/modules/website-check");
   redirect(`/modules/website-check/${sessionId}`);
@@ -71,11 +75,13 @@ export async function regenerateAnalysis(formData: FormData): Promise<void> {
     websiteUrl: input.websiteUrl,
     companyName: input.companyName ?? "",
   });
-  await runAnalysis({
-    sessionId,
-    websiteUrl: input.websiteUrl,
-    companyName: input.companyName ?? "",
-  });
+  after(() =>
+    runAnalysis({
+      sessionId,
+      websiteUrl: input.websiteUrl,
+      companyName: input.companyName ?? "",
+    }),
+  );
   revalidatePath("/modules/website-check");
   redirect(`/modules/website-check/${sessionId}`);
 }

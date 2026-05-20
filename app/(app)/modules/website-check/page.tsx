@@ -8,6 +8,10 @@ import { profiles, sessions } from "@/lib/db/schema";
 import { MODULE_SLUG } from "@/modules/website-check";
 import { startAnalysis } from "./actions";
 
+// Verleng max-duur naar 60s zodat de action (incl. background runAnalysis) ruim valt
+// binnen Vercel's serverless functie-budget.
+export const maxDuration = 60;
+
 export default async function WebsiteCheckHomePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

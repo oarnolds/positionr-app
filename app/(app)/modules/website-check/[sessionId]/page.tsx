@@ -35,10 +35,12 @@ export default async function WebsiteCheckResultPage({
   if (row.status === "running") {
     return (
       <>
+        {/* auto-refresh elke 3s tot status wijzigt */}
+        <meta httpEquiv="refresh" content="3" />
         {header}
         <div className="mx-auto max-w-4xl px-6 py-16 text-center">
           <p className="text-lg font-semibold">Bezig met analyseren…</p>
-          <p className="mt-1 text-sm text-gray-600">Dit duurt ongeveer 10-30 seconden. Ververs de pagina als het te lang lijkt te duren.</p>
+          <p className="mt-1 text-sm text-gray-600">Dit duurt ongeveer 20-50 seconden. De pagina ververst zichzelf elke 3 seconden.</p>
         </div>
       </>
     );
