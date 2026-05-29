@@ -28,6 +28,20 @@ export const moduleStatus = pgEnum("module_status", [
 
 export const providerEnum = pgEnum("provider", ["claude", "perplexity"]);
 
+export const tierEnum = pgEnum("tier", ["basis", "pro", "premium"]);
+
+export const billingIntervalEnum = pgEnum("billing_interval", [
+  "monthly",
+  "yearly",
+]);
+
+export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "active",
+  "past_due",
+  "canceled",
+  "expired",
+]);
+
 // ── Profiles ────────────────────────────────────────────────────────
 // 1-op-1 met auth.users via id (RLS koppelt op auth.uid())
 
@@ -51,6 +65,7 @@ export const modules = pgTable("modules", {
   status: moduleStatus("status").default("soon").notNull(),
   defaultPrompt: text("default_prompt").notNull().default(""),
   provider: providerEnum("provider").default("claude").notNull(),
+  minTier: tierEnum("min_tier").default("basis").notNull(),
   outputSchema: jsonb("output_schema"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -143,6 +158,42 @@ export const modulePromptHistory = pgTable("module_prompt_history", {
   savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ── Subscriptions ───────────────────────────────────────────────────
+// 1-op-1 met auth.users. Waarheid voor portal-toegang + tier-niveau.
+
+export const subscriptions = pgTable("subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().unique(), // = auth.users.id
+  tier: tierEnum("tier").notNull(),
+  interval: billingIntervalEnum("interval").notNull(),
+  status: subscriptionStatusEnum("status").default("active").notNull(),
+  currentPeriodEnd: timestamp("current_period_end", {
+    withTimezone: true,
+  }).notNull(),
+  mollieCustomerId: text("mollie_customer_id"),
+  mollieSubscriptionId: text("mollie_subscription_id"), // alleen bij 'monthly'
+  molliePaymentId: text("mollie_payment_id"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+// ── Leads ───────────────────────────────────────────────────────────
+// Uit de publieke gratis Website Check. Server-side ingevoegd (service-role).
+
+export const leads = pgTable("leads", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull(),
+  websiteUrl: text("website_url").notNull(),
+  result: jsonb("result"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 // ── Types ──────────────────────────────────────────────────────────
 
 export type Profile = typeof profiles.$inferSelect;
@@ -155,3 +206,7 @@ export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
 export type ModulePromptHistory = typeof modulePromptHistory.$inferSelect;
 export type NewModulePromptHistory = typeof modulePromptHistory.$inferInsert;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type NewSubscription = typeof subscriptions.$inferInsert;
+export type Lead = typeof leads.$inferSelect;
+export type NewLead = typeof leads.$inferInsert;
