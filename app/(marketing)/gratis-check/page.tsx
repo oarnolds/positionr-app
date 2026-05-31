@@ -45,9 +45,13 @@ export default function GratisCheckPage({
           <Input
             id="websiteUrl"
             name="websiteUrl"
-            type="url"
+            type="text"
+            inputMode="url"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
             required
-            placeholder="https://www.jouwbedrijf.nl"
+            placeholder="www.jouwbedrijf.nl"
             className="mt-1"
           />
         </div>

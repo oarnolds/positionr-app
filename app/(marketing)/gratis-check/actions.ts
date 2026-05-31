@@ -17,7 +17,10 @@ const FreeCheckInputSchema = z.object({
   websiteUrl: z
     .string()
     .trim()
-    .url("Vul een geldige URL in (incl. https://)."),
+    .min(3, "Vul een website in.")
+    // Auto-prefix https:// als de gebruiker het niet zelf typt (vaak zo).
+    .transform((s) => (/^https?:\/\//i.test(s) ? s : `https://${s}`))
+    .pipe(z.string().url("Vul een geldige website in.")),
 });
 
 export async function startFreeCheck(formData: FormData): Promise<void> {
