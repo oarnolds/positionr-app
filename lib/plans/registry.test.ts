@@ -58,3 +58,11 @@ describe("tierAllows", () => {
     expect(TIER_ORDER).toEqual(["basis", "pro", "premium"]);
   });
 });
+
+describe("popular-vlag", () => {
+  it("er is precies één populair plan en dat is 'pro'", () => {
+    const popular = PLANS.filter((p) => p.popular);
+    expect(popular).toHaveLength(1);
+    expect(popular[0].slug).toBe("pro");
+  });
+});

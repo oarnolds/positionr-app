@@ -6,6 +6,8 @@
 
 export type Tier = "basis" | "pro" | "premium";
 
+export type BillingInterval = "monthly" | "yearly";
+
 /** Oplopend van goedkoop → duur. Index = rang voor cumulatieve toegang. */
 export const TIER_ORDER: Tier[] = ["basis", "pro", "premium"];
 
@@ -16,6 +18,7 @@ export type Plan = {
   monthlyPriceCents: number; // doorlopend, per maand
   yearlyPriceCents: number; // eenmalig, 12 maanden toegang
   features: string[];
+  popular?: boolean; // toont een "Populair"-badge op de prijzenpagina
 };
 
 export const PLANS: Plan[] = [
@@ -34,6 +37,7 @@ export const PLANS: Plan[] = [
     monthlyPriceCents: 24900,
     yearlyPriceCents: 249000,
     features: ["Alles uit Basis", "ICP-analyse", "LinkedIn-analyse"],
+    popular: true,
   },
   {
     slug: "premium",
