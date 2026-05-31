@@ -39,6 +39,7 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/voorwaarden") ||
     path.startsWith("/privacy") ||
     path.startsWith("/checkout") ||
+    path.startsWith("/gratis-check") ||
     path.startsWith("/login") ||
     path.startsWith("/auth") ||
     path.startsWith("/preview") || // tijdelijk voor visuele check
