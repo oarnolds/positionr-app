@@ -37,14 +37,14 @@ export default function LandingPage() {
           zodat je met vertrouwen kunt bijsturen.
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/prijzen">
+          <Link href="/gratis-check">
             <Button size="lg">
-              Bekijk de abonnementen <ArrowRight className="h-4 w-4" />
+              Doe de gratis Website Check <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
-          <Link href="/login">
+          <Link href="/prijzen">
             <Button size="lg" variant="outline">
-              Inloggen
+              Bekijk abonnementen
             </Button>
           </Link>
         </div>
