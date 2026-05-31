@@ -42,6 +42,12 @@ export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "expired",
 ]);
 
+export const leadStatusEnum = pgEnum("lead_status", [
+  "running",
+  "completed",
+  "failed",
+]);
+
 // ── Profiles ────────────────────────────────────────────────────────
 // 1-op-1 met auth.users via id (RLS koppelt op auth.uid())
 
@@ -188,10 +194,13 @@ export const leads = pgTable("leads", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull(),
   websiteUrl: text("website_url").notNull(),
+  status: leadStatusEnum("status").default("running").notNull(),
   result: jsonb("result"),
+  errorMessage: text("error_message"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
 });
 
 // ── Types ──────────────────────────────────────────────────────────
