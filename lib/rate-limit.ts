@@ -1,5 +1,6 @@
-import { sql } from "drizzle-orm";
+import { and, count, gt, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
+import { leads } from "@/lib/db/schema";
 
 export const FREE_CHECK_DAILY_LIMIT = 3;
 
@@ -13,11 +14,14 @@ export function exceedsLimit(count: number): boolean {
  * (Telt rijen uit `leads` ongeacht status — running/completed/failed tellen mee.)
  */
 export async function isEmailRateLimited(email: string): Promise<boolean> {
-  const rows = await db.execute(
-    sql`select count(*)::int as c from leads
-        where lower(email) = lower(${email})
-          and created_at > now() - interval '24 hours'`,
-  );
-  const count = Number((rows as Array<{ c: number }>)[0]?.c ?? 0);
-  return exceedsLimit(count);
+  const [row] = await db
+    .select({ c: count() })
+    .from(leads)
+    .where(
+      and(
+        sql`lower(${leads.email}) = lower(${email})`,
+        gt(leads.createdAt, sql`now() - interval '24 hours'`),
+      ),
+    );
+  return exceedsLimit(row?.c ?? 0);
 }
