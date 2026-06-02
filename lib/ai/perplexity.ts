@@ -5,8 +5,12 @@
 
 import type { AdapterArgs, AnalyzeResult } from "./analyze";
 import { calculateCostCents, PRICING } from "./pricing";
+import { extractAndParseJson } from "./claude";
 
 const API_URL = "https://api.perplexity.ai/chat/completions";
+// Vergelijkbaar budget als Claude (8000) — voorkomt afgekapte JSON bij
+// langere prompts.
+const MAX_TOKENS = 8000;
 
 export async function analyzePerplexity<T>(
   args: AdapterArgs<T>,
@@ -22,6 +26,7 @@ export async function analyzePerplexity<T>(
     },
     body: JSON.stringify({
       model: PRICING.perplexity.model,
+      max_tokens: MAX_TOKENS,
       messages: [{ role: "user", content: args.prompt }],
     }),
   });
@@ -40,10 +45,9 @@ export async function analyzePerplexity<T>(
   const content = payload.choices?.[0]?.message?.content;
   if (!content) throw new Error("Perplexity response heeft geen content");
 
-  const cleaned = content.replace(/```json\s*|\s*```/g, "").trim();
   let parsed: unknown;
   try {
-    parsed = JSON.parse(cleaned);
+    parsed = extractAndParseJson(content);
   } catch {
     throw new Error(
       `Perplexity response geen geldige JSON: ${content.slice(0, 200)}`,

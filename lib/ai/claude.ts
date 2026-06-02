@@ -26,7 +26,10 @@ function getClient(): Anthropic {
 }
 
 const MODEL = "claude-sonnet-4-6";
-const MAX_TOKENS = 4000;
+// 4000 bleek te krap voor langere prompts (response werd halverwege afgekapt,
+// → ongeldige JSON). 8000 zit ruim binnen Sonnet 4.6's 8192-budget en geeft
+// ruimte voor bullet-rijke output zonder serieuze kostenstijging.
+const MAX_TOKENS = 8000;
 
 // Sonnet 4.6 prijzen per miljoen tokens ($USD)
 const PRICE = {
@@ -44,6 +47,27 @@ export type AnalyzeResult<T> = {
   llmOutputTokens: number;
   llmCostCents: number;
 };
+
+/**
+ * Robuuste JSON-extractor voor LLM-output:
+ *  1. Strip eventuele ```json...``` markdown-fences (zelfs als instructies
+ *     zeggen dat ze er niet horen, doet 't model 't soms toch)
+ *  2. Pak alleen wat tussen de eerste `{` en laatste `}` staat — vangt
+ *     inleidende of nabewerkende uitleg op die soms tussen de JSON sluipt.
+ *  3. Parse + throw met behulpzame error wanneer 't toch faalt.
+ */
+export function extractAndParseJson(raw: string): unknown {
+  let cleaned = raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "");
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start !== -1 && end !== -1 && end > start) {
+    cleaned = cleaned.slice(start, end + 1);
+  }
+  return JSON.parse(cleaned);
+}
 
 export async function analyzeWithCachedSystem<T>(args: {
   system: string;
@@ -65,11 +89,10 @@ export async function analyzeWithCachedSystem<T>(args: {
 
   const block = response.content[0];
   const text = block?.type === "text" ? block.text : "";
-  const cleaned = text.replace(/```json\s*|\s*```/g, "").trim();
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(cleaned);
+    parsed = extractAndParseJson(text);
   } catch {
     throw new Error(`Claude returnde geen geldige JSON: ${text.slice(0, 200)}`);
   }
@@ -122,11 +145,10 @@ export async function analyzeClaude<T>(
 
   const block = response.content[0];
   const text = block?.type === "text" ? block.text : "";
-  const cleaned = text.replace(/```json\s*|\s*```/g, "").trim();
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(cleaned);
+    parsed = extractAndParseJson(text);
   } catch {
     throw new Error(`Claude returnde geen geldige JSON: ${text.slice(0, 200)}`);
   }

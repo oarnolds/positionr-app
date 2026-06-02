@@ -1,5 +1,40 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { z } from "zod";
+import { extractAndParseJson } from "./claude";
+
+describe("extractAndParseJson", () => {
+  it("parseert kale JSON", () => {
+    expect(extractAndParseJson('{"score": 7}')).toEqual({ score: 7 });
+  });
+
+  it("strip markdown-fences", () => {
+    expect(extractAndParseJson('```json\n{"score": 7}\n```')).toEqual({
+      score: 7,
+    });
+  });
+
+  it("ignoreert leading-text vóór de eerste {", () => {
+    expect(
+      extractAndParseJson('Hier is mijn antwoord:\n{"score": 7}'),
+    ).toEqual({ score: 7 });
+  });
+
+  it("ignoreert trailing-text na de laatste }", () => {
+    expect(
+      extractAndParseJson('{"score": 7}\n\nDat is mijn analyse.'),
+    ).toEqual({ score: 7 });
+  });
+
+  it("handelt geneste objecten (last } moet de outer closing zijn)", () => {
+    expect(
+      extractAndParseJson('{"x": {"y": 1, "z": [2, 3]}, "w": 4}'),
+    ).toEqual({ x: { y: 1, z: [2, 3] }, w: 4 });
+  });
+
+  it("gooit op echte garbage", () => {
+    expect(() => extractAndParseJson("totaal niks bruikbaars")).toThrow();
+  });
+});
 
 const { mockCreate } = vi.hoisted(() => ({ mockCreate: vi.fn() }));
 
