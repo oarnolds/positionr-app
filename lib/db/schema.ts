@@ -28,7 +28,7 @@ export const moduleStatus = pgEnum("module_status", [
 
 export const providerEnum = pgEnum("provider", ["claude", "perplexity"]);
 
-export const tierEnum = pgEnum("tier", ["basis", "pro", "premium"]);
+export const tierEnum = pgEnum("tier", ["fundament", "groei", "strategie"]);
 
 export const billingIntervalEnum = pgEnum("billing_interval", [
   "monthly",
@@ -71,7 +71,7 @@ export const modules = pgTable("modules", {
   status: moduleStatus("status").default("soon").notNull(),
   defaultPrompt: text("default_prompt").notNull().default(""),
   provider: providerEnum("provider").default("claude").notNull(),
-  minTier: tierEnum("min_tier").default("basis").notNull(),
+  minTier: tierEnum("min_tier").default("fundament").notNull(),
   outputSchema: jsonb("output_schema"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

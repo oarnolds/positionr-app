@@ -52,7 +52,7 @@ export const MODULES: ModuleMeta[] = [
     iconColor: "text-purple-600",
     status: "active",
     href: "/modules/website-check",
-    minTier: "basis",
+    minTier: "fundament",
   },
   {
     slug: "propositie-analyse",
@@ -65,7 +65,7 @@ export const MODULES: ModuleMeta[] = [
     bgLight: "bg-rose-50",
     iconColor: "text-rose-600",
     status: "soon",
-    minTier: "basis",
+    minTier: "fundament",
   },
   {
     slug: "icp-analyse",
@@ -79,7 +79,7 @@ export const MODULES: ModuleMeta[] = [
     iconColor: "text-cyan-600",
     status: "active",
     href: "/modules/icp-analyse",
-    minTier: "basis",
+    minTier: "fundament",
   },
   {
     slug: "website-check-concurrenten",
@@ -92,7 +92,7 @@ export const MODULES: ModuleMeta[] = [
     bgLight: "bg-teal-50",
     iconColor: "text-teal-600",
     status: "soon",
-    minTier: "pro",
+    minTier: "groei",
   },
   {
     slug: "linkedin-analyse",
@@ -105,7 +105,7 @@ export const MODULES: ModuleMeta[] = [
     bgLight: "bg-blue-50",
     iconColor: "text-blue-700",
     status: "soon",
-    minTier: "pro",
+    minTier: "groei",
   },
   {
     slug: "linkedin-concurrentie",
@@ -117,7 +117,7 @@ export const MODULES: ModuleMeta[] = [
     bgLight: "bg-indigo-50",
     iconColor: "text-indigo-600",
     status: "soon",
-    minTier: "pro",
+    minTier: "groei",
   },
   {
     slug: "klantcase-analyse",
@@ -130,7 +130,7 @@ export const MODULES: ModuleMeta[] = [
     bgLight: "bg-amber-50",
     iconColor: "text-amber-600",
     status: "soon",
-    minTier: "pro",
+    minTier: "groei",
   },
   {
     slug: "flyercheck",
@@ -143,7 +143,7 @@ export const MODULES: ModuleMeta[] = [
     bgLight: "bg-orange-50",
     iconColor: "text-orange-600",
     status: "soon",
-    minTier: "pro",
+    minTier: "groei",
   },
   {
     slug: "marktonderzoek",
@@ -156,7 +156,7 @@ export const MODULES: ModuleMeta[] = [
     bgLight: "bg-blue-50",
     iconColor: "text-blue-600",
     status: "soon",
-    minTier: "premium",
+    minTier: "strategie",
   },
   {
     slug: "linkedin-concurrentie-kwartaal",
@@ -169,7 +169,7 @@ export const MODULES: ModuleMeta[] = [
     bgLight: "bg-violet-50",
     iconColor: "text-violet-600",
     status: "soon",
-    minTier: "premium",
+    minTier: "strategie",
   },
   {
     slug: "gap-analyse",
@@ -182,7 +182,7 @@ export const MODULES: ModuleMeta[] = [
     bgLight: "bg-slate-50",
     iconColor: "text-slate-600",
     status: "soon",
-    minTier: "premium",
+    minTier: "strategie",
   },
 ];
 

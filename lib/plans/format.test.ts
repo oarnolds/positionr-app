@@ -30,12 +30,12 @@ describe("formatPeriod", () => {
 
 describe("priceFor", () => {
   it("kiest maandprijs bij interval 'monthly'", () => {
-    const basis = getPlan("basis")!;
+    const basis = getPlan("fundament")!;
     expect(priceFor(basis, "monthly")).toBe(basis.monthlyPriceCents);
   });
 
   it("kiest jaarprijs bij interval 'yearly'", () => {
-    const pro = getPlan("pro")!;
+    const pro = getPlan("groei")!;
     expect(priceFor(pro, "yearly")).toBe(pro.yearlyPriceCents);
   });
 });

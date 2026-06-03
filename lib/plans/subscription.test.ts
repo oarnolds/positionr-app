@@ -7,7 +7,7 @@ const PAST = new Date("2026-05-01T12:00:00Z");
 
 function sub(partial: Partial<SubscriptionState>): SubscriptionState {
   return {
-    tier: "pro",
+    tier: "groei",
     status: "active",
     currentPeriodEnd: FUTURE,
     ...partial,
@@ -16,8 +16,8 @@ function sub(partial: Partial<SubscriptionState>): SubscriptionState {
 
 describe("activeTier", () => {
   it("geeft de tier bij status=active en periode in de toekomst", () => {
-    expect(activeTier(sub({ tier: "pro" }), NOW)).toBe("pro");
-    expect(activeTier(sub({ tier: "premium" }), NOW)).toBe("premium");
+    expect(activeTier(sub({ tier: "groei" }), NOW)).toBe("groei");
+    expect(activeTier(sub({ tier: "strategie" }), NOW)).toBe("strategie");
   });
 
   it("geeft null wanneer de periode verlopen is (bv. jaar afgelopen)", () => {

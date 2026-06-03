@@ -4,12 +4,12 @@
  * Wijzigen = dit bestand aanpassen, geen DB-migratie.
  */
 
-export type Tier = "basis" | "pro" | "premium";
+export type Tier = "fundament" | "groei" | "strategie";
 
 export type BillingInterval = "monthly" | "yearly";
 
 /** Oplopend van goedkoop → duur. Index = rang voor cumulatieve toegang. */
-export const TIER_ORDER: Tier[] = ["basis", "pro", "premium"];
+export const TIER_ORDER: Tier[] = ["fundament", "groei", "strategie"];
 
 export type Plan = {
   slug: Tier;
@@ -23,29 +23,33 @@ export type Plan = {
 
 export const PLANS: Plan[] = [
   {
-    slug: "basis",
-    name: "Basis",
-    tagline: "Voor wie zelf aan de slag wil.",
+    slug: "fundament",
+    name: "Fundament",
+    tagline: "Het stevige startpunt voor je marketing.",
     monthlyPriceCents: 14900,
     yearlyPriceCents: 149000,
     features: ["Website Check", "Onbeperkt analyses", "E-mailsupport"],
   },
   {
-    slug: "pro",
-    name: "Pro",
-    tagline: "Voor groeiende B2B-bedrijven.",
+    slug: "groei",
+    name: "Groei",
+    tagline: "Voor wie de volgende stap wil zetten.",
     monthlyPriceCents: 24900,
     yearlyPriceCents: 249000,
-    features: ["Alles uit Basis", "ICP-analyse", "LinkedIn-analyse"],
+    features: [
+      "Alles uit Fundament",
+      "ICP-analyse",
+      "LinkedIn-analyse",
+    ],
     popular: true,
   },
   {
-    slug: "premium",
-    name: "Premium",
-    tagline: "Alle modules, maximale grip.",
+    slug: "strategie",
+    name: "Strategie",
+    tagline: "Strategische diepgang en alle modules.",
     monthlyPriceCents: 39900,
     yearlyPriceCents: 399000,
-    features: ["Alles uit Pro", "Alle modules", "Prioriteit-support"],
+    features: ["Alles uit Groei", "Alle modules", "Prioriteit-support"],
   },
 ];
 
