@@ -1,9 +1,14 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { HeroMockup } from "@/components/marketing/HeroMockup";
+import { TrustBand } from "@/components/marketing/TrustBand";
+import { StepsSection } from "@/components/marketing/StepsSection";
+import { TestimonialBlock } from "@/components/marketing/TestimonialBlock";
+import { PricingTeaser } from "@/components/marketing/PricingTeaser";
 import {
   ArrowRight,
-  Compass,
+  Check,
   HelpCircle,
   Sparkles,
   X,
@@ -30,16 +35,16 @@ const valueProps = [
       "Wat een bureau in dagen levert, krijg jij in minuten op je scherm — concreet en actiegericht.",
   },
   {
-    icon: Compass,
+    icon: Check,
     title: "60 jaar marketing, in AI gegoten",
     description:
-      "De stem en logica van ervaren B2B-marketeers — geen generieke GPT-wrapper, wél praktijkkennis die je kunt vertrouwen.",
+      "De stem en logica van ervaren B2B-marketeers. Geen generieke GPT-wrapper, wél praktijkkennis.",
   },
   {
     icon: Sparkles,
     title: "Geen demo, geen contract",
     description:
-      "Direct online afsluiten, opzegbaar per maand, één abonnement met alle modules. Geen sales-call.",
+      "Direct online afsluiten, opzegbaar per maand. Eén abonnement, alle modules. Geen sales-call.",
   },
 ];
 
@@ -59,142 +64,199 @@ const notForYou = [
 export default function LandingPage() {
   return (
     <>
-      {/* Hero */}
-      <section className="mx-auto max-w-4xl px-6 py-24 text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-          <Sparkles className="h-3 w-3" />
-          Voor directeurs en oprichters van NL B2B-MKB
+      {/* Hero — split layout */}
+      <section className="bg-white pt-16 pb-20 sm:pt-24 sm:pb-28">
+        <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-[1.05fr_1fr]">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+              <Sparkles className="h-3 w-3 text-primary" />
+              Voor directeurs en oprichters van NL B2B-MKB
+            </div>
+            <h1 className="mt-6 text-5xl font-bold tracking-tight text-slate-900 sm:text-6xl">
+              De second opinion
+              <br />
+              voor je marketing&shy;beslissingen.
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
+              Zo concreet en herkenbaar dat je voelt: <em>dit is wat een
+              ervaren marketeer mij zou zeggen</em> — alleen sneller, eenvoudiger
+              en goedkoper. Geen bureau, geen demo. Gewoon zelf doen.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="/gratis-check">
+                <Button size="lg" className="w-full sm:w-auto">
+                  Doe de gratis Website Check{" "}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="/prijzen">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                >
+                  Bekijk pakketten
+                </Button>
+              </Link>
+            </div>
+            <p className="mt-4 text-xs text-slate-500">
+              Resultaat binnen 2 minuten · geen creditcard nodig
+            </p>
+          </div>
+          <div className="lg:pl-4">
+            <HeroMockup />
+          </div>
         </div>
-        <h1 className="mt-6 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-6xl font-bold text-transparent">
-          Positionr
-        </h1>
-        <p className="mt-6 text-2xl font-semibold text-gray-900">
-          De second opinion voor jouw marketingbeslissingen.
-        </p>
-        <p className="mt-4 text-lg text-gray-600">
-          Zo concreet en herkenbaar dat je voelt: <em>dit is wat een ervaren
-          marketeer mij zou zeggen</em> — alleen sneller, eenvoudiger en
-          goedkoper. Geen bureau, geen demo, gewoon zelf doen.
-        </p>
-        <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/gratis-check">
-            <Button size="lg">
-              Doe de gratis Website Check <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link href="/prijzen">
-            <Button size="lg" variant="outline">
-              Bekijk abonnementen
-            </Button>
-          </Link>
-        </div>
-        <p className="mt-4 text-xs text-muted-foreground">
-          In 2 minuten een eerste score, zonder account.
-        </p>
       </section>
+
+      <TrustBand />
+
+      <StepsSection />
 
       {/* Herkenbare vragen */}
-      <section className="mx-auto max-w-5xl px-6 py-16">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold">Klinkt dit bekend?</h2>
-          <p className="mt-3 text-muted-foreground">
-            Dit zijn vragen die ondernemers ons stellen. Je bent niet de enige.
-          </p>
-        </div>
-        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {recognizableQuestions.map((q) => (
-            <div
-              key={q}
-              className="flex items-start gap-3 rounded-xl border border-border bg-white/70 p-4 shadow-sm backdrop-blur"
-            >
-              <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-              <span className="text-sm font-medium text-gray-800">{q}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-8 text-center text-sm text-muted-foreground">
-          Op elke vraag krijg je via Positionr in minuten een onderbouwd antwoord.
-        </p>
-      </section>
-
-      {/* Wat krijg je */}
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold">Wat maakt Positionr anders</h2>
-          <p className="mt-3 text-muted-foreground">
-            Drie principes die je in elke module terugziet.
-          </p>
-        </div>
-        <div className="mt-10 grid gap-6 md:grid-cols-3">
-          {valueProps.map(({ icon: Icon, title, description }) => (
-            <div
-              key={title}
-              className="rounded-xl border border-border bg-white/70 p-6 shadow-sm backdrop-blur"
-            >
-              <Icon className="h-8 w-8 text-primary" />
-              <h3 className="mt-4 text-lg font-semibold">{title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Voor wie */}
-      <section className="mx-auto max-w-5xl px-6 py-16">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold">Voor wie is Positionr?</h2>
-          <p className="mt-3 text-muted-foreground">
-            We zijn duidelijk over voor wie we werken — en voor wie niet.
-          </p>
-        </div>
-        <div className="mt-10 grid gap-6 md:grid-cols-2">
-          <div className="rounded-xl border border-primary/30 bg-white/80 p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-primary">Wél voor jou</h3>
-            <ul className="mt-4 space-y-3">
-              {forYou.map((item) => (
-                <li key={item} className="flex items-start gap-2 text-sm">
-                  <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+      <section className="bg-slate-50 py-24">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-wider text-primary">
+              Herkenbare vragen
+            </p>
+            <h2 className="mt-3 text-4xl font-bold tracking-tight text-slate-900">
+              Klinkt dit bekend?
+            </h2>
+            <p className="mt-3 text-base text-slate-600">
+              De vragen die ondernemers ons stellen. Je bent niet de enige —
+              en op elke vraag krijg je via Positionr een onderbouwd antwoord.
+            </p>
           </div>
-          <div className="rounded-xl border border-border bg-white/60 p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-muted-foreground">
-              Minder geschikt
-            </h3>
-            <ul className="mt-4 space-y-3">
-              {notForYou.map((item) => (
-                <li
-                  key={item}
-                  className="flex items-start gap-2 text-sm text-muted-foreground"
-                >
-                  <X className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {recognizableQuestions.map((q) => (
+              <div
+                key={q}
+                className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-primary/30 hover:shadow-md"
+              >
+                <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                <span className="text-sm font-medium text-slate-800">{q}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
+
+      {/* Wat maakt Positionr anders */}
+      <section className="bg-white py-24">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-wider text-primary">
+              Onze aanpak
+            </p>
+            <h2 className="mt-3 text-4xl font-bold tracking-tight text-slate-900">
+              Wat maakt Positionr anders
+            </h2>
+            <p className="mt-3 text-base text-slate-600">
+              Drie principes die je in elke module terugziet.
+            </p>
+          </div>
+          <div className="mt-14 grid gap-6 md:grid-cols-3">
+            {valueProps.map(({ icon: Icon, title, description }) => (
+              <div
+                key={title}
+                className="rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-primary/30 hover:shadow-md"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="mt-5 text-lg font-semibold text-slate-900">
+                  {title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  {description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <TestimonialBlock />
+
+      {/* Voor wie / niet voor wie */}
+      <section className="bg-white py-24">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-wider text-primary">
+              Doelgroep
+            </p>
+            <h2 className="mt-3 text-4xl font-bold tracking-tight text-slate-900">
+              Voor wie is Positionr?
+            </h2>
+            <p className="mt-3 text-base text-slate-600">
+              We zijn duidelijk over voor wie we werken — en voor wie niet.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-6 md:grid-cols-2">
+            <div className="rounded-2xl border border-primary/30 bg-white p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-primary">Wél voor jou</h3>
+              <ul className="mt-4 space-y-3">
+                {forYou.map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-start gap-2 text-sm text-slate-800"
+                  >
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-slate-500">
+                Minder geschikt
+              </h3>
+              <ul className="mt-4 space-y-3">
+                {notForYou.map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-start gap-2 text-sm text-slate-500"
+                  >
+                    <X className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <PricingTeaser />
 
       {/* Slot-CTA */}
-      <section className="mx-auto max-w-4xl px-6 py-20 text-center">
-        <h2 className="text-3xl font-bold">Klaar voor je second opinion?</h2>
-        <p className="mt-4 text-muted-foreground">
-          Begin met de gratis Website Check. Geen account, geen creditcard.
-        </p>
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/gratis-check">
-            <Button size="lg">
-              Doe de gratis Website Check <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link href="/prijzen">
-            <Button size="lg" variant="outline">
-              Of bekijk de pakketten
-            </Button>
-          </Link>
+      <section className="bg-slate-900 py-24 text-white">
+        <div className="mx-auto max-w-3xl px-6 text-center">
+          <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
+            Klaar voor je second opinion?
+          </h2>
+          <p className="mt-4 text-lg text-slate-300">
+            Begin met de gratis Website Check. Geen account, geen creditcard.
+            Resultaat binnen 2 minuten.
+          </p>
+          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link href="/gratis-check">
+              <Button size="lg" className="w-full bg-white text-slate-900 hover:bg-slate-100 sm:w-auto">
+                Doe de gratis Website Check{" "}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/prijzen">
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full border-white/30 bg-transparent text-white hover:bg-white/10 sm:w-auto"
+              >
+                Of bekijk de pakketten
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
     </>
