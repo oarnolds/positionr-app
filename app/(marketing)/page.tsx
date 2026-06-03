@@ -10,7 +10,9 @@ import {
   ArrowRight,
   Check,
   HelpCircle,
+  MousePointerClick,
   Sparkles,
+  Tag,
   X,
   Zap,
 } from "lucide-react";
@@ -29,36 +31,40 @@ const recognizableQuestions = [
 
 const valueProps = [
   {
+    eyebrow: "Sneller",
     icon: Zap,
     title: "Minuten naar inzicht",
     description:
-      "Wat een bureau in dagen levert, krijg jij in minuten op je scherm — concreet en actiegericht.",
+      "Wat een bureau in dagen levert, krijg jij in minuten op je scherm — concreet en direct toepasbaar.",
   },
   {
-    icon: Check,
-    title: "60 jaar marketing, in AI gegoten",
+    eyebrow: "Eenvoudiger",
+    icon: MousePointerClick,
+    title: "Klik. Lees. Beslis.",
     description:
-      "De stem en logica van ervaren B2B-marketeers. Geen generieke GPT-wrapper, wél praktijkkennis.",
+      "Geen demo, geen training, geen handleiding. Loopt het ergens vast? Dan passen wij de tool aan, niet de instructie.",
   },
   {
-    icon: Sparkles,
-    title: "Geen demo, geen contract",
+    eyebrow: "Goedkoper",
+    icon: Tag,
+    title: "Eén jaarbedrag, alle modules in je pakket",
     description:
-      "Direct online afsluiten, opzegbaar per maand. Eén abonnement, alle modules. Geen sales-call.",
+      "Geen uurtarieven, geen consultancy-add-ons, geen verrassingen. Een fractie van wat een bureau-traject kost.",
   },
 ];
 
 const forYou = [
-  "Je bent directeur, oprichter of commercieel verantwoordelijk",
+  "Je bent directeur-eigenaar (DGA) van je bedrijf",
   "Je bedrijf telt 5 tot 50 FTE",
-  "B2B-dienstverlening, industrie of technologie",
+  "Sector: zakelijke dienstverlening (advocaten, architecten), technologie/software of financiële dienstverlening",
   "Je wilt zelf grip — geen weken consultancy",
 ];
 
 const notForYou = [
+  "B2C en consumentenmarkten",
+  "Retail en webshops",
+  "Internationale rollouts (we starten in Nederland)",
   "Grote organisaties met eigen marketingteam of vast bureau",
-  "B2C / consumentenmarkten",
-  "Internationale rollouts buiten Nederland",
 ];
 
 export default function LandingPage() {
@@ -70,7 +76,7 @@ export default function LandingPage() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
               <Sparkles className="h-3 w-3 text-primary" />
-              Voor directeurs en oprichters van NL B2B-MKB
+              Voor directeur-eigenaren in NL B2B-MKB
             </div>
             <h1 className="mt-6 text-5xl font-bold tracking-tight text-slate-900 sm:text-6xl">
               De second opinion
@@ -142,22 +148,23 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Wat maakt Positionr anders */}
+      {/* Drie pijlers */}
       <section className="bg-white py-24">
         <div className="mx-auto max-w-6xl px-6">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold uppercase tracking-wider text-primary">
-              Onze aanpak
+              Onze drie beloftes
             </p>
             <h2 className="mt-3 text-4xl font-bold tracking-tight text-slate-900">
-              Wat maakt Positionr anders
+              Sneller. Eenvoudiger. Goedkoper.
             </h2>
             <p className="mt-3 text-base text-slate-600">
-              Drie principes die je in elke module terugziet.
+              Drie gelijkwaardige claims die je in elke module terugziet — geen
+              loze marketing, maar de meetlat waarmee we onze tool bouwen.
             </p>
           </div>
           <div className="mt-14 grid gap-6 md:grid-cols-3">
-            {valueProps.map(({ icon: Icon, title, description }) => (
+            {valueProps.map(({ eyebrow, icon: Icon, title, description }) => (
               <div
                 key={title}
                 className="rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-primary/30 hover:shadow-md"
@@ -165,7 +172,10 @@ export default function LandingPage() {
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                   <Icon className="h-5 w-5 text-primary" />
                 </div>
-                <h3 className="mt-5 text-lg font-semibold text-slate-900">
+                <p className="mt-5 text-xs font-semibold uppercase tracking-wider text-primary">
+                  {eyebrow}
+                </p>
+                <h3 className="mt-1 text-lg font-semibold text-slate-900">
                   {title}
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-slate-600">
@@ -174,6 +184,13 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          <p className="mt-12 text-center text-sm text-slate-500">
+            Onze modules bouwen op decennia praktijk én op het werk van
+            marketing-autoriteiten als{" "}
+            <span className="font-medium text-slate-700">Cialdini</span>,{" "}
+            <span className="font-medium text-slate-700">Ritson</span> en{" "}
+            <span className="font-medium text-slate-700">Kotler</span>.
+          </p>
         </div>
       </section>
 
