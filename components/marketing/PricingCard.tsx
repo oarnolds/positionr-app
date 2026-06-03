@@ -9,18 +9,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { BillingInterval, Plan } from "@/lib/plans/registry";
-import { formatPeriod, formatPriceEur, priceFor } from "@/lib/plans/format";
+import type { Plan } from "@/lib/plans/registry";
+import { formatPriceEur } from "@/lib/plans/format";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 
 type Props = {
   plan: Plan;
-  interval: BillingInterval;
 };
 
-export function PricingCard({ plan, interval }: Props) {
-  const cents = priceFor(plan, interval);
+export function PricingCard({ plan }: Props) {
   return (
     <Card
       className={cn(
@@ -37,10 +35,10 @@ export function PricingCard({ plan, interval }: Props) {
         <CardTitle>{plan.name}</CardTitle>
         <CardDescription>{plan.tagline}</CardDescription>
         <div className="mt-4">
-          <span className="text-4xl font-bold">{formatPriceEur(cents)}</span>
-          <span className="ml-2 text-sm text-muted-foreground">
-            {formatPeriod(interval)}
+          <span className="text-4xl font-bold">
+            {formatPriceEur(plan.yearlyPriceCents)}
           </span>
+          <span className="ml-2 text-sm text-muted-foreground">per jaar</span>
         </div>
       </CardHeader>
       <CardContent className="flex-1">
@@ -54,10 +52,7 @@ export function PricingCard({ plan, interval }: Props) {
         </ul>
       </CardContent>
       <CardFooter>
-        <Link
-          href={`/checkout?plan=${plan.slug}&interval=${interval}`}
-          className="w-full"
-        >
+        <Link href={`/checkout?plan=${plan.slug}`} className="w-full">
           <Button
             variant={plan.popular ? "default" : "outline"}
             className="w-full"

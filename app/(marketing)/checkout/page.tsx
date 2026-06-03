@@ -1,18 +1,14 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { getPlan, type BillingInterval, type Tier } from "@/lib/plans/registry";
-import { formatPeriod, formatPriceEur, priceFor } from "@/lib/plans/format";
+import { getPlan, type Tier } from "@/lib/plans/registry";
+import { formatPriceEur } from "@/lib/plans/format";
 
 export const metadata = {
   title: "Afrekenen — Positionr",
 };
 
-type SearchParams = { plan?: string; interval?: string };
-
-function parseInterval(raw: string | undefined): BillingInterval {
-  return raw === "yearly" ? "yearly" : "monthly";
-}
+type SearchParams = { plan?: string };
 
 export default async function CheckoutPage({
   searchParams,
@@ -21,7 +17,6 @@ export default async function CheckoutPage({
 }) {
   const params = await searchParams;
   const plan = params.plan ? getPlan(params.plan as Tier) : undefined;
-  const interval = parseInterval(params.interval);
 
   if (!plan) {
     return (
@@ -40,8 +35,6 @@ export default async function CheckoutPage({
     );
   }
 
-  const cents = priceFor(plan, interval);
-
   return (
     <section className="mx-auto max-w-2xl px-6 py-24 text-center">
       <h1 className="text-3xl font-bold">Afrekenen — bijna klaar</h1>
@@ -53,11 +46,13 @@ export default async function CheckoutPage({
           </div>
           <div className="flex justify-between">
             <dt className="text-muted-foreground">Periode</dt>
-            <dd className="font-medium">{formatPeriod(interval)}</dd>
+            <dd className="font-medium">12 maanden toegang</dd>
           </div>
           <div className="flex justify-between border-t border-border pt-3">
-            <dt className="text-muted-foreground">Prijs</dt>
-            <dd className="text-lg font-semibold">{formatPriceEur(cents)}</dd>
+            <dt className="text-muted-foreground">Eenmalig</dt>
+            <dd className="text-lg font-semibold">
+              {formatPriceEur(plan.yearlyPriceCents)}
+            </dd>
           </div>
         </dl>
       </div>

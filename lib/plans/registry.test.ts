@@ -12,18 +12,11 @@ describe("PLANS registry", () => {
     expect(PLANS.map((p) => p.slug)).toEqual(["fundament", "groei", "strategie"]);
   });
 
-  it("heeft voor elk plan positieve maand- en jaarprijzen en minstens 1 feature", () => {
+  it("heeft voor elk plan een positieve jaarprijs en minstens 1 feature", () => {
     for (const plan of PLANS) {
-      expect(plan.monthlyPriceCents).toBeGreaterThan(0);
       expect(plan.yearlyPriceCents).toBeGreaterThan(0);
       expect(plan.features.length).toBeGreaterThan(0);
       expect(plan.name.length).toBeGreaterThan(0);
-    }
-  });
-
-  it("jaarprijs is voordeliger dan 12x de maandprijs (incentive)", () => {
-    for (const plan of PLANS) {
-      expect(plan.yearlyPriceCents).toBeLessThan(plan.monthlyPriceCents * 12);
     }
   });
 

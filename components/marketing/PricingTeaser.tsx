@@ -23,8 +23,8 @@ export function PricingTeaser() {
             Eén abonnement, alle modules
           </h2>
           <p className="mt-3 text-base text-slate-600">
-            Geen credits, geen losse modules. Maand- of jaarbetaling, opzegbaar
-            per einde periode.
+            Eén jaarlicentie, alle modules. Geen credits, geen losse modules,
+            geen verborgen kosten.
           </p>
         </div>
 
@@ -50,9 +50,9 @@ export function PricingTeaser() {
               <p className="mt-1 text-sm text-slate-500">{plan.tagline}</p>
               <div className="mt-4 flex items-baseline gap-1">
                 <span className="text-3xl font-bold text-slate-900">
-                  {formatPriceEur(plan.monthlyPriceCents)}
+                  {formatPriceEur(plan.yearlyPriceCents)}
                 </span>
-                <span className="text-sm text-slate-500">/ maand</span>
+                <span className="text-sm text-slate-500">/ jaar</span>
               </div>
               <ul className="mt-6 flex-1 space-y-2 text-sm text-slate-700">
                 {plan.features.slice(0, 3).map((f) => (

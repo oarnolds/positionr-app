@@ -15,8 +15,7 @@ export type Plan = {
   slug: Tier;
   name: string;
   tagline: string;
-  monthlyPriceCents: number; // doorlopend, per maand
-  yearlyPriceCents: number; // eenmalig, 12 maanden toegang
+  yearlyPriceCents: number; // eenmalig, 12 maanden toegang — er is geen maandprijs
   features: string[];
   popular?: boolean; // toont een "Populair"-badge op de prijzenpagina
 };
@@ -26,7 +25,6 @@ export const PLANS: Plan[] = [
     slug: "fundament",
     name: "Fundament",
     tagline: "Het stevige startpunt voor je marketing.",
-    monthlyPriceCents: 14900,
     yearlyPriceCents: 149000,
     features: ["Website Check", "Onbeperkt analyses", "E-mailsupport"],
   },
@@ -34,7 +32,6 @@ export const PLANS: Plan[] = [
     slug: "groei",
     name: "Groei",
     tagline: "Voor wie de volgende stap wil zetten.",
-    monthlyPriceCents: 24900,
     yearlyPriceCents: 249000,
     features: [
       "Alles uit Fundament",
@@ -47,7 +44,6 @@ export const PLANS: Plan[] = [
     slug: "strategie",
     name: "Strategie",
     tagline: "Strategische diepgang en alle modules.",
-    monthlyPriceCents: 39900,
     yearlyPriceCents: 399000,
     features: ["Alles uit Groei", "Alle modules", "Prioriteit-support"],
   },

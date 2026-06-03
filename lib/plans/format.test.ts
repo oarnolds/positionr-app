@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatPriceEur, formatPeriod, priceFor } from "./format";
-import { getPlan } from "./registry";
+import { formatPriceEur } from "./format";
 
 describe("formatPriceEur", () => {
   it("toont hele euro's zonder decimalen", () => {
@@ -15,27 +14,5 @@ describe("formatPriceEur", () => {
 
   it("werkt met 0", () => {
     expect(formatPriceEur(0)).toBe("€0");
-  });
-});
-
-describe("formatPeriod", () => {
-  it("vertaalt 'monthly' naar 'per maand'", () => {
-    expect(formatPeriod("monthly")).toBe("per maand");
-  });
-
-  it("vertaalt 'yearly' naar 'per jaar'", () => {
-    expect(formatPeriod("yearly")).toBe("per jaar");
-  });
-});
-
-describe("priceFor", () => {
-  it("kiest maandprijs bij interval 'monthly'", () => {
-    const basis = getPlan("fundament")!;
-    expect(priceFor(basis, "monthly")).toBe(basis.monthlyPriceCents);
-  });
-
-  it("kiest jaarprijs bij interval 'yearly'", () => {
-    const pro = getPlan("groei")!;
-    expect(priceFor(pro, "yearly")).toBe(pro.yearlyPriceCents);
   });
 });
