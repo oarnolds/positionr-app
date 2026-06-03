@@ -19,6 +19,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import type { Tier } from "@/lib/plans/registry";
+
 export type ModuleStatus = "active" | "soon" | "disabled";
 
 export type ModuleMeta = {
@@ -33,6 +35,8 @@ export type ModuleMeta = {
   status: ModuleStatus;
   /** Pad naar de module-pagina (alleen voor active modules) */
   href?: string;
+  /** Minimaal vereiste tier voor toegang (cumulatief). */
+  minTier: Tier;
 };
 
 export const MODULES: ModuleMeta[] = [
@@ -48,65 +52,7 @@ export const MODULES: ModuleMeta[] = [
     iconColor: "text-purple-600",
     status: "active",
     href: "/modules/website-check",
-  },
-  {
-    slug: "website-check-concurrenten",
-    name: "Website Check + Concurrenten",
-    description:
-      "Combineer een websiteanalyse met een benchmark van uw concurrenten.",
-    icon: Globe,
-    color: "from-teal-500 to-teal-700",
-    borderColor: "border-teal-200",
-    bgLight: "bg-teal-50",
-    iconColor: "text-teal-600",
-    status: "soon",
-  },
-  {
-    slug: "flyercheck",
-    name: "Flyer/Salespresentatie Checker",
-    description:
-      "Upload een flyer of brochure en ontvang professionele feedback op design en boodschap.",
-    icon: FileImage,
-    color: "from-orange-500 to-orange-700",
-    borderColor: "border-orange-200",
-    bgLight: "bg-orange-50",
-    iconColor: "text-orange-600",
-    status: "soon",
-  },
-  {
-    slug: "marktonderzoek",
-    name: "Marktonderzoek",
-    description:
-      "Uitgebreide marktanalyse met concurrentie, trends en strategische aanbevelingen.",
-    icon: BarChart3,
-    color: "from-blue-500 to-blue-700",
-    borderColor: "border-blue-200",
-    bgLight: "bg-blue-50",
-    iconColor: "text-blue-600",
-    status: "soon",
-  },
-  {
-    slug: "linkedin-analyse",
-    name: "LinkedIn Analyse",
-    description:
-      "Analyseer de LinkedIn-aanwezigheid van uw bedrijf op content, engagement en bereik.",
-    icon: Linkedin,
-    color: "from-blue-600 to-blue-800",
-    borderColor: "border-blue-300",
-    bgLight: "bg-blue-50",
-    iconColor: "text-blue-700",
-    status: "soon",
-  },
-  {
-    slug: "linkedin-concurrentie",
-    name: "LinkedIn Analyse + Concurrentie",
-    description: "Vergelijk uw LinkedIn-aanwezigheid met die van uw concurrenten.",
-    icon: Linkedin,
-    color: "from-indigo-500 to-indigo-700",
-    borderColor: "border-indigo-200",
-    bgLight: "bg-indigo-50",
-    iconColor: "text-indigo-600",
-    status: "soon",
+    minTier: "basis",
   },
   {
     slug: "propositie-analyse",
@@ -119,6 +65,7 @@ export const MODULES: ModuleMeta[] = [
     bgLight: "bg-rose-50",
     iconColor: "text-rose-600",
     status: "soon",
+    minTier: "basis",
   },
   {
     slug: "icp-analyse",
@@ -132,6 +79,45 @@ export const MODULES: ModuleMeta[] = [
     iconColor: "text-cyan-600",
     status: "active",
     href: "/modules/icp-analyse",
+    minTier: "basis",
+  },
+  {
+    slug: "website-check-concurrenten",
+    name: "Website Check + Concurrenten",
+    description:
+      "Combineer een websiteanalyse met een benchmark van uw concurrenten.",
+    icon: Globe,
+    color: "from-teal-500 to-teal-700",
+    borderColor: "border-teal-200",
+    bgLight: "bg-teal-50",
+    iconColor: "text-teal-600",
+    status: "soon",
+    minTier: "pro",
+  },
+  {
+    slug: "linkedin-analyse",
+    name: "LinkedIn Analyse",
+    description:
+      "Analyseer de LinkedIn-aanwezigheid van uw bedrijf op content, engagement en bereik.",
+    icon: Linkedin,
+    color: "from-blue-600 to-blue-800",
+    borderColor: "border-blue-300",
+    bgLight: "bg-blue-50",
+    iconColor: "text-blue-700",
+    status: "soon",
+    minTier: "pro",
+  },
+  {
+    slug: "linkedin-concurrentie",
+    name: "LinkedIn Analyse + Concurrentie",
+    description: "Vergelijk uw LinkedIn-aanwezigheid met die van uw concurrenten.",
+    icon: Linkedin,
+    color: "from-indigo-500 to-indigo-700",
+    borderColor: "border-indigo-200",
+    bgLight: "bg-indigo-50",
+    iconColor: "text-indigo-600",
+    status: "soon",
+    minTier: "pro",
   },
   {
     slug: "klantcase-analyse",
@@ -144,6 +130,33 @@ export const MODULES: ModuleMeta[] = [
     bgLight: "bg-amber-50",
     iconColor: "text-amber-600",
     status: "soon",
+    minTier: "pro",
+  },
+  {
+    slug: "flyercheck",
+    name: "Flyer/Salespresentatie Checker",
+    description:
+      "Upload een flyer of brochure en ontvang professionele feedback op design en boodschap.",
+    icon: FileImage,
+    color: "from-orange-500 to-orange-700",
+    borderColor: "border-orange-200",
+    bgLight: "bg-orange-50",
+    iconColor: "text-orange-600",
+    status: "soon",
+    minTier: "pro",
+  },
+  {
+    slug: "marktonderzoek",
+    name: "Marktonderzoek",
+    description:
+      "Uitgebreide marktanalyse met concurrentie, trends en strategische aanbevelingen.",
+    icon: BarChart3,
+    color: "from-blue-500 to-blue-700",
+    borderColor: "border-blue-200",
+    bgLight: "bg-blue-50",
+    iconColor: "text-blue-600",
+    status: "soon",
+    minTier: "premium",
   },
   {
     slug: "linkedin-concurrentie-kwartaal",
@@ -156,6 +169,7 @@ export const MODULES: ModuleMeta[] = [
     bgLight: "bg-violet-50",
     iconColor: "text-violet-600",
     status: "soon",
+    minTier: "premium",
   },
   {
     slug: "gap-analyse",
@@ -168,6 +182,7 @@ export const MODULES: ModuleMeta[] = [
     bgLight: "bg-slate-50",
     iconColor: "text-slate-600",
     status: "soon",
+    minTier: "premium",
   },
 ];
 

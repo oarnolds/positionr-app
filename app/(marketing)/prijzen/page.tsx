@@ -1,4 +1,5 @@
 import { PricingSection } from "@/components/marketing/PricingSection";
+import { PlanComparison } from "@/components/marketing/PlanComparison";
 
 export const metadata = {
   title: "Prijzen — Positionr",
@@ -16,6 +17,8 @@ export default function PrijzenPage() {
       </section>
 
       <PricingSection />
+
+      <PlanComparison />
 
       <section className="mx-auto max-w-3xl px-6 pb-20 text-center text-sm text-muted-foreground">
         <p>
