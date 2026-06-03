@@ -108,6 +108,15 @@ export default function LandingPage() {
             <p className="mt-4 text-xs text-slate-500">
               Resultaat binnen 2 minuten · geen creditcard nodig
             </p>
+            <p className="mt-3 text-sm text-slate-600">
+              Al lid?{" "}
+              <Link
+                href="/login"
+                className="font-semibold text-primary hover:underline"
+              >
+                Log in op het klantportaal →
+              </Link>
+            </p>
           </div>
           <div className="lg:pl-4">
             <HeroMockup />
@@ -274,6 +283,15 @@ export default function LandingPage() {
               </Button>
             </Link>
           </div>
+          <p className="mt-6 text-sm text-slate-300">
+            Al lid?{" "}
+            <Link
+              href="/login"
+              className="font-semibold text-white underline-offset-4 hover:underline"
+            >
+              Log in op het klantportaal →
+            </Link>
+          </p>
         </div>
       </section>
     </>
