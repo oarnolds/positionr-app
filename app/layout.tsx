@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "Positionr",
   description:
-    "Snel inzicht in wat je marketing oplevert, zodat je met vertrouwen kunt bijsturen.",
+    "De second opinion voor jouw marketingbeslissingen — zo concreet dat je zonder bureau de juiste keuze maakt.",
 };
 
 export default function RootLayout({
@@ -13,8 +20,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="nl">
-      <body className="min-h-screen bg-background antialiased">{children}</body>
+    <html lang="nl" className={inter.variable}>
+      <body className="min-h-screen bg-background font-sans antialiased">
+        {children}
+      </body>
     </html>
   );
 }
