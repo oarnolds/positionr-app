@@ -26,7 +26,11 @@ export const PLANS: Plan[] = [
     name: "Fundament",
     tagline: "Het stevige startpunt voor je marketing.",
     yearlyPriceCents: 149000,
-    features: ["Website Check", "Onbeperkt analyses", "E-mailsupport"],
+    features: [
+      "7 funderende analyses",
+      "Website check, LinkedIn, ICP",
+      "Propositie, klantcase & meer",
+    ],
   },
   {
     slug: "groei",
@@ -34,18 +38,22 @@ export const PLANS: Plan[] = [
     tagline: "Voor wie de volgende stap wil zetten.",
     yearlyPriceCents: 249000,
     features: [
-      "Alles uit Fundament",
-      "ICP-analyse",
-      "LinkedIn-analyse",
+      "Alles uit Fundament + 7 modules",
+      "Concurrentie- en doelgroep-analyses",
+      "Positionering en benefits-vertaling",
     ],
     popular: true,
   },
   {
     slug: "strategie",
     name: "Strategie",
-    tagline: "Strategische diepgang en alle modules.",
+    tagline: "Strategische diepgang en alle 21 modules.",
     yearlyPriceCents: 399000,
-    features: ["Alles uit Groei", "Alle modules", "Prioriteit-support"],
+    features: [
+      "Alles uit Groei + 7 modules",
+      "Marketingstrategie & kwartaalplan",
+      "SEO/SEA-scans + content-kalender",
+    ],
   },
 ];
 
