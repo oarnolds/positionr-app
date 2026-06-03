@@ -44,8 +44,8 @@ const valueProps = [
 ];
 
 const forYou = [
-  "Je bent directeur of oprichter van je bedrijf",
-  "Je bedrijf telt tot circa 15 medewerkers",
+  "Je bent directeur, oprichter of commercieel verantwoordelijk",
+  "Je bedrijf telt 5 tot 50 FTE",
   "B2B-dienstverlening, industrie of technologie",
   "Je wilt zelf grip — geen weken consultancy",
 ];
