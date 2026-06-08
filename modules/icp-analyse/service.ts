@@ -1,16 +1,10 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { clients, icpProducts, sessions } from "@/lib/db/schema";
-import { analyzeWithCachedSystem } from "@/lib/ai/claude";
+import { analyze } from "@/lib/ai/analyze";
+import { getModulePrompt, substitutePlaceholders } from "@/lib/modules/prompts";
 import { scrapeForIcp } from "./scraper";
-import {
-  buildScanProductsSystemPrompt,
-  buildScanProductsUserPrompt,
-  buildPhase1SystemPrompt,
-  buildPhase1UserPrompt,
-  buildFinalIcpSystemPrompt,
-  buildFinalIcpUserPrompt,
-} from "./prompt";
+import { buildFinalContext } from "./prompt";
 import {
   ScannedProducts,
   Phase1Output,
@@ -22,6 +16,48 @@ import {
 } from "./schema";
 
 const MODULE_SLUG = "icp-analyse";
+const SCAN_SLUG = "icp-analyse-scan";
+const PHASE1_SLUG = "icp-analyse-phase1";
+const FINAL_SLUG = "icp-analyse-final";
+
+// ── LLM-call helpers (DB-prompt-gestuurd) ───────────────────────────────────
+
+async function callScan(snapshot: WebsiteSnapshot) {
+  const { prompt: template, provider } = await getModulePrompt(SCAN_SLUG);
+  const prompt = substitutePlaceholders(template, {
+    websiteUrl: snapshot.url,
+    scrapedContent: snapshot.bodyExcerpt,
+  });
+  return analyze({ provider, prompt, schema: ScannedProducts });
+}
+
+async function callPhase1(snapshot: WebsiteSnapshot) {
+  const { prompt: template, provider } = await getModulePrompt(PHASE1_SLUG);
+  const prompt = substitutePlaceholders(template, {
+    websiteUrl: snapshot.url,
+    scrapedContent: snapshot.bodyExcerpt,
+  });
+  return analyze({ provider, prompt, schema: Phase1Output });
+}
+
+async function callFinal(args: {
+  phase1: import("./schema").Phase1Output;
+  answers: import("./schema").WebformAnswers;
+  companyName: string;
+  analysisMode?: "snel" | "volledig";
+}) {
+  const { prompt: template, provider } = await getModulePrompt(FINAL_SLUG);
+  const context = buildFinalContext({
+    phase1: args.phase1,
+    answers: args.answers,
+    analysisMode: args.analysisMode,
+  });
+  const prompt = substitutePlaceholders(template, {
+    companyName: args.companyName,
+    context,
+  });
+  return analyze({ provider, prompt, schema: FinalIcp });
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -99,12 +135,8 @@ export async function scanWebsiteForProducts(
   const { snapshot, cached } = await getOrFreshSnapshot(clientId, url);
   if (!cached) await persistSnapshot(clientId, snapshot);
 
-  // LLM-call
-  const result = await analyzeWithCachedSystem({
-    system: buildScanProductsSystemPrompt(),
-    user: buildScanProductsUserPrompt(snapshot),
-    schema: ScannedProducts,
-  });
+  // LLM-call (DB-prompt-gestuurd via getModulePrompt)
+  const result = await callScan(snapshot);
 
   // Sla op als rijen
   const rows = result.data.producten.map((p) => ({
@@ -177,11 +209,7 @@ export async function runSnelAnalysis(
     if (!cached) await persistSnapshot(client.id, snapshot);
 
     // Phase 1
-    const phase1Result = await analyzeWithCachedSystem({
-      system: buildPhase1SystemPrompt(),
-      user: buildPhase1UserPrompt(snapshot),
-      schema: Phase1Output,
-    });
+    const phase1Result = await callPhase1(snapshot);
 
     // Phase 3 (met empty webform + product naam als strategischeDienst)
     const webformDefaults: WebformAnswers = {
@@ -189,15 +217,11 @@ export async function runSnelAnalysis(
       strategischeDienst: product.name,
     };
 
-    const finalResult = await analyzeWithCachedSystem({
-      system: buildFinalIcpSystemPrompt(),
-      user: buildFinalIcpUserPrompt({
-        phase1: phase1Result.data,
-        answers: webformDefaults,
-        companyName: client.name,
-        analysisMode: "snel",
-      }),
-      schema: FinalIcp,
+    const finalResult = await callFinal({
+      phase1: phase1Result.data,
+      answers: webformDefaults,
+      companyName: client.name,
+      analysisMode: "snel",
     });
 
     // Combineer telemetrie
@@ -306,11 +330,7 @@ export async function runVolledigPhase1(
     const { snapshot, cached } = await getOrFreshSnapshot(client.id, url);
     if (!cached) await persistSnapshot(client.id, snapshot);
 
-    const phase1Result = await analyzeWithCachedSystem({
-      system: buildPhase1SystemPrompt(),
-      user: buildPhase1UserPrompt(snapshot),
-      schema: Phase1Output,
-    });
+    const phase1Result = await callPhase1(snapshot);
 
     await db
       .update(sessions)
@@ -427,15 +447,11 @@ export async function runVolledigPhase3(
     .where(eq(sessions.id, sessionId));
 
   try {
-    const finalResult = await analyzeWithCachedSystem({
-      system: buildFinalIcpSystemPrompt(),
-      user: buildFinalIcpUserPrompt({
-        phase1,
-        answers: parsed.data,
-        companyName: client.name,
-        analysisMode: "volledig",
-      }),
-      schema: FinalIcp,
+    const finalResult = await callFinal({
+      phase1,
+      answers: parsed.data,
+      companyName: client.name,
+      analysisMode: "volledig",
     });
 
     // Combineer telemetrie met bestaande Phase 1

@@ -1,10 +1,16 @@
-import type { Phase1Output, WebformAnswers, WebsiteSnapshot } from "./schema";
+/**
+ * ICP-prompt-templates voor de drie fases (scan / phase1 / final).
+ *
+ * Elke template is een samengevoegde system+user-prompt met `{placeholders}`.
+ * Op runtime wordt de actieve prompt opgehaald via getModulePrompt(<sub-slug>)
+ * uit de DB (met deze FALLBACK_PROMPT_* als terugval als de DB-rij leeg is).
+ */
+import type { Phase1Output, WebformAnswers } from "./schema";
 
-// ── Scan website voor producten/diensten ────────────────────────────────────
+// ── Sub-slug 1/3: Scan producten ────────────────────────────────────────────
+// Placeholders: {websiteUrl}, {scrapedContent}
 
-export function buildScanProductsSystemPrompt(): string {
-  return `Je bent een expert in B2B marketing. Extraheer alle producten en diensten van de
-website. Antwoord altijd in het Nederlands. Geef alleen geldige JSON terug.
+export const FALLBACK_PROMPT_SCAN = `Je bent een expert in B2B marketing. Extraheer alle producten en diensten van de website. Antwoord altijd in het Nederlands. Geef alleen geldige JSON terug.
 
 Output-formaat (STRIKT):
 {
@@ -18,27 +24,21 @@ Prominentie bepaal je op basis van hoe prominent het op de website staat:
 - "middel" = duidelijk aanwezig, maar onderdeel van breder aanbod
 - "laag" = zijdelings genoemd, niet de focus
 
-Geef ALLEEN het JSON-object terug, geen toelichting.`;
-}
+Geef ALLEEN het JSON-object terug, geen toelichting.
 
-export function buildScanProductsUserPrompt(snapshot: WebsiteSnapshot): string {
-  return `Analyseer de volgende websitecontent en extraheer alle producten en diensten die
-dit bedrijf aanbiedt.
+Analyseer de volgende websitecontent en extraheer alle producten en diensten die dit bedrijf aanbiedt.
 
-WEBSITECONTENT (${snapshot.url}):
+WEBSITECONTENT ({websiteUrl}):
 """
-${snapshot.bodyExcerpt}
+{scrapedContent}
 """
 
 Geef het JSON-object met de "producten"-array.`;
-}
 
-// ── Phase 1: initiële website-analyse ───────────────────────────────────────
+// ── Sub-slug 2/3: Phase 1 — website-analyse → ICP-inschatting ───────────────
+// Placeholders: {websiteUrl}, {scrapedContent}
 
-export function buildPhase1SystemPrompt(): string {
-  return `Je bent een expert in B2B marketing en ICP-analyse. Je analyseert websitecontent
-en extraheert gestructureerde informatie over de ideale klant. Antwoord altijd in het
-Nederlands. Geef alleen geldige JSON terug.
+export const FALLBACK_PROMPT_PHASE1 = `Je bent een expert in B2B marketing en ICP-analyse. Je analyseert websitecontent en extraheert gestructureerde informatie over de ideale klant. Antwoord altijd in het Nederlands. Geef alleen geldige JSON terug.
 
 # Output-velden
 
@@ -63,34 +63,27 @@ Nederlands. Geef alleen geldige JSON terug.
 - Pijnpunten zijn PROBLEMEN, geen wensen
 - Wees eerlijk over wat ontbreekt — vul niet zomaar in
 
-Geef ALLEEN het JSON-object. Geen markdown-fences, geen toelichting.`;
-}
+Geef ALLEEN het JSON-object. Geen markdown-fences, geen toelichting.
 
-export function buildPhase1UserPrompt(snapshot: WebsiteSnapshot): string {
-  return `Analyseer de volgende websitecontent en extraheer informatie om het Ideal Customer
-Profile (ICP) te bepalen.
+Analyseer de volgende websitecontent en extraheer informatie om het Ideal Customer Profile (ICP) te bepalen.
 
-WEBSITECONTENT (${snapshot.url}):
+WEBSITECONTENT ({websiteUrl}):
 """
-${snapshot.bodyExcerpt}
+{scrapedContent}
 """
 
-Geef een gestructureerde JSON-output. Schat de betrouwbaarheid_score (0-100) op basis van
-hoeveel informatie beschikbaar was. Vermeld onder "ontbrekende_informatie" wat de AI niet
-kon afleiden.
+Geef een gestructureerde JSON-output. Schat de betrouwbaarheid_score (0-100) op basis van hoeveel informatie beschikbaar was. Vermeld onder "ontbrekende_informatie" wat de AI niet kon afleiden.
 
-Voeg ook een 'icp_inschatting' toe: een eerste inschatting van het Ideal Customer Profile
-op basis van alle geanalyseerde informatie.
+Voeg ook een 'icp_inschatting' toe: een eerste inschatting van het Ideal Customer Profile op basis van alle geanalyseerde informatie.
 
 Geef ALLEEN geldige JSON terug, geen andere tekst.`;
-}
 
-// ── Final ICP (Phase 3) ─────────────────────────────────────────────────────
+// ── Sub-slug 3/3: Final ICP — verfijnd profiel met webform-data ─────────────
+// Placeholders: {companyName}, {context}
+// `{context}` bevat alle dynamische input (modus-blok, Phase 1, webform-data,
+// positionering) als één pre-geformatteerd blok dat de runtime samenstelt.
 
-export function buildFinalIcpSystemPrompt(): string {
-  return `Je bent een expert B2B-marketingstrateeg. Genereer een volledig ICP-profiel met
-concrete, actionable inzichten. Alle teksten in het Nederlands. Geef alleen geldige JSON
-terug.
+export const FALLBACK_PROMPT_FINAL = `Je bent een expert B2B-marketingstrateeg. Genereer een volledig ICP-profiel met concrete, actionable inzichten. Alle teksten in het Nederlands. Geef alleen geldige JSON terug.
 
 # Output-shape
 
@@ -144,16 +137,25 @@ terug.
 - Disqualificatievraag is één scherpe ja/nee-vraag
 - Triggers zijn events met tijd-element
 
-Geef ALLEEN het JSON-object. Geen markdown-fences, geen toelichting.`;
-}
+Geef ALLEEN het JSON-object. Geen markdown-fences, geen toelichting.
 
-export function buildFinalIcpUserPrompt(args: {
+Genereer een volledig ICP (Ideal Customer Profile) voor {companyName}.
+
+{context}
+
+Genereer een volledig ICP-profiel in het Nederlands. Geef ALLEEN geldige JSON terug.`;
+
+/**
+ * Bouwt het `{context}`-blok voor de FINAL-template op uit runtime-data.
+ * Dit blijft in code omdat het opmaak + conditionals bevat die niet door admin
+ * worden bewerkt (alleen instructies en output-shape zijn admin-bewerkbaar).
+ */
+export function buildFinalContext(args: {
   phase1: Phase1Output;
   answers: WebformAnswers;
-  companyName: string;
   analysisMode?: "snel" | "volledig";
 }): string {
-  const { phase1, answers, companyName, analysisMode = "volledig" } = args;
+  const { phase1, answers, analysisMode = "volledig" } = args;
 
   const sectorStr = answers.sectoren
     .map((s) => `${s.hoofdsector} > ${s.subsector}`)
@@ -163,29 +165,21 @@ export function buildFinalIcpUserPrompt(args: {
     answers.sectoren.length === 1 ||
     (answers.sectoren.length <= 2 &&
       answers.sectoren.every(
-        (s) => s.hoofdsector === answers.sectoren[0]?.hoofdsector
+        (s) => s.hoofdsector === answers.sectoren[0]?.hoofdsector,
       ));
 
   const modeBlok =
     analysisMode === "volledig"
       ? `# Modus: VOLLEDIG (gebruiker heeft vragenlijst ingevuld)
 
-BELANGRIJK: de webform-antwoorden hieronder zijn DOOR DE GEBRUIKER zelf ingevuld
-en zijn AUTORITATIEF. Waar webform-antwoorden conflicteren met Phase 1 (die op
-website-analyse berust), VOLG JE DE WEBFORM-ANTWOORDEN. Phase 1 is alleen aanvulling
-voor velden die de gebruiker leeg liet of niet expliciet noemt (zoals tone_of_voice,
-ontbrekende DMU-rollen, klantvoorbeelden).
+BELANGRIJK: de webform-antwoorden hieronder zijn DOOR DE GEBRUIKER zelf ingevuld en zijn AUTORITATIEF. Waar webform-antwoorden conflicteren met Phase 1 (die op website-analyse berust), VOLG JE DE WEBFORM-ANTWOORDEN. Phase 1 is alleen aanvulling voor velden die de gebruiker leeg liet of niet expliciet noemt (zoals tone_of_voice, ontbrekende DMU-rollen, klantvoorbeelden).
 
-Maak het profiel SCHERPER en SPECIFIEKER dan de Phase 1-inschatting — gebruik de
-zekerheid uit de webform-antwoorden.`
+Maak het profiel SCHERPER en SPECIFIEKER dan de Phase 1-inschatting — gebruik de zekerheid uit de webform-antwoorden.`
       : `# Modus: SNEL (geen webform-input — gebruik Phase 1 als basis)
 
-De webform-antwoorden hieronder zijn LEEG (Snel-modus). Werk volledig op basis van
-Phase 1. Wees expliciet over wat afgeleid is en wat onzeker is.`;
+De webform-antwoorden hieronder zijn LEEG (Snel-modus). Werk volledig op basis van Phase 1. Wees expliciet over wat afgeleid is en wat onzeker is.`;
 
-  return `Genereer een volledig ICP (Ideal Customer Profile) voor ${companyName}.
-
-${modeBlok}
+  return `${modeBlok}
 
 # FASE 1 ANALYSE (uit website-scan):
 ${JSON.stringify(phase1, null, 2)}
@@ -208,7 +202,5 @@ ${JSON.stringify(phase1, null, 2)}
   }
 - USP (door gebruiker): ${answers.usp || "(leeg)"}
 - Eigen beschrijving: ${answers.eigenBeschrijving || "(leeg)"}
-- Positionering (afgeleid uit sectoren): ${isVerticaal ? "verticaal" : "horizontaal"}
-
-Genereer een volledig ICP-profiel in het Nederlands. Geef ALLEEN geldige JSON terug.`;
+- Positionering (afgeleid uit sectoren): ${isVerticaal ? "verticaal" : "horizontaal"}`;
 }

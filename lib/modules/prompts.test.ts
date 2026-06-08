@@ -70,9 +70,9 @@ describe("getModulePrompt", () => {
   });
 
   it("valt terug op FALLBACK_PROMPTS-placeholder als defaultPrompt leeg is", async () => {
-    // 'marktonderzoek' is een 'soon'-module dus heeft SOON_PLACEHOLDER-tekst
+    // 'markttrends-rapport' is een 'soon'-module dus heeft SOON_PLACEHOLDER-tekst
     setMockRows([{ defaultPrompt: "", provider: "perplexity" }]);
-    const result = await getModulePrompt("marktonderzoek");
+    const result = await getModulePrompt("markttrends-rapport");
     expect(result.prompt).toContain("Placeholder");
     expect(result.provider).toBe("perplexity");
   });
