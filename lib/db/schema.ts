@@ -72,6 +72,7 @@ export const modules = pgTable("modules", {
   defaultPrompt: text("default_prompt").notNull().default(""),
   provider: providerEnum("provider").default("claude").notNull(),
   minTier: tierEnum("min_tier").default("fundament").notNull(),
+  parentSlug: text("parent_slug"), // null = top-level module; non-null = sub-prompt (bv. ICP-subs)
   outputSchema: jsonb("output_schema"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

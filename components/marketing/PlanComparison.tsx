@@ -55,7 +55,7 @@ export function PlanComparison() {
               </tr>
             </thead>
             <tbody>
-              {MODULES.map((module) => (
+              {MODULES.filter((m) => !m.parentSlug).map((module) => (
                 <tr
                   key={module.slug}
                   className="border-b border-slate-100 last:border-b-0"

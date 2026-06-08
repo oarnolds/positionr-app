@@ -47,6 +47,16 @@ export type ModuleMeta = {
   href?: string;
   /** Minimaal vereiste tier voor toegang (cumulatief). */
   minTier: Tier;
+  /**
+   * Slug van de "parent"-module bij sub-prompts.
+   * Sub-prompts zijn admin-bewerkbare prompt-entries die bij een echte module horen
+   * (bv. ICP heeft 3 prompt-fases). Sub-prompts:
+   *  - verschijnen WEL in de admin-prompt-editor
+   *  - verschijnen NIET in de marketing-matrix of de portal-modules-catalog
+   *
+   * Consumenten filteren met `m.parentSlug == null` voor top-level lijsten.
+   */
+  parentSlug?: string;
 };
 
 export const MODULES: ModuleMeta[] = [
@@ -329,6 +339,52 @@ export const MODULES: ModuleMeta[] = [
     iconColor: "text-teal-600",
     status: "soon",
     minTier: "strategie",
+  },
+
+  // ── ICP sub-prompts (admin-only) ──────────────────────────────────
+  // Verschijnen in /admin/prompts (afzonderlijk editbaar) maar niet
+  // in marketing-matrix of portal-catalog. minTier irrelevant (gefilterd).
+  {
+    slug: "icp-analyse-scan",
+    name: "ICP — Scan producten",
+    description:
+      "Sub-prompt 1/3: extraheert producten/diensten uit de website-content.",
+    icon: UserCheck,
+    color: "from-cyan-500 to-cyan-700",
+    borderColor: "border-cyan-200",
+    bgLight: "bg-cyan-50",
+    iconColor: "text-cyan-600",
+    status: "active",
+    minTier: "fundament",
+    parentSlug: "icp-analyse",
+  },
+  {
+    slug: "icp-analyse-phase1",
+    name: "ICP — Phase 1 (website-analyse)",
+    description:
+      "Sub-prompt 2/3: eerste ICP-inschatting op basis van alleen website-content.",
+    icon: UserCheck,
+    color: "from-cyan-500 to-cyan-700",
+    borderColor: "border-cyan-200",
+    bgLight: "bg-cyan-50",
+    iconColor: "text-cyan-600",
+    status: "active",
+    minTier: "fundament",
+    parentSlug: "icp-analyse",
+  },
+  {
+    slug: "icp-analyse-final",
+    name: "ICP — Final (verfijnd profiel)",
+    description:
+      "Sub-prompt 3/3: definitief ICP-profiel met webform-antwoorden van de gebruiker.",
+    icon: UserCheck,
+    color: "from-cyan-500 to-cyan-700",
+    borderColor: "border-cyan-200",
+    bgLight: "bg-cyan-50",
+    iconColor: "text-cyan-600",
+    status: "active",
+    minTier: "fundament",
+    parentSlug: "icp-analyse",
   },
 ];
 

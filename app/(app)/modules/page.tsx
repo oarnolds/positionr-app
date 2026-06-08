@@ -15,7 +15,7 @@ export default function ModulesPage() {
       </div>
 
       <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {MODULES.map((module) => {
+        {MODULES.filter((m) => !m.parentSlug).map((module) => {
           const Icon = module.icon;
           const isActive = module.status === "active";
 
