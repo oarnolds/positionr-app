@@ -5,6 +5,7 @@ import { sessions } from "@/lib/db/schema";
 import { WebsiteCheckOutputSchema } from "@/modules/website-check/schema";
 import { WebsiteCheckResultView } from "@/modules/website-check/components/WebsiteCheckResultView";
 import { MODULE_SLUG } from "@/modules/website-check";
+import { getModuleLayout } from "@/lib/modules/layouts";
 
 export default async function PublicSharePage({
   params,
@@ -23,5 +24,6 @@ export default async function PublicSharePage({
   const parsed = WebsiteCheckOutputSchema.safeParse(row.output);
   if (!parsed.success) notFound();
 
-  return <WebsiteCheckResultView data={parsed.data} readOnly />;
+  const layout = await getModuleLayout(MODULE_SLUG);
+  return <WebsiteCheckResultView data={parsed.data} layout={layout} readOnly />;
 }

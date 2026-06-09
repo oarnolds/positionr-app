@@ -9,6 +9,7 @@ import { sessions } from "@/lib/db/schema";
 import { WebsiteCheckOutputSchema } from "@/modules/website-check/schema";
 import { WebsiteCheckResultView } from "@/modules/website-check/components/WebsiteCheckResultView";
 import { MODULE_SLUG } from "@/modules/website-check";
+import { getModuleLayout } from "@/lib/modules/layouts";
 import { regenerateAnalysis } from "../actions";
 import { RunningPoll } from "./running-poll";
 
@@ -177,10 +178,12 @@ export default async function WebsiteCheckResultPage({
     ? `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/r/${row.shareSlug}`
     : "";
 
+  const layout = await getModuleLayout(MODULE_SLUG);
+
   return (
     <>
       {header}
-      <WebsiteCheckResultView data={parsed.data} />
+      <WebsiteCheckResultView data={parsed.data} layout={layout} />
       <div className="mx-auto mt-2 mb-12 flex max-w-4xl items-center gap-3 px-6">
         <form action={regenerateAnalysis}>
           <input type="hidden" name="sourceSessionId" value={row.id} />

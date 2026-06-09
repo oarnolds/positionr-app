@@ -8,6 +8,8 @@ import { db } from "@/lib/db/client";
 import { leads } from "@/lib/db/schema";
 import { WebsiteCheckOutputSchema } from "@/modules/website-check/schema";
 import { WebsiteCheckResultView } from "@/modules/website-check/components/WebsiteCheckResultView";
+import { MODULE_SLUG } from "@/modules/website-check";
+import { getModuleLayout } from "@/lib/modules/layouts";
 import { RunningPoll } from "./running-poll";
 
 const STUCK_THRESHOLD_SECONDS = 6 * 60; // 1 min grace boven Vercel maxDuration
@@ -159,9 +161,11 @@ export default async function GratisCheckResultPage({
     );
   }
 
+  const layout = await getModuleLayout(MODULE_SLUG);
+
   return (
     <>
-      <WebsiteCheckResultView data={parsed.data} readOnly />
+      <WebsiteCheckResultView data={parsed.data} layout={layout} readOnly />
 
       {/* CTA-strip: word lid */}
       <section className="mx-auto mt-6 mb-16 max-w-4xl px-6">
