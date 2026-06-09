@@ -23,10 +23,11 @@ type Placeholder = { key: string; label: string; example: string };
 // bewaard maar nog niet door de runtime gebruikt.
 const MODULES_USING_DB_PROMPT = new Set<string>([
   "website-check",
-  // ICP-runtime gebruikt 3 sub-prompts via getModulePrompt:
-  "icp-analyse-scan",
+  // ICP-runtime gebruikt parent + sub-extensie via getModulePrompt:
+  "icp-analyse",
   "icp-analyse-phase1",
   "icp-analyse-final",
+  // icp-analyse-scan staat NIET in admin (interne hardcoded scan-prompt).
 ]);
 
 interface Props {

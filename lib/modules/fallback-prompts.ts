@@ -10,7 +10,7 @@
 
 import { FALLBACK_PROMPT as websiteCheckFallback } from "@/modules/website-check/prompt";
 import {
-  FALLBACK_PROMPT_SCAN,
+  FALLBACK_PROMPT_PARENT,
   FALLBACK_PROMPT_PHASE1,
   FALLBACK_PROMPT_FINAL,
 } from "@/modules/icp-analyse/prompt";
@@ -21,14 +21,14 @@ const SOON_PLACEHOLDER = (name: string) =>
 export const FALLBACK_PROMPTS: Record<string, string> = {
   // ── Active top-level ──────────────────────────────────────────────
   "website-check": websiteCheckFallback,
-  "icp-analyse": SOON_PLACEHOLDER(
-    "ICP Analyse — gebruikt sub-prompts (zie icp-analyse-scan/phase1/final)",
-  ),
+  // ICP-parent = gedeelde basis-prompt voor zowel Snelle als Volledige analyse.
+  // Runtime combineert: parent + sub.
+  "icp-analyse": FALLBACK_PROMPT_PARENT,
 
-  // ── ICP sub-prompts (active, runtime gebruikt deze) ───────────────
-  "icp-analyse-scan": FALLBACK_PROMPT_SCAN,
+  // ── ICP sub-extensies (active, runtime concateneert na parent) ────
   "icp-analyse-phase1": FALLBACK_PROMPT_PHASE1,
   "icp-analyse-final": FALLBACK_PROMPT_FINAL,
+  // Geen icp-analyse-scan — die prompt is hardcoded (niet admin-bewerkbaar).
 
   // ── Fundament — soon ──────────────────────────────────────────────
   "linkedin-analyse": SOON_PLACEHOLDER("LinkedIn analyse"),

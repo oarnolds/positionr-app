@@ -1,13 +1,24 @@
 /**
- * ICP-prompt-templates voor de drie fases (scan / phase1 / final).
+ * ICP-prompt-templates.
  *
- * Elke template is een samengevoegde system+user-prompt met `{placeholders}`.
- * Op runtime wordt de actieve prompt opgehaald via getModulePrompt(<sub-slug>)
- * uit de DB (met deze FALLBACK_PROMPT_* als terugval als de DB-rij leeg is).
+ * Architectuur (na refactor):
+ *  - FALLBACK_PROMPT_SCAN: hardcoded prompt voor de producten-scan-stap
+ *    (niet admin-bewerkbaar — het is puur een interne extractie-stap).
+ *  - FALLBACK_PROMPT_PARENT: gedeelde basis-prompt voor zowel Snelle als
+ *    Volledige analyse. Admin-bewerkbaar via slug `icp-analyse`.
+ *  - FALLBACK_PROMPT_PHASE1: extensie voor de Snelle-analyse-modus.
+ *    Admin-bewerkbaar via slug `icp-analyse-phase1`.
+ *  - FALLBACK_PROMPT_FINAL: extensie voor de Volledige-analyse-modus.
+ *    Admin-bewerkbaar via slug `icp-analyse-final`.
+ *
+ * Runtime-formule:
+ *  - SCAN: alleen FALLBACK_PROMPT_SCAN (hardcoded).
+ *  - PHASE1 (Snel): parent + "\n\n" + phase1-sub → placeholders.
+ *  - FINAL (Volledig): parent + "\n\n" + final-sub → placeholders.
  */
 import type { Phase1Output, WebformAnswers } from "./schema";
 
-// ── Sub-slug 1/3: Scan producten ────────────────────────────────────────────
+// ── SCAN (hardcoded, niet admin-bewerkbaar) ─────────────────────────────────
 // Placeholders: {websiteUrl}, {scrapedContent}
 
 export const FALLBACK_PROMPT_SCAN = `Je bent een expert in B2B marketing. Extraheer alle producten en diensten van de website. Antwoord altijd in het Nederlands. Geef alleen geldige JSON terug.
@@ -35,13 +46,28 @@ WEBSITECONTENT ({websiteUrl}):
 
 Geef het JSON-object met de "producten"-array.`;
 
-// ── Sub-slug 2/3: Phase 1 — website-analyse → ICP-inschatting ───────────────
+// ── PARENT (Ideale klant analyse) — gedeelde basis voor Snel + Volledig ─────
+// Bevat persona, algemene principes en stijl-regels die voor beide modi gelden.
+// Geen placeholders — die zitten in de sub-extensies.
+
+export const FALLBACK_PROMPT_PARENT = `Je bent een expert in B2B marketing en ICP-analyse (Ideal Customer Profile). Je analyseert gegevens om een gestructureerd profiel van de ideale klant op te bouwen.
+
+# Algemene principes
+- Antwoord altijd in het Nederlands.
+- Geef ALLEEN het JSON-object terug. Geen markdown-fences, geen toelichting.
+- Specifiek > generiek. "MKB-accountantskantoren met 10-50 fte" is beter dan "zakelijke dienstverlening".
+- Outside-in: schrijf vanuit het perspectief van de prospect.
+- Concreet > abstract.
+- Pijnpunten zijn PROBLEMEN, geen wensen.
+- Trigger events zijn gebeurtenissen met een tijd-element.
+- Wees eerlijk over wat ontbreekt — vul niet zomaar in.`;
+
+// ── PHASE 1 extensie (Snelle analyse) ───────────────────────────────────────
 // Placeholders: {websiteUrl}, {scrapedContent}
 
-export const FALLBACK_PROMPT_PHASE1 = `Je bent een expert in B2B marketing en ICP-analyse. Je analyseert websitecontent en extraheert gestructureerde informatie over de ideale klant. Antwoord altijd in het Nederlands. Geef alleen geldige JSON terug.
+export const FALLBACK_PROMPT_PHASE1 = `# Modus: Snelle analyse op basis van website-content
 
-# Output-velden
-
+# Output-velden (verplicht)
 - **diensten**: array van { naam, prominentie ("hoog"|"middel"|"laag"), beschrijving }
 - **primaire_doelgroep**: { sector, subsector, bedrijfsgrootte, functietitels (array), geografische_focus }
 - **pijnpunten**: array van strings (concrete problemen)
@@ -52,18 +78,11 @@ export const FALLBACK_PROMPT_PHASE1 = `Je bent een expert in B2B marketing en IC
 - **betrouwbaarheid_score**: number 0-100 (hoeveel info beschikbaar was)
 - **ontbrekende_informatie**: array van strings (wat AI niet kon vinden — eerlijk!)
 - **icp_inschatting**:
-  - industrieen: array van strings (waarschijnlijke sectoren)
-  - bedrijfsgrootte: array van strings (passende groottes)
+  - industrieen: array van strings
+  - bedrijfsgrootte: array van strings
   - kernprocessen: array van strings (sales/HR/finance/operations)
   - dmu: array van { rol, invloed: "beslisser"|"beïnvloeder"|"gebruiker" }
-  - samenvatting: string (kort: ideale klant)
-
-# Schrijf-principes
-- Specifiek > generiek: "MKB-accountantskantoren met 10-50 fte" beter dan "zakelijke dienstverlening"
-- Pijnpunten zijn PROBLEMEN, geen wensen
-- Wees eerlijk over wat ontbreekt — vul niet zomaar in
-
-Geef ALLEEN het JSON-object. Geen markdown-fences, geen toelichting.
+  - samenvatting: string
 
 Analyseer de volgende websitecontent en extraheer informatie om het Ideal Customer Profile (ICP) te bepalen.
 
@@ -72,21 +91,16 @@ WEBSITECONTENT ({websiteUrl}):
 {scrapedContent}
 """
 
-Geef een gestructureerde JSON-output. Schat de betrouwbaarheid_score (0-100) op basis van hoeveel informatie beschikbaar was. Vermeld onder "ontbrekende_informatie" wat de AI niet kon afleiden.
+Schat de betrouwbaarheid_score (0-100) op basis van hoeveel informatie beschikbaar was. Vermeld onder "ontbrekende_informatie" wat de AI niet kon afleiden. Voeg ook een 'icp_inschatting' toe als eerste inschatting van het ICP.`;
 
-Voeg ook een 'icp_inschatting' toe: een eerste inschatting van het Ideal Customer Profile op basis van alle geanalyseerde informatie.
-
-Geef ALLEEN geldige JSON terug, geen andere tekst.`;
-
-// ── Sub-slug 3/3: Final ICP — verfijnd profiel met webform-data ─────────────
+// ── FINAL extensie (Volledige analyse) ──────────────────────────────────────
 // Placeholders: {companyName}, {context}
 // `{context}` bevat alle dynamische input (modus-blok, Phase 1, webform-data,
 // positionering) als één pre-geformatteerd blok dat de runtime samenstelt.
 
-export const FALLBACK_PROMPT_FINAL = `Je bent een expert B2B-marketingstrateeg. Genereer een volledig ICP-profiel met concrete, actionable inzichten. Alle teksten in het Nederlands. Geef alleen geldige JSON terug.
+export const FALLBACK_PROMPT_FINAL = `# Modus: Volledige analyse — verfijnd ICP-profiel
 
-# Output-shape
-
+# Output-shape (verplicht)
 \`\`\`
 {
   "heroTekst": string (positionering 2-3 zinnen, outside-in: begin met doelgroep + winst),
@@ -101,43 +115,35 @@ export const FALLBACK_PROMPT_FINAL = `Je bent een expert B2B-marketingstrateeg. 
   },
   "pijnpuntenTriggers": {
     "pijnpunt": string (HET primaire pijnpunt — kies één scherp),
-    "triggers": string[] (events die kopen veroorzaken)
+    "triggers": string[]
   },
   "usp": string,
   "dienstFocus": {
-    "dienst": string (naam strategische dienst/product),
+    "dienst": string,
     "contractwaarde": string,
     "icpMatch": string (waarom dit past bij dit ICP)
   },
   "negatieveIcp": {
-    "dealbreakers": string[] (wanneer is het GEEN match?),
-    "disqualificatievraag": string (één vraag die snel disqualificeert)
+    "dealbreakers": string[],
+    "disqualificatievraag": string (één scherpe ja/nee-vraag)
   },
   "marketingVertaalslag": {
-    "kanalen": [{ "kanaal": string, "prioriteit": string ("hoog"|"middel"|"laag"), "reden": string }],
+    "kanalen": [{ "kanaal": string, "prioriteit": "hoog"|"middel"|"laag", "reden": string }],
     "kernboodschap": {
-      "bewustwording": string (boodschap voor awareness-fase),
-      "overweging": string (boodschap voor consideration-fase),
-      "beslissing": string (boodschap voor decision-fase)
+      "bewustwording": string,
+      "overweging": string,
+      "beslissing": string
     },
     "contentAanbevelingen": {
-      "artikel": string (concreet artikel-onderwerp),
-      "linkedin": string (LinkedIn-postsuggestie),
-      "email": string (cold-email-onderwerp + opening)
+      "artikel": string,
+      "linkedin": string,
+      "email": string
     }
   },
   "volgendStappen": string[] (3-5 concrete acties),
   "positionering": "verticaal" | "horizontaal"
 }
 \`\`\`
-
-# Principes
-- Outside-in: schrijf vanuit perspectief van prospect
-- Concreet > abstract
-- Disqualificatievraag is één scherpe ja/nee-vraag
-- Triggers zijn events met tijd-element
-
-Geef ALLEEN het JSON-object. Geen markdown-fences, geen toelichting.
 
 Genereer een volledig ICP (Ideal Customer Profile) voor {companyName}.
 
@@ -172,7 +178,7 @@ export function buildFinalContext(args: {
     analysisMode === "volledig"
       ? `# Modus: VOLLEDIG (gebruiker heeft vragenlijst ingevuld)
 
-BELANGRIJK: de webform-antwoorden hieronder zijn DOOR DE GEBRUIKER zelf ingevuld en zijn AUTORITATIEF. Waar webform-antwoorden conflicteren met Phase 1 (die op website-analyse berust), VOLG JE DE WEBFORM-ANTWOORDEN. Phase 1 is alleen aanvulling voor velden die de gebruiker leeg liet of niet expliciet noemt (zoals tone_of_voice, ontbrekende DMU-rollen, klantvoorbeelden).
+BELANGRIJK: de webform-antwoorden hieronder zijn DOOR DE GEBRUIKER zelf ingevuld en zijn AUTORITATIEF. Waar webform-antwoorden conflicteren met Phase 1 (die op website-analyse berust), VOLG JE DE WEBFORM-ANTWOORDEN. Phase 1 is alleen aanvulling voor velden die de gebruiker leeg liet of niet expliciet noemt.
 
 Maak het profiel SCHERPER en SPECIFIEKER dan de Phase 1-inschatting — gebruik de zekerheid uit de webform-antwoorden.`
       : `# Modus: SNEL (geen webform-input — gebruik Phase 1 als basis)

@@ -341,28 +341,15 @@ export const MODULES: ModuleMeta[] = [
     minTier: "strategie",
   },
 
-  // ── ICP sub-prompts (admin-only) ──────────────────────────────────
-  // Verschijnen in /admin/prompts (afzonderlijk editbaar) maar niet
-  // in marketing-matrix of portal-catalog. minTier irrelevant (gefilterd).
-  {
-    slug: "icp-analyse-scan",
-    name: "ICP producten",
-    description:
-      "Sub-prompt 1/3: extraheert producten/diensten uit de website-content.",
-    icon: UserCheck,
-    color: "from-cyan-500 to-cyan-700",
-    borderColor: "border-cyan-200",
-    bgLight: "bg-cyan-50",
-    iconColor: "text-cyan-600",
-    status: "active",
-    minTier: "fundament",
-    parentSlug: "icp-analyse",
-  },
+  // ── ICP sub-extensies (admin-bewerkbaar, verschijnen onder parent) ──
+  // Worden geconcateneerd na de parent-prompt (icp-analyse) op runtime.
+  // De producten-scan-stap is niet admin-bewerkbaar — die staat hardcoded
+  // in modules/icp-analyse/prompt.ts (FALLBACK_PROMPT_SCAN).
   {
     slug: "icp-analyse-phase1",
-    name: "ICP Profiel 1",
+    name: "ICP Snelle analyse",
     description:
-      "Sub-prompt 2/3: eerste ICP-inschatting op basis van alleen website-content.",
+      "Extensie op de Ideale-klant-analyse-prompt voor de Snelle modus (website-content alleen).",
     icon: UserCheck,
     color: "from-cyan-500 to-cyan-700",
     borderColor: "border-cyan-200",
@@ -374,9 +361,9 @@ export const MODULES: ModuleMeta[] = [
   },
   {
     slug: "icp-analyse-final",
-    name: "ICP Verfijnd",
+    name: "ICP Volledige Analyse",
     description:
-      "Sub-prompt 3/3: definitief ICP-profiel met webform-antwoorden van de gebruiker.",
+      "Extensie op de Ideale-klant-analyse-prompt voor de Volledige modus (met webform-data).",
     icon: UserCheck,
     color: "from-cyan-500 to-cyan-700",
     borderColor: "border-cyan-200",

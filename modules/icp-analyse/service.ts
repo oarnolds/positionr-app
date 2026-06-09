@@ -4,7 +4,7 @@ import { clients, icpProducts, sessions } from "@/lib/db/schema";
 import { analyze } from "@/lib/ai/analyze";
 import { getModulePrompt, substitutePlaceholders } from "@/lib/modules/prompts";
 import { scrapeForIcp } from "./scraper";
-import { buildFinalContext } from "./prompt";
+import { buildFinalContext, FALLBACK_PROMPT_SCAN } from "./prompt";
 import {
   ScannedProducts,
   Phase1Output,
@@ -16,24 +16,42 @@ import {
 } from "./schema";
 
 const MODULE_SLUG = "icp-analyse";
-const SCAN_SLUG = "icp-analyse-scan";
 const PHASE1_SLUG = "icp-analyse-phase1";
 const FINAL_SLUG = "icp-analyse-final";
 
-// ── LLM-call helpers (DB-prompt-gestuurd) ───────────────────────────────────
+// ── LLM-call helpers ────────────────────────────────────────────────────────
+//
+// SCAN: hardcoded prompt (niet admin-bewerkbaar — interne extractie-stap).
+// PHASE1/FINAL: combineren parent (`icp-analyse`) met de modus-specifieke sub
+// (`icp-analyse-phase1` of `-final`) — beide admin-bewerkbaar via /admin/prompts.
 
 async function callScan(snapshot: WebsiteSnapshot) {
-  const { prompt: template, provider } = await getModulePrompt(SCAN_SLUG);
-  const prompt = substitutePlaceholders(template, {
+  const prompt = substitutePlaceholders(FALLBACK_PROMPT_SCAN, {
     websiteUrl: snapshot.url,
     scrapedContent: snapshot.bodyExcerpt,
   });
-  return analyze({ provider, prompt, schema: ScannedProducts });
+  // Provider hardcoded op claude (extractie-werk, geen web-search nodig).
+  return analyze({ provider: "claude", prompt, schema: ScannedProducts });
+}
+
+/** Bouwt: parent-prompt + "\n\n" + sub-prompt (mag leeg zijn). */
+async function composeIcpPrompt(
+  subSlug: string,
+  placeholders: Record<string, string>,
+): Promise<{ prompt: string; provider: "claude" | "perplexity" }> {
+  const parent = await getModulePrompt(MODULE_SLUG);
+  const sub = await getModulePrompt(subSlug);
+  const combined = sub.prompt
+    ? `${parent.prompt}\n\n${sub.prompt}`
+    : parent.prompt;
+  return {
+    prompt: substitutePlaceholders(combined, placeholders),
+    provider: parent.provider,
+  };
 }
 
 async function callPhase1(snapshot: WebsiteSnapshot) {
-  const { prompt: template, provider } = await getModulePrompt(PHASE1_SLUG);
-  const prompt = substitutePlaceholders(template, {
+  const { prompt, provider } = await composeIcpPrompt(PHASE1_SLUG, {
     websiteUrl: snapshot.url,
     scrapedContent: snapshot.bodyExcerpt,
   });
@@ -46,13 +64,12 @@ async function callFinal(args: {
   companyName: string;
   analysisMode?: "snel" | "volledig";
 }) {
-  const { prompt: template, provider } = await getModulePrompt(FINAL_SLUG);
   const context = buildFinalContext({
     phase1: args.phase1,
     answers: args.answers,
     analysisMode: args.analysisMode,
   });
-  const prompt = substitutePlaceholders(template, {
+  const { prompt, provider } = await composeIcpPrompt(FINAL_SLUG, {
     companyName: args.companyName,
     context,
   });
