@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { analyze, type AnalyzeArgs } from "@/lib/ai/analyze";
 import { getModulePrompt, substitutePlaceholders } from "@/lib/modules/prompts";
+import { globalPlaceholders } from "@/lib/modules/global-placeholders";
 import { scrapeWebsite } from "./scraper";
 import {
   WebsiteCheckOutputSchema,
@@ -71,8 +72,9 @@ export async function runAnalysis(
     // 2. Haal de actieve prompt + provider uit de DB (met code-fallback)
     const { prompt: template, provider } = await deps.fetchPrompt(MODULE_SLUG);
 
-    // 3. Substitueer placeholders met runtime-waarden
+    // 3. Substitueer placeholders met runtime-waarden (incl. globals zoals {DatumVandaag})
     const prompt = substitutePlaceholders(template, {
+      ...globalPlaceholders(),
       websiteUrl: args.websiteUrl,
       companyName: args.companyName || "Onbekend",
       scrapedContent: scraped || "(Kon website niet laden)",

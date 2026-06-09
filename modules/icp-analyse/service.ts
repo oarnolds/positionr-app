@@ -3,6 +3,7 @@ import { db } from "@/lib/db/client";
 import { clients, icpProducts, sessions } from "@/lib/db/schema";
 import { analyze } from "@/lib/ai/analyze";
 import { getModulePrompt, substitutePlaceholders } from "@/lib/modules/prompts";
+import { globalPlaceholders } from "@/lib/modules/global-placeholders";
 import { scrapeForIcp } from "./scraper";
 import { buildFinalContext, FALLBACK_PROMPT_SCAN } from "./prompt";
 import {
@@ -27,6 +28,7 @@ const FINAL_SLUG = "icp-analyse-final";
 
 async function callScan(snapshot: WebsiteSnapshot) {
   const prompt = substitutePlaceholders(FALLBACK_PROMPT_SCAN, {
+    ...globalPlaceholders(),
     websiteUrl: snapshot.url,
     scrapedContent: snapshot.bodyExcerpt,
   });
@@ -45,7 +47,10 @@ async function composeIcpPrompt(
     ? `${parent.prompt}\n\n${sub.prompt}`
     : parent.prompt;
   return {
-    prompt: substitutePlaceholders(combined, placeholders),
+    prompt: substitutePlaceholders(combined, {
+      ...globalPlaceholders(),
+      ...placeholders,
+    }),
     provider: parent.provider,
   };
 }

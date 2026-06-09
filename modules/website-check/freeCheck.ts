@@ -1,5 +1,6 @@
 import { analyze, type AnalyzeArgs } from "@/lib/ai/analyze";
 import { getModulePrompt, substitutePlaceholders } from "@/lib/modules/prompts";
+import { globalPlaceholders } from "@/lib/modules/global-placeholders";
 import { scrapeWebsite } from "./scraper";
 import {
   WebsiteCheckOutputSchema,
@@ -41,6 +42,7 @@ export async function runFreeCheck(
     const scraped = await deps.scrape(args.websiteUrl);
     const { prompt: template, provider } = await deps.fetchPrompt(MODULE_SLUG);
     const prompt = substitutePlaceholders(template, {
+      ...globalPlaceholders(),
       websiteUrl: args.websiteUrl,
       companyName: "Onbekend",
       scrapedContent: scraped || "(Kon website niet laden)",
