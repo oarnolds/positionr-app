@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
@@ -9,7 +10,8 @@ import { db } from "@/lib/db/client";
 import { clients, icpProducts } from "@/lib/db/schema";
 import {
   scanWebsiteForProducts as scanService,
-  runSnelAnalysis,
+  createSnelSession,
+  runSnelInBackground,
   runVolledigPhase1,
   saveWebformAnswersPartial,
   runVolledigPhase3,
@@ -156,14 +158,19 @@ export async function deleteProduct(productId: string): Promise<void> {
 export async function startSnelAnalyse(productId: string) {
   const user = await getUser();
   let sessionId: string;
+  // Stap 1: validate + maak sessie aan (snelle DB-write, ~ms).
   try {
-    sessionId = await runSnelAnalysis(user.id, productId);
+    sessionId = await createSnelSession(user.id, productId);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Analyse mislukt";
     redirect(
-      `/modules/icp-analyse/${productId}?error=${encodeURIComponent(msg)}`
+      `/modules/icp-analyse/${productId}?error=${encodeURIComponent(msg)}`,
     );
   }
+  // Stap 2: zware LLM-werk op de achtergrond na het response (Next 15 `after`).
+  // De sessie staat al op 'running'; runSnelInBackground vangt fouten zelf
+  // en zet 'failed' — geen exception lekt uit.
+  after(() => runSnelInBackground(sessionId));
   redirect(`/modules/icp-analyse/${productId}/snel/${sessionId}`);
 }
 

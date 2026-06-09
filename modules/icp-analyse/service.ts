@@ -174,12 +174,17 @@ const DEFAULT_WEBFORM_ANSWERS: WebformAnswers = {
 };
 
 /**
- * Snel-modus: scrape → Phase 1 → Phase 3 met empty webform → FinalIcp.
- * Maakt sessions-rij aan, retourneert sessionId.
+ * Snel-modus, stap 1/2: valideer + maak sessie aan met status `running`.
+ * Geeft sessionId terug zodat de caller meteen kan redirecten naar de
+ * resultaatpagina (die polled). De echte LLM-werk wordt door
+ * `runSnelInBackground(sessionId)` op de achtergrond gedaan.
+ *
+ * Gooit alleen bij validatie-fouten (URL ontbreekt, geen toegang, etc.) —
+ * die laten zich netjes terug-redirecten met error-message in de URL.
  */
-export async function runSnelAnalysis(
+export async function createSnelSession(
   userId: string,
-  productId: string
+  productId: string,
 ): Promise<string> {
   const product = await getProductOrThrow(productId, userId);
   const client = await getClientOrThrow(product.clientId, userId);
@@ -187,7 +192,6 @@ export async function runSnelAnalysis(
   const url = product.websiteUrl ?? client.websiteUrl;
   if (!url) throw new Error("Geen website-URL voor dit product/klant");
 
-  // Sessie aanmaken
   const [session] = await db
     .insert(sessions)
     .values({
@@ -202,6 +206,42 @@ export async function runSnelAnalysis(
       >,
     })
     .returning();
+
+  return session.id;
+}
+
+/**
+ * Snel-modus, stap 2/2: scrape → Phase 1 → Phase 3 → updateSession.
+ * Wordt op de achtergrond uitgevoerd via `after()` in de server-action.
+ * Vangt zelf alle fouten en zet status='failed' — werpt nooit naar de caller
+ * (after() heeft geen error-handler op de aanroeper).
+ */
+export async function runSnelInBackground(sessionId: string): Promise<void> {
+  const [session] = await db
+    .select()
+    .from(sessions)
+    .where(eq(sessions.id, sessionId))
+    .limit(1);
+  if (!session || !session.productId || !session.clientId) {
+    return; // sessie weg of incompleet — niets te doen
+  }
+
+  const userId = session.userId;
+  const product = await getProductOrThrow(session.productId, userId);
+  const client = await getClientOrThrow(product.clientId, userId);
+  const url = product.websiteUrl ?? client.websiteUrl;
+
+  if (!url) {
+    await db
+      .update(sessions)
+      .set({
+        status: "failed",
+        errorMessage: "Geen website-URL voor dit product/klant",
+        completedAt: new Date(),
+      })
+      .where(eq(sessions.id, sessionId));
+    return;
+  }
 
   try {
     // Snapshot
@@ -280,8 +320,6 @@ export async function runSnelAnalysis(
         : [...existingIcp, newEntry];
     facts.icp = updatedIcp;
     await db.update(clients).set({ facts }).where(eq(clients.id, client.id));
-
-    return session.id;
   } catch (err) {
     await db
       .update(sessions)
@@ -290,8 +328,10 @@ export async function runSnelAnalysis(
         errorMessage: err instanceof Error ? err.message : String(err),
         completedAt: new Date(),
       })
-      .where(eq(sessions.id, session.id));
-    throw err;
+      .where(eq(sessions.id, sessionId));
+    // Geen throw: after() heeft geen error-handler op de caller.
+    // De session is gemarkeerd als 'failed' — de result-pagina toont
+    // dat netjes.
   }
 }
 
