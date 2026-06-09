@@ -346,7 +346,7 @@ export const MODULES: ModuleMeta[] = [
   // in marketing-matrix of portal-catalog. minTier irrelevant (gefilterd).
   {
     slug: "icp-analyse-scan",
-    name: "ICP — Scan producten",
+    name: "ICP producten",
     description:
       "Sub-prompt 1/3: extraheert producten/diensten uit de website-content.",
     icon: UserCheck,
@@ -360,7 +360,7 @@ export const MODULES: ModuleMeta[] = [
   },
   {
     slug: "icp-analyse-phase1",
-    name: "ICP — Phase 1 (website-analyse)",
+    name: "ICP Profiel 1",
     description:
       "Sub-prompt 2/3: eerste ICP-inschatting op basis van alleen website-content.",
     icon: UserCheck,
@@ -374,7 +374,7 @@ export const MODULES: ModuleMeta[] = [
   },
   {
     slug: "icp-analyse-final",
-    name: "ICP — Final (verfijnd profiel)",
+    name: "ICP Verfijnd",
     description:
       "Sub-prompt 3/3: definitief ICP-profiel met webform-antwoorden van de gebruiker.",
     icon: UserCheck,
