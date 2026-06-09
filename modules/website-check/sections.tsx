@@ -1,13 +1,11 @@
 import type { ReactNode } from "react";
 import type { WebsiteCheckOutput } from "./schema";
 import { WEBSITE_CHECK_KNOWN_FIELDS } from "./schema";
+import { WEBSITE_CHECK_SECTION_META, type SectionMeta } from "./sections-meta";
 
 // ── Section-type ───────────────────────────────────────────────────
 
-export type SectionDef = {
-  id: string;
-  defaultTitle: string;
-  description: string; // voor admin-UI: korte omschrijving
+export type SectionDef = SectionMeta & {
   Component: (props: {
     data: WebsiteCheckOutput;
     title: string;
@@ -287,47 +285,17 @@ function AanvullendeInfo({
 
 // ── SECTIONS-registry ──────────────────────────────────────────────
 
-export const SECTIONS: SectionDef[] = [
-  {
-    id: "score-banner",
-    defaultTitle: "Overall score",
-    description: "Paarse banner met overall score + bedrijfsnaam + URL.",
-    Component: ScoreBanner,
-  },
-  {
-    id: "executive-summary",
-    defaultTitle: "Samenvatting",
-    description: "Korte uitleg-paragraaf.",
-    Component: ExecutiveSummary,
-  },
-  {
-    id: "onderdelen-grid",
-    defaultTitle: "Score per onderdeel",
-    description: "Lijst met 11 sub-score-kaarten.",
-    Component: OnderdelenGrid,
-  },
-  {
-    id: "sterke-punten",
-    defaultTitle: "Top 3 sterke punten",
-    description: "Bullets met sterke punten (groen).",
-    Component: SterkePunten,
-  },
-  {
-    id: "verbeterpunten",
-    defaultTitle: "Top 3 verbeterpunten",
-    description: "Bullets met verbeterpunten (amber).",
-    Component: Verbeterpunten,
-  },
-  {
-    id: "top-acties",
-    defaultTitle: "Top 5 prioriteitsacties",
-    description: "Genummerde lijst met acties + impact-badges.",
-    Component: TopActies,
-  },
-  {
-    id: "aanvullende-info",
-    defaultTitle: "Aanvullende info",
-    description: "Dynamische extras uit de admin-prompt (passthrough-velden).",
-    Component: AanvullendeInfo,
-  },
-];
+const COMPONENTS_BY_ID: Record<string, SectionDef["Component"]> = {
+  "score-banner": ScoreBanner,
+  "executive-summary": ExecutiveSummary,
+  "onderdelen-grid": OnderdelenGrid,
+  "sterke-punten": SterkePunten,
+  "verbeterpunten": Verbeterpunten,
+  "top-acties": TopActies,
+  "aanvullende-info": AanvullendeInfo,
+};
+
+export const SECTIONS: SectionDef[] = WEBSITE_CHECK_SECTION_META.map((m) => ({
+  ...m,
+  Component: COMPONENTS_BY_ID[m.id]!,
+}));
