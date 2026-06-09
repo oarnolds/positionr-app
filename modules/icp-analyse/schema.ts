@@ -83,54 +83,72 @@ export type WebformAnswers = z.infer<typeof WebformAnswers>;
 
 // ── Final ICP (Phase 3 — definitief profiel) ─────────────────────────────────
 
-export const FinalIcp = z.object({
-  heroTekst: z.string(),
-  firmografisch: z.object({
-    sector: z.string(),
-    subsector: z.string(),
-    bedrijfsgrootte: z.array(z.string()),
-    contactfunctie: z.string(),
-    beslisser: z.string(),
-    contractwaarde: z.string(),
-    vindkanalen: z.array(z.string()),
-  }),
-  pijnpuntenTriggers: z.object({
-    pijnpunt: z.string(),
-    triggers: z.array(z.string()),
-  }),
-  usp: z.string(),
-  dienstFocus: z.object({
-    dienst: z.string(),
-    contractwaarde: z.string(),
-    icpMatch: z.string(),
-  }),
-  negatieveIcp: z.object({
-    dealbreakers: z.array(z.string()),
-    disqualificatievraag: z.string(),
-  }),
-  marketingVertaalslag: z.object({
-    kanalen: z.array(
-      z.object({
-        kanaal: z.string(),
-        prioriteit: z.string(),
-        reden: z.string(),
-      })
-    ),
-    kernboodschap: z.object({
-      bewustwording: z.string(),
-      overweging: z.string(),
-      beslissing: z.string(),
+// Bekende velden (canoniek). Extra velden die de admin via de prompt toevoegt
+// blijven via .passthrough() bewaard en worden door FinalIcpView dynamisch
+// onderaan getoond als "Aanvullende info".
+export const FinalIcp = z
+  .object({
+    heroTekst: z.string(),
+    firmografisch: z.object({
+      sector: z.string(),
+      subsector: z.string(),
+      bedrijfsgrootte: z.array(z.string()),
+      contactfunctie: z.string(),
+      beslisser: z.string(),
+      contractwaarde: z.string(),
+      vindkanalen: z.array(z.string()),
     }),
-    contentAanbevelingen: z.object({
-      artikel: z.string(),
-      linkedin: z.string(),
-      email: z.string(),
+    pijnpuntenTriggers: z.object({
+      pijnpunt: z.string(),
+      triggers: z.array(z.string()),
     }),
-  }),
-  volgendStappen: z.array(z.string()),
-  positionering: z.enum(["verticaal", "horizontaal"]),
-});
+    usp: z.string(),
+    dienstFocus: z.object({
+      dienst: z.string(),
+      contractwaarde: z.string(),
+      icpMatch: z.string(),
+    }),
+    negatieveIcp: z.object({
+      dealbreakers: z.array(z.string()),
+      disqualificatievraag: z.string(),
+    }),
+    marketingVertaalslag: z.object({
+      kanalen: z.array(
+        z.object({
+          kanaal: z.string(),
+          prioriteit: z.string(),
+          reden: z.string(),
+        }),
+      ),
+      kernboodschap: z.object({
+        bewustwording: z.string(),
+        overweging: z.string(),
+        beslissing: z.string(),
+      }),
+      contentAanbevelingen: z.object({
+        artikel: z.string(),
+        linkedin: z.string(),
+        email: z.string(),
+      }),
+    }),
+    volgendStappen: z.array(z.string()),
+    positionering: z.enum(["verticaal", "horizontaal"]),
+  })
+  .passthrough();
 export type FinalIcp = z.infer<typeof FinalIcp>;
+
+/** Set van canonieke FinalIcp-veldnamen — voor "extra" velden in FinalIcpView. */
+export const FINAL_ICP_KNOWN_FIELDS = new Set<string>([
+  "heroTekst",
+  "firmografisch",
+  "pijnpuntenTriggers",
+  "usp",
+  "dienstFocus",
+  "negatieveIcp",
+  "marketingVertaalslag",
+  "volgendStappen",
+  "positionering",
+]);
 
 // ── Website snapshot (scrape result, ongewijzigd t.o.v. v1) ──────────────────
 

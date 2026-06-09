@@ -8,6 +8,7 @@ import {
   Zap,
 } from "lucide-react";
 import type { FinalIcp } from "@/modules/icp-analyse/schema";
+import { FINAL_ICP_KNOWN_FIELDS } from "@/modules/icp-analyse/schema";
 
 export function FinalIcpView({
   productName,
@@ -249,7 +250,73 @@ export function FinalIcpView({
           ))}
         </ol>
       </Section>
+
+      {/* Aanvullende velden uit de admin-prompt (dynamisch) */}
+      <ExtraFields data={data} />
     </div>
+  );
+}
+
+/** Veld-renderer voor onbekende velden uit de admin-prompt. */
+function renderExtraValue(value: unknown): React.ReactNode {
+  if (value === null || value === undefined) {
+    return <span className="text-gray-400">—</span>;
+  }
+  if (typeof value === "string") {
+    return <span className="whitespace-pre-wrap">{value}</span>;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return <span>{String(value)}</span>;
+  }
+  if (Array.isArray(value) && value.every((v) => typeof v === "string")) {
+    return (
+      <ul className="list-disc pl-5 text-sm">
+        {value.map((v, i) => (
+          <li key={i}>{v}</li>
+        ))}
+      </ul>
+    );
+  }
+  return (
+    <pre className="overflow-x-auto rounded bg-gray-100 p-2 text-xs">
+      {JSON.stringify(value, null, 2)}
+    </pre>
+  );
+}
+
+function humanizeKey(key: string): string {
+  return key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^./, (c) => c.toUpperCase());
+}
+
+function ExtraFields({ data }: { data: FinalIcp }) {
+  const extras = Object.entries(data as Record<string, unknown>).filter(
+    ([k]) => !FINAL_ICP_KNOWN_FIELDS.has(k),
+  );
+  if (extras.length === 0) return null;
+  return (
+    <Section
+      accent="indigo"
+      icon={<Zap className="h-4 w-4" />}
+      eyebrow="Aanvullende info"
+    >
+      <p className="mb-3 text-xs text-gray-500">
+        Extra velden uit de admin-prompt — verschijnen automatisch als de prompt
+        naar een veld vraagt dat niet in het standaardresultaat zit.
+      </p>
+      <dl className="space-y-3 text-sm">
+        {extras.map(([k, v]) => (
+          <div key={k}>
+            <dt className="font-semibold text-gray-900">{humanizeKey(k)}</dt>
+            <dd className="mt-0.5 text-gray-800">{renderExtraValue(v)}</dd>
+          </div>
+        ))}
+      </dl>
+    </Section>
   );
 }
 
