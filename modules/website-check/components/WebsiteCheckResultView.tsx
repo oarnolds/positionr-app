@@ -1,5 +1,48 @@
 // modules/website-check/components/WebsiteCheckResultView.tsx
 import type { WebsiteCheckOutput } from "../schema";
+import { WEBSITE_CHECK_KNOWN_FIELDS } from "../schema";
+
+/**
+ * Rendert een waarde uit een "extra" veld (toegevoegd door admin via de prompt).
+ * - Strings: één regel, multi-line behoudt newlines.
+ * - Arrays van strings: bullet-list.
+ * - Andere objecten/arrays: gepretty-printed JSON.
+ */
+function renderExtraValue(value: unknown): React.ReactNode {
+  if (value === null || value === undefined) {
+    return <span className="text-gray-400">—</span>;
+  }
+  if (typeof value === "string") {
+    return <span className="whitespace-pre-wrap">{value}</span>;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return <span>{String(value)}</span>;
+  }
+  if (Array.isArray(value) && value.every((v) => typeof v === "string")) {
+    return (
+      <ul className="list-disc pl-5 text-sm">
+        {value.map((v, i) => (
+          <li key={i}>{v}</li>
+        ))}
+      </ul>
+    );
+  }
+  return (
+    <pre className="overflow-x-auto rounded bg-gray-100 p-2 text-xs">
+      {JSON.stringify(value, null, 2)}
+    </pre>
+  );
+}
+
+/** Mens-leesbare labels voor extra-veld-keys (camelCase/snake_case → "Title Case"). */
+function humanizeKey(key: string): string {
+  return key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^./, (c) => c.toUpperCase());
+}
 
 function scoreColor(score: number): { bg: string; text: string; bar: string } {
   if (score >= 7.5) return { bg: "bg-emerald-100", text: "text-emerald-700", bar: "bg-emerald-500" };
@@ -110,6 +153,35 @@ export function WebsiteCheckResultView({
         ))}
       </ol>
 
+      {/* Aanvullende velden uit de admin-prompt (dynamisch) */}
+      {(() => {
+        const extras = Object.entries(data as Record<string, unknown>).filter(
+          ([k]) => !WEBSITE_CHECK_KNOWN_FIELDS.has(k),
+        );
+        if (extras.length === 0) return null;
+        return (
+          <section className="mt-8 rounded-xl border border-purple-200 bg-purple-50/40 p-4">
+            <h2 className="mb-3 text-lg font-bold text-purple-900">
+              Aanvullende info
+            </h2>
+            <p className="mb-3 text-xs text-purple-700/70">
+              Extra velden uit de admin-prompt — verschijnen automatisch als de
+              prompt naar een veld vraagt dat niet in het standaardresultaat
+              zit.
+            </p>
+            <dl className="space-y-3 text-sm">
+              {extras.map(([k, v]) => (
+                <div key={k}>
+                  <dt className="font-semibold text-purple-900">
+                    {humanizeKey(k)}
+                  </dt>
+                  <dd className="mt-0.5 text-gray-800">{renderExtraValue(v)}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        );
+      })()}
     </div>
   );
 }
