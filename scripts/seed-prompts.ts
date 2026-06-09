@@ -18,19 +18,40 @@ import { FALLBACK_PROMPTS } from "../lib/modules/fallback-prompts";
 import type { Provider } from "../lib/ai/pricing";
 
 // Default provider per module — admin kan altijd later wijzigen via de UI.
-// Zie spec §7.
+// Modules met "perplexity" hebben live web-search nodig (markttrends, SEO/SEA,
+// concurrentie); de rest werkt op eigen content of vaste kennis met claude.
 const DEFAULT_PROVIDER: Record<string, Provider> = {
+  // Active
   "website-check": "claude",
-  "website-check-concurrenten": "perplexity",
-  "flyercheck": "claude",
-  "marktonderzoek": "perplexity",
-  "linkedin-analyse": "perplexity",
-  "linkedin-concurrentie": "perplexity",
-  "linkedin-concurrentie-kwartaal": "perplexity",
-  "propositie-analyse": "claude",
   "icp-analyse": "claude",
+  "icp-analyse-scan": "claude",
+  "icp-analyse-phase1": "claude",
+  "icp-analyse-final": "claude",
+
+  // Fundament — soon
+  "linkedin-analyse": "perplexity",
+  "markttrends-rapport": "perplexity",
+  flyercheck: "claude",
   "klantcase-analyse": "claude",
-  "gap-analyse": "perplexity",
+  "propositie-analyse": "claude",
+
+  // Groei — soon
+  "website-check-concurrenten": "perplexity",
+  "linkedin-concurrentie": "perplexity",
+  "markttrends-benefits": "perplexity",
+  "features-naar-benefits": "claude",
+  "concurrentie-analyse": "perplexity",
+  "doelgroep-persona": "claude",
+  "propositie-positionering": "claude",
+
+  // Strategie — soon
+  marketingstrategie: "perplexity",
+  salestriggervragen: "claude",
+  "telemarketing-script": "claude",
+  kwartaalplan: "claude",
+  "seo-quickscan": "perplexity",
+  "sea-quickscan": "perplexity",
+  "content-kalender": "claude",
 };
 
 async function main() {
