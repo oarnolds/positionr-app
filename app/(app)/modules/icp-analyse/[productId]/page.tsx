@@ -7,6 +7,12 @@ import { db } from "@/lib/db/client";
 import { clients, icpProducts, sessions } from "@/lib/db/schema";
 import { ModeSelector } from "@/modules/icp-analyse/components/ModeSelector";
 
+// Snelle analyse doet 2 LLM-calls (Phase 1 + Final) synchroon in de
+// startSnelAnalyse-actie; default Vercel-timeout (60s) was net te krap
+// → form bleef hangen terwijl DB-write al was gelukt. 300s geeft ruim
+// marge tot we de actie naar het async fire-and-forget-patroon migreren.
+export const maxDuration = 300;
+
 export default async function ICPModeSelectPage({
   params,
   searchParams,
