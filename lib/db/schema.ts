@@ -73,6 +73,7 @@ export const modules = pgTable("modules", {
   provider: providerEnum("provider").default("claude").notNull(),
   minTier: tierEnum("min_tier").default("fundament").notNull(),
   parentSlug: text("parent_slug"), // null = top-level module; non-null = sub-prompt (bv. ICP-subs)
+  layoutConfig: jsonb("layout_config"), // null = gebruik default uit registry
   outputSchema: jsonb("output_schema"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -165,6 +166,20 @@ export const modulePromptHistory = pgTable("module_prompt_history", {
   savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ── Module Layout History ───────────────────────────────────────────
+// Snapshot van elke save/reset/restore-actie op modules.layoutConfig.
+// Wordt geschreven door admin-server-actions; gelezen door de version-history UI.
+
+export const moduleLayoutHistory = pgTable("module_layout_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  moduleSlug: text("module_slug")
+    .notNull()
+    .references(() => modules.slug, { onDelete: "cascade" }),
+  layoutConfig: jsonb("layout_config").notNull(),
+  savedBy: uuid("saved_by").notNull(), // = auth.users.id (admin)
+  savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ── Subscriptions ───────────────────────────────────────────────────
 // 1-op-1 met auth.users. Waarheid voor portal-toegang + tier-niveau.
 
@@ -216,6 +231,8 @@ export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
 export type ModulePromptHistory = typeof modulePromptHistory.$inferSelect;
 export type NewModulePromptHistory = typeof modulePromptHistory.$inferInsert;
+export type ModuleLayoutHistory = typeof moduleLayoutHistory.$inferSelect;
+export type NewModuleLayoutHistory = typeof moduleLayoutHistory.$inferInsert;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type NewSubscription = typeof subscriptions.$inferInsert;
 export type Lead = typeof leads.$inferSelect;
