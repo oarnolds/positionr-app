@@ -176,8 +176,9 @@ export const moduleLayoutHistory = pgTable("module_layout_history", {
     .notNull()
     .references(() => modules.slug, { onDelete: "cascade" }),
   layoutConfig: jsonb("layout_config").notNull(),
-  savedBy: uuid("saved_by").notNull(), // = auth.users.id (admin)
+  savedBy: uuid("saved_by"), // = auth.users.id (admin), nullable voor system-saves
   savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
+  note: text("note"), // optioneel label, bv. "Hersteld van versie xxxxxxx"
 });
 
 // ── Subscriptions ───────────────────────────────────────────────────
