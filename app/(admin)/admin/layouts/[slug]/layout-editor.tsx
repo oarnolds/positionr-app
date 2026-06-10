@@ -1,26 +1,130 @@
 "use client";
 
+import { useState, useEffect, useTransition, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { Save, RotateCcw, Loader2 } from "lucide-react";
+
 import type { LayoutConfig } from "@/lib/modules/layout";
 import type { LayoutHistoryEntry } from "@/lib/modules/layout-actions";
 import type { WebsiteCheckOutput } from "@/modules/website-check/schema";
+import {
+  saveModuleLayout,
+  resetModuleLayout,
+} from "@/lib/modules/layout-actions";
 
-// Placeholder — wordt in T4 vervangen door echte editor met tabs/state/save.
+import { EditorTab } from "./editor-tab";
+import { PreviewTab } from "./preview-tab";
+import { VersionHistory } from "./version-history";
+
+type Tab = "editor" | "preview";
+
 export function LayoutEditor({
   slug,
   initialLayout,
   history,
+  previewData,
 }: {
   slug: string;
   initialLayout: LayoutConfig;
   history: LayoutHistoryEntry[];
   previewData: WebsiteCheckOutput;
 }) {
+  const router = useRouter();
+  const [tab, setTab] = useState<Tab>("editor");
+  const [layout, setLayout] = useState<LayoutConfig>(initialLayout);
+  const [isPending, startTransition] = useTransition();
+
+  // Baseline = laatst opgeslagen versie. Dirty = state ≠ baseline.
+  const baselineRef = useRef<string>(JSON.stringify(initialLayout));
+  const dirty = JSON.stringify(layout) !== baselineRef.current;
+
+  // beforeunload-prompt bij dirty state.
+  useEffect(() => {
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (!dirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+
+  function handleSave() {
+    startTransition(async () => {
+      await saveModuleLayout(slug, layout, null);
+      baselineRef.current = JSON.stringify(layout);
+      router.refresh(); // history herladen vanaf de server
+    });
+  }
+
+  function handleReset() {
+    if (
+      !confirm(
+        "Layout herstellen naar standaard? Huidige aanpassingen worden vervangen door de default.",
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      await resetModuleLayout(slug);
+      router.refresh();
+    });
+  }
+
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold">Layout — {slug}</h1>
-      <p className="text-sm text-slate-500">
-        Editor in opbouw. {initialLayout.items.length} secties, {history.length} versies in historie.
-      </p>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold">Layout — {slug}</h1>
+          {dirty && (
+            <p className="text-xs text-amber-700">Niet-opgeslagen wijzigingen</p>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={!dirty || isPending}
+            onClick={handleSave}
+            className="inline-flex items-center gap-2 rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            Opslaan
+          </button>
+          <button
+            type="button"
+            onClick={handleReset}
+            disabled={isPending}
+            className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+          >
+            <RotateCcw size={16} /> Reset
+          </button>
+        </div>
+      </header>
+
+      <div className="flex border-b border-slate-200">
+        {(["editor", "preview"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 text-sm font-medium ${
+              tab === t
+                ? "border-b-2 border-purple-600 text-purple-700"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {t === "editor" ? "Editor" : "Preview"}
+          </button>
+        ))}
+      </div>
+
+      {tab === "editor" ? (
+        <EditorTab layout={layout} onChange={setLayout} />
+      ) : (
+        <PreviewTab layout={layout} data={previewData} />
+      )}
+
+      <VersionHistory slug={slug} history={history} />
     </div>
   );
 }
