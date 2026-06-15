@@ -10,6 +10,7 @@ export type SectionDef = SectionMeta & {
     data: WebsiteCheckOutput;
     title: string;
     intro: string | null;
+    hideHeader?: boolean;
   }) => ReactNode;
 };
 
@@ -86,10 +87,12 @@ function IntroP({ intro }: { intro: string | null }) {
 function ScoreBanner({
   data,
   intro,
+  hideHeader,
 }: {
   data: WebsiteCheckOutput;
   title: string;
   intro: string | null;
+  hideHeader?: boolean;
 }) {
   return (
     <div className="flex items-center gap-5 rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50 p-6">
@@ -102,7 +105,7 @@ function ScoreBanner({
       <div>
         <h1 className="text-2xl font-bold">{data.companyName}</h1>
         <p className="text-gray-600">{data.websiteUrl}</p>
-        <IntroP intro={intro} />
+        {!hideHeader && <IntroP intro={intro} />}
       </div>
     </div>
   );
@@ -112,15 +115,21 @@ function ExecutiveSummary({
   data,
   title,
   intro,
+  hideHeader,
 }: {
   data: WebsiteCheckOutput;
   title: string;
   intro: string | null;
+  hideHeader?: boolean;
 }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4">
-      <h2 className="text-lg font-bold">{title}</h2>
-      <IntroP intro={intro} />
+      {!hideHeader && (
+        <>
+          <h2 className="text-lg font-bold">{title}</h2>
+          <IntroP intro={intro} />
+        </>
+      )}
       <p className="mt-2 text-gray-800">{data.executiveSummary}</p>
     </section>
   );
@@ -130,17 +139,23 @@ function OnderdelenGrid({
   data,
   title,
   intro,
+  hideHeader,
 }: {
   data: WebsiteCheckOutput;
   title: string;
   intro: string | null;
+  hideHeader?: boolean;
 }) {
   return (
     <section>
-      <h2 className="mb-3 text-lg font-bold">
-        {title} ({data.onderdelen.length})
-      </h2>
-      <IntroP intro={intro} />
+      {!hideHeader && (
+        <>
+          <h2 className="mb-3 text-lg font-bold">
+            {title} ({data.onderdelen.length})
+          </h2>
+          <IntroP intro={intro} />
+        </>
+      )}
       <div className="space-y-2">
         {data.onderdelen.map((o, i) => {
           const c = scoreColor(o.score);
@@ -182,15 +197,21 @@ function SterkePunten({
   data,
   title,
   intro,
+  hideHeader,
 }: {
   data: WebsiteCheckOutput;
   title: string;
   intro: string | null;
+  hideHeader?: boolean;
 }) {
   return (
     <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-      <h3 className="font-bold text-emerald-700">{title}</h3>
-      <IntroP intro={intro} />
+      {!hideHeader && (
+        <>
+          <h3 className="font-bold text-emerald-700">{title}</h3>
+          <IntroP intro={intro} />
+        </>
+      )}
       <ul className="mt-2 list-disc pl-5 text-sm text-gray-800">
         {data.sterkePunten.map((p, i) => (
           <li key={i}>{p}</li>
@@ -204,15 +225,21 @@ function Verbeterpunten({
   data,
   title,
   intro,
+  hideHeader,
 }: {
   data: WebsiteCheckOutput;
   title: string;
   intro: string | null;
+  hideHeader?: boolean;
 }) {
   return (
     <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-      <h3 className="font-bold text-amber-700">{title}</h3>
-      <IntroP intro={intro} />
+      {!hideHeader && (
+        <>
+          <h3 className="font-bold text-amber-700">{title}</h3>
+          <IntroP intro={intro} />
+        </>
+      )}
       <ul className="mt-2 list-disc pl-5 text-sm text-gray-800">
         {data.verbeterpunten.map((p, i) => (
           <li key={i}>{p}</li>
@@ -226,15 +253,21 @@ function TopActies({
   data,
   title,
   intro,
+  hideHeader,
 }: {
   data: WebsiteCheckOutput;
   title: string;
   intro: string | null;
+  hideHeader?: boolean;
 }) {
   return (
     <section>
-      <h2 className="mb-3 text-lg font-bold">{title}</h2>
-      <IntroP intro={intro} />
+      {!hideHeader && (
+        <>
+          <h2 className="mb-3 text-lg font-bold">{title}</h2>
+          <IntroP intro={intro} />
+        </>
+      )}
       <ol className="space-y-2">
         {data.topActies.map((a, i) => (
           <li key={i} className="rounded-xl border p-3">
@@ -254,10 +287,12 @@ function AanvullendeInfo({
   data,
   title,
   intro,
+  hideHeader,
 }: {
   data: WebsiteCheckOutput;
   title: string;
   intro: string | null;
+  hideHeader?: boolean;
 }) {
   const extras = Object.entries(data as Record<string, unknown>).filter(
     ([k]) => !WEBSITE_CHECK_KNOWN_FIELDS.has(k),
@@ -265,8 +300,12 @@ function AanvullendeInfo({
   if (extras.length === 0) return null;
   return (
     <section className="rounded-xl border border-purple-200 bg-purple-50/40 p-4">
-      <h2 className="mb-3 text-lg font-bold text-purple-900">{title}</h2>
-      <IntroP intro={intro} />
+      {!hideHeader && (
+        <>
+          <h2 className="mb-3 text-lg font-bold text-purple-900">{title}</h2>
+          <IntroP intro={intro} />
+        </>
+      )}
       <p className="mb-3 text-xs text-purple-700/70">
         Extra velden uit de admin-prompt — verschijnen automatisch als de prompt
         naar een veld vraagt dat niet in het standaardresultaat zit.

@@ -1,21 +1,15 @@
 "use client";
 
+import { GripVertical, Trash2 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X } from "lucide-react";
 
 import { RichPromptEditor } from "@/components/rich-prompt-editor";
 import type { LayoutItem } from "@/lib/modules/layout";
 
 type BlockLayoutItem = Extract<LayoutItem, { kind: "block" }>;
 
-/**
- * Vrij Markdown-blok in de EditorTab. Hergebruikt RichPromptEditor
- * (TipTap → Markdown via turndown). Output landt als markdown in
- * `item.markdown` en wordt door MarkdownBlock-component gerenderd in
- * de result-view.
- */
-export function BlockItem({
+export function InlineBlock({
   item,
   onChange,
   onRemove,
@@ -26,17 +20,17 @@ export function BlockItem({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: `block-${item.id}` });
-  const style = {
+  const dragStyle = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    ...(isDragging ? { opacity: 0.5 } : {}),
   };
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      className="rounded-lg border border-amber-200 bg-amber-50/50 p-3"
+      style={dragStyle}
+      className="group relative rounded-lg border-2 border-dashed border-slate-200 p-3"
     >
       <div className="mb-2 flex items-center gap-2">
         <button
@@ -48,25 +42,23 @@ export function BlockItem({
         >
           <GripVertical size={16} />
         </button>
-        <span className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+        <span className="text-xs font-mono uppercase tracking-wide text-slate-400">
           Vrij blok
         </span>
         <button
           type="button"
           onClick={onRemove}
-          className="ml-auto rounded p-1 text-slate-400 hover:bg-rose-100 hover:text-rose-600"
+          className="ml-auto rounded p-1 text-slate-500 hover:bg-rose-100 hover:text-rose-600"
           aria-label="Blok verwijderen"
         >
-          <X size={16} />
+          <Trash2 size={14} />
         </button>
       </div>
-      <div className="rounded border border-amber-200 bg-white">
-        <RichPromptEditor
-          value={item.markdown}
-          onChange={(markdown) => onChange({ markdown })}
-          placeholder="Schrijf vrije content (Markdown ondersteund)…"
-        />
-      </div>
+      <RichPromptEditor
+        value={item.markdown}
+        onChange={(markdown) => onChange({ markdown })}
+        placeholder="Schrijf vrije content (Markdown ondersteund)…"
+      />
     </div>
   );
 }

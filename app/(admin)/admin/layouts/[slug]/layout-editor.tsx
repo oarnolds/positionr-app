@@ -12,11 +12,9 @@ import {
   resetModuleLayout,
 } from "@/lib/modules/layout-actions";
 
-import { EditorTab } from "./editor-tab";
-import { PreviewTab } from "./preview-tab";
 import { VersionHistory } from "./version-history";
-
-type Tab = "editor" | "preview";
+import { ModeToggle, type EditorMode } from "./mode-toggle";
+import { LayoutCanvas } from "./layout-canvas";
 
 export function LayoutEditor({
   slug,
@@ -30,7 +28,7 @@ export function LayoutEditor({
   previewData: WebsiteCheckOutput;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("editor");
+  const [mode, setMode] = useState<EditorMode>("edit");
   const [layout, setLayout] = useState<LayoutConfig>(initialLayout);
   const [isPending, startTransition] = useTransition();
 
@@ -73,14 +71,14 @@ export function LayoutEditor({
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <header className="flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">Layout — {slug}</h1>
           {dirty && (
             <p className="text-xs text-amber-700">Niet-opgeslagen wijzigingen</p>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             disabled={!dirty || isPending}
@@ -98,31 +96,16 @@ export function LayoutEditor({
           >
             <RotateCcw size={16} /> Reset
           </button>
+          <ModeToggle mode={mode} onChange={setMode} />
         </div>
-      </header>
-
-      <div className="flex border-b border-slate-200">
-        {(["editor", "preview"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium ${
-              tab === t
-                ? "border-b-2 border-purple-600 text-purple-700"
-                : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            {t === "editor" ? "Editor" : "Preview"}
-          </button>
-        ))}
       </div>
 
-      {tab === "editor" ? (
-        <EditorTab layout={layout} onChange={setLayout} />
-      ) : (
-        <PreviewTab layout={layout} data={previewData} />
-      )}
+      <LayoutCanvas
+        mode={mode}
+        layout={layout}
+        data={previewData}
+        onChange={setLayout}
+      />
 
       <VersionHistory slug={slug} history={history} />
     </div>

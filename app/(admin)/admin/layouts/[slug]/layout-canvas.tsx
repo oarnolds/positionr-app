@@ -17,19 +17,28 @@ import {
 } from "@dnd-kit/sortable";
 
 import type { LayoutConfig, LayoutItem } from "@/lib/modules/layout";
-import { SectionItem } from "./section-item";
-import { BlockItem } from "./block-item";
-import { HoverInsert } from "./hover-insert";
+import type { WebsiteCheckOutput } from "@/modules/website-check/schema";
+
+import { WebsiteCheckResultView } from "@/modules/website-check/components/WebsiteCheckResultView";
+
+import type { EditorMode } from "./mode-toggle";
+import { InlineSection } from "./inline-section";
+import { InlineBlock } from "./inline-block";
+import { InsertStrip } from "./insert-strip";
 
 function itemKey(item: LayoutItem): string {
   return `${item.kind}-${item.id}`;
 }
 
-export function EditorTab({
+export function LayoutCanvas({
+  mode,
   layout,
+  data,
   onChange,
 }: {
+  mode: EditorMode;
   layout: LayoutConfig;
+  data: WebsiteCheckOutput;
   onChange: (next: LayoutConfig) => void;
 }) {
   const sensors = useSensors(
@@ -38,6 +47,18 @@ export function EditorTab({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+
+  if (mode === "preview") {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-4 py-2 text-xs text-slate-500">
+          Live preview met huidige edit-state. Wijzigingen worden pas zichtbaar
+          voor klanten na <strong>Opslaan</strong>.
+        </div>
+        <WebsiteCheckResultView data={data} layout={layout} readOnly />
+      </div>
+    );
+  }
 
   function handleDragEnd(e: DragEndEvent) {
     const { active, over } = e;
@@ -54,7 +75,7 @@ export function EditorTab({
     onChange({ ...layout, items: next });
   }
 
-  function removeItem(idx: number) {
+  function removeBlock(idx: number) {
     onChange({ ...layout, items: layout.items.filter((_, i) => i !== idx) });
   }
 
@@ -85,26 +106,23 @@ export function EditorTab({
         strategy={verticalListSortingStrategy}
       >
         <div className="space-y-1">
-          <HoverInsert onInsert={() => insertBlock(0)} />
+          <InsertStrip onInsert={() => insertBlock(0)} />
           {layout.items.map((item, idx) => (
             <div key={itemKey(item)}>
               {item.kind === "section" ? (
-                <SectionItem
+                <InlineSection
                   item={item}
-                  onChange={(patch) =>
-                    updateItem(idx, patch as Partial<LayoutItem>)
-                  }
+                  data={data}
+                  onChange={(patch) => updateItem(idx, patch)}
                 />
               ) : (
-                <BlockItem
+                <InlineBlock
                   item={item}
-                  onChange={(patch) =>
-                    updateItem(idx, patch as Partial<LayoutItem>)
-                  }
-                  onRemove={() => removeItem(idx)}
+                  onChange={(patch) => updateItem(idx, patch)}
+                  onRemove={() => removeBlock(idx)}
                 />
               )}
-              <HoverInsert onInsert={() => insertBlock(idx + 1)} />
+              <InsertStrip onInsert={() => insertBlock(idx + 1)} />
             </div>
           ))}
         </div>
