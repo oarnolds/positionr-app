@@ -19,8 +19,9 @@ import {
 import type { LayoutConfig, LayoutItem } from "@/lib/modules/layout";
 import type { WebsiteCheckOutput } from "@/modules/website-check/schema";
 
+import { WebsiteCheckResultView } from "@/modules/website-check/components/WebsiteCheckResultView";
+
 import type { EditorMode } from "./mode-toggle";
-import { PreviewTab } from "./preview-tab";
 import { InlineSection } from "./inline-section";
 import { InlineBlock } from "./inline-block";
 import { InsertStrip } from "./insert-strip";
@@ -48,7 +49,15 @@ export function LayoutCanvas({
   );
 
   if (mode === "preview") {
-    return <PreviewTab layout={layout} data={data} />;
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-4 py-2 text-xs text-slate-500">
+          Live preview met huidige edit-state. Wijzigingen worden pas zichtbaar
+          voor klanten na <strong>Opslaan</strong>.
+        </div>
+        <WebsiteCheckResultView data={data} layout={layout} readOnly />
+      </div>
+    );
   }
 
   function handleDragEnd(e: DragEndEvent) {
