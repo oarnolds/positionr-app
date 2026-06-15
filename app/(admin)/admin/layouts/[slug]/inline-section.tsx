@@ -1,6 +1,8 @@
 "use client";
 
 import { Eye, EyeOff, GripVertical, Trash2 } from "lucide-react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import { SECTIONS } from "@/modules/website-check/sections";
 import type { LayoutItem } from "@/lib/modules/layout";
@@ -17,6 +19,16 @@ export function InlineSection({
   data: WebsiteCheckOutput;
   onChange: (patch: Partial<SectionLayoutItem>) => void;
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: `section-${item.id}` });
+  const dragStyle = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    // Alleen tijdens drag een inline opacity zetten — anders zou het de
+    // Tailwind-class `opacity-50` voor verborgen secties overschrijven.
+    ...(isDragging ? { opacity: 0.5 } : {}),
+  };
+
   const def = SECTIONS.find((s) => s.id === item.id);
 
   if (!def) {
@@ -35,6 +47,8 @@ export function InlineSection({
 
   return (
     <div
+      ref={setNodeRef}
+      style={dragStyle}
       className={`group relative rounded-lg border-2 border-dashed border-slate-200 p-3 ${
         isHidden ? "opacity-50" : ""
       }`}
@@ -42,6 +56,8 @@ export function InlineSection({
       <div className="mb-2 flex items-center gap-2">
         <button
           type="button"
+          {...attributes}
+          {...listeners}
           className="cursor-grab touch-none p-1 text-slate-400 hover:text-slate-700"
           aria-label="Sleep om te herordenen"
         >

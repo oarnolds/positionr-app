@@ -1,5 +1,21 @@
 "use client";
 
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+
 import type { LayoutConfig, LayoutItem } from "@/lib/modules/layout";
 import type { WebsiteCheckOutput } from "@/modules/website-check/schema";
 
@@ -8,6 +24,10 @@ import { PreviewTab } from "./preview-tab";
 import { InlineSection } from "./inline-section";
 import { InlineBlock } from "./inline-block";
 import { InsertStrip } from "./insert-strip";
+
+function itemKey(item: LayoutItem): string {
+  return `${item.kind}-${item.id}`;
+}
 
 export function LayoutCanvas({
   mode,
@@ -22,6 +42,22 @@ export function LayoutCanvas({
 }) {
   if (mode === "preview") {
     return <PreviewTab layout={layout} data={data} />;
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = layout.items.findIndex((i) => itemKey(i) === active.id);
+    const newIdx = layout.items.findIndex((i) => itemKey(i) === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+    onChange({ ...layout, items: arrayMove(layout.items, oldIdx, newIdx) });
   }
 
   function updateItem(idx: number, patch: Partial<LayoutItem>) {
@@ -51,26 +87,37 @@ export function LayoutCanvas({
   }
 
   return (
-    <div className="space-y-1">
-      <InsertStrip onInsert={() => insertBlock(0)} />
-      {layout.items.map((item, idx) => (
-        <div key={item.kind === "section" ? `section-${item.id}` : `block-${item.id}`}>
-          {item.kind === "section" ? (
-            <InlineSection
-              item={item}
-              data={data}
-              onChange={(patch) => updateItem(idx, patch)}
-            />
-          ) : (
-            <InlineBlock
-              item={item}
-              onChange={(patch) => updateItem(idx, patch)}
-              onRemove={() => removeBlock(idx)}
-            />
-          )}
-          <InsertStrip onInsert={() => insertBlock(idx + 1)} />
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext
+        items={layout.items.map(itemKey)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="space-y-1">
+          <InsertStrip onInsert={() => insertBlock(0)} />
+          {layout.items.map((item, idx) => (
+            <div key={itemKey(item)}>
+              {item.kind === "section" ? (
+                <InlineSection
+                  item={item}
+                  data={data}
+                  onChange={(patch) => updateItem(idx, patch)}
+                />
+              ) : (
+                <InlineBlock
+                  item={item}
+                  onChange={(patch) => updateItem(idx, patch)}
+                  onRemove={() => removeBlock(idx)}
+                />
+              )}
+              <InsertStrip onInsert={() => insertBlock(idx + 1)} />
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      </SortableContext>
+    </DndContext>
   );
 }
