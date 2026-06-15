@@ -12,10 +12,9 @@ import {
   resetModuleLayout,
 } from "@/lib/modules/layout-actions";
 
-import { EditorTab } from "./editor-tab";
-import { PreviewTab } from "./preview-tab";
 import { VersionHistory } from "./version-history";
 import { ModeToggle, type EditorMode } from "./mode-toggle";
+import { LayoutCanvas } from "./layout-canvas";
 
 export function LayoutEditor({
   slug,
@@ -101,11 +100,12 @@ export function LayoutEditor({
         </div>
       </div>
 
-      {mode === "edit" ? (
-        <EditorTab layout={layout} onChange={setLayout} />
-      ) : (
-        <PreviewTab layout={layout} data={previewData} />
-      )}
+      <LayoutCanvas
+        mode={mode}
+        layout={layout}
+        data={previewData}
+        onChange={setLayout}
+      />
 
       <VersionHistory slug={slug} history={history} />
     </div>
