@@ -36,3 +36,6 @@ pnpm-debug.log*
 
 # brainstorm visual companion
 .superpowers/
+
+# git worktrees voor feature-implementaties
+.worktrees/
