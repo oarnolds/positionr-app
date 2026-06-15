@@ -6,7 +6,7 @@ import type { WebsiteCheckOutput } from "@/modules/website-check/schema";
 import type { EditorMode } from "./mode-toggle";
 import { PreviewTab } from "./preview-tab";
 import { InlineSection } from "./inline-section";
-import { BlockItem } from "./block-item";
+import { InlineBlock } from "./inline-block";
 
 export function LayoutCanvas({
   mode,
@@ -47,7 +47,7 @@ export function LayoutCanvas({
           );
         }
         return (
-          <BlockItem
+          <InlineBlock
             key={`block-${item.id}`}
             item={item}
             onChange={(patch) => updateItem(idx, patch)}
