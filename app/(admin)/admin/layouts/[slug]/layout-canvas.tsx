@@ -40,16 +40,16 @@ export function LayoutCanvas({
   data: WebsiteCheckOutput;
   onChange: (next: LayoutConfig) => void;
 }) {
-  if (mode === "preview") {
-    return <PreviewTab layout={layout} data={data} />;
-  }
-
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+
+  if (mode === "preview") {
+    return <PreviewTab layout={layout} data={data} />;
+  }
 
   function handleDragEnd(e: DragEndEvent) {
     const { active, over } = e;
