@@ -33,7 +33,7 @@ export function ModeToggle({
             : "text-slate-600 hover:text-slate-900"
         }`}
       >
-        <Eye size={14} /> Voorbeeld
+        <Eye size={14} /> Preview
       </button>
     </div>
   );
