@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Save, RotateCcw, Loader2 } from "lucide-react";
+import { Save, RotateCcw, Loader2, BookOpen } from "lucide-react";
 
 import type { LayoutConfig } from "@/lib/modules/layout";
 import type { LayoutHistoryEntry } from "@/lib/modules/layout-actions";
@@ -15,20 +15,24 @@ import {
 import { VersionHistory } from "./version-history";
 import { ModeToggle, type EditorMode } from "./mode-toggle";
 import { LayoutCanvas } from "./layout-canvas";
+import { FormatExampleDrawer } from "./format-example-drawer";
 
 export function LayoutEditor({
   slug,
   initialLayout,
   history,
   previewData,
+  formatExample,
 }: {
   slug: string;
   initialLayout: LayoutConfig;
   history: LayoutHistoryEntry[];
   previewData: WebsiteCheckOutput;
+  formatExample: string | null;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<EditorMode>("edit");
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [layout, setLayout] = useState<LayoutConfig>(initialLayout);
   const [isPending, startTransition] = useTransition();
 
@@ -96,6 +100,15 @@ export function LayoutEditor({
           >
             <RotateCcw size={16} /> Reset
           </button>
+          {formatExample !== null && (
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <BookOpen size={16} /> Voorbeeld
+            </button>
+          )}
           <ModeToggle mode={mode} onChange={setMode} />
         </div>
       </div>
@@ -108,6 +121,15 @@ export function LayoutEditor({
       />
 
       <VersionHistory slug={slug} history={history} />
+
+      {formatExample !== null && (
+        <FormatExampleDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          title={`Voorbeeld — ${slug}`}
+          markdown={formatExample}
+        />
+      )}
     </div>
   );
 }
