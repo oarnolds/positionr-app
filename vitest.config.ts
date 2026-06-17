@@ -18,6 +18,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),
+      // "server-only" is een Next.js-guard die niet bestaat in Node-testomgeving.
+      // Mock naar een leeg module zodat vitest niet crasht.
+      "server-only": path.resolve(__dirname, "__mocks__/server-only.ts"),
     },
   },
 });
