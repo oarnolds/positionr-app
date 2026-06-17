@@ -1,8 +1,8 @@
-import { MarkdownBlock } from "@/lib/modules/MarkdownBlock";
+import { WebsiteCheckReport } from "../report/WebsiteCheckReport";
 
 /**
- * Toont het resultaat van een Website Check sessie als gerenderde markdown.
- * De AI heeft de template (modules.format_example) gevuld; wij renderen 1-op-1.
+ * Entry-point voor het Website Check resultaat. Houdt de container-styling
+ * (centered, padding) en delegeert naar de rapport-renderer.
  */
 export function WebsiteCheckResultView({
   markdown,
@@ -11,7 +11,7 @@ export function WebsiteCheckResultView({
 }) {
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
-      <MarkdownBlock markdown={markdown} />
+      <WebsiteCheckReport markdown={markdown} />
     </div>
   );
 }
