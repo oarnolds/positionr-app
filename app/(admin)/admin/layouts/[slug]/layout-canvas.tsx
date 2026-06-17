@@ -17,7 +17,6 @@ import {
 } from "@dnd-kit/sortable";
 
 import type { LayoutConfig, LayoutItem } from "@/lib/modules/layout";
-import type { WebsiteCheckOutput } from "@/modules/website-check/schema";
 
 import { WebsiteCheckResultView } from "@/modules/website-check/components/WebsiteCheckResultView";
 
@@ -33,12 +32,10 @@ function itemKey(item: LayoutItem): string {
 export function LayoutCanvas({
   mode,
   layout,
-  data,
   onChange,
 }: {
   mode: EditorMode;
   layout: LayoutConfig;
-  data: WebsiteCheckOutput;
   onChange: (next: LayoutConfig) => void;
 }) {
   const sensors = useSensors(
@@ -55,7 +52,7 @@ export function LayoutCanvas({
           Live preview met huidige edit-state. Wijzigingen worden pas zichtbaar
           voor klanten na <strong>Opslaan</strong>.
         </div>
-        <WebsiteCheckResultView data={data} layout={layout} readOnly />
+        <WebsiteCheckResultView markdown="" />
       </div>
     );
   }
@@ -112,7 +109,6 @@ export function LayoutCanvas({
               {item.kind === "section" ? (
                 <InlineSection
                   item={item}
-                  data={data}
                   onChange={(patch) => updateItem(idx, patch)}
                 />
               ) : (

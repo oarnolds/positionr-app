@@ -298,13 +298,13 @@ export async function runSnelInBackground(sessionId: string): Promise<void> {
       .update(sessions)
       .set({
         status: "approved",
-        output: {
+        output: JSON.stringify({
           phase1Output: phase1Result.data,
           webformAnswers: webformDefaults,
           finalIcp: finalResult.data,
           betrouwbaarheid: phase1Result.data.betrouwbaarheid_score,
           positionering: finalResult.data.positionering,
-        } as unknown as Record<string, unknown>,
+        }),
         promptUsed: `${phase1Result.promptUsed}\n\n=== FINAL ICP CALL ===\n${finalResult.promptUsed}`,
         llmModel: phase1Result.llmModel,
         llmInputTokens: totalInputTokens,
@@ -398,12 +398,12 @@ export async function runVolledigPhase1(
       .update(sessions)
       .set({
         status: "review",
-        output: {
+        output: JSON.stringify({
           phase1Output: phase1Result.data,
           webformAnswers: null,
           finalIcp: null,
           betrouwbaarheid: phase1Result.data.betrouwbaarheid_score,
-        } as unknown as Record<string, unknown>,
+        }),
         promptUsed: phase1Result.promptUsed,
         llmModel: phase1Result.llmModel,
         llmInputTokens: phase1Result.llmInputTokens,
@@ -442,18 +442,18 @@ export async function saveWebformAnswersPartial(
   if (!session) throw new Error("Sessie niet gevonden");
   if (session.userId !== userId) throw new Error("Geen toegang");
 
-  const currentOutput = (session.output ?? {}) as Record<string, unknown>;
+  const currentOutput = (session.output ? JSON.parse(session.output) : {}) as Record<string, unknown>;
   const currentAnswers = (currentOutput.webformAnswers ?? {}) as Partial<WebformAnswers>;
   const merged = { ...currentAnswers, ...answers };
 
   await db
     .update(sessions)
     .set({
-      output: {
+      output: JSON.stringify({
         ...currentOutput,
         webformAnswers: merged,
         webformStep: step,
-      } as unknown as Record<string, unknown>,
+      }),
     })
     .where(eq(sessions.id, sessionId));
 }
@@ -479,7 +479,7 @@ export async function runVolledigPhase3(
     throw new Error("Sessie mist product- of klant-koppeling");
   }
 
-  const output = (session.output ?? {}) as Record<string, unknown>;
+  const output = (session.output ? JSON.parse(session.output) : {}) as Record<string, unknown>;
   const phase1 = output.phase1Output as Phase1Output | undefined;
   const rawAnswers = output.webformAnswers as
     | Partial<WebformAnswers>
@@ -528,12 +528,12 @@ export async function runVolledigPhase3(
       .update(sessions)
       .set({
         status: "approved",
-        output: {
+        output: JSON.stringify({
           ...output,
           webformAnswers: parsed.data,
           finalIcp: finalResult.data,
           positionering: finalResult.data.positionering,
-        } as unknown as Record<string, unknown>,
+        }),
         promptUsed: `${session.promptUsed ?? ""}\n\n=== FINAL ICP CALL ===\n${finalResult.promptUsed}`,
         llmInputTokens: totalInput,
         llmOutputTokens: totalOutput,

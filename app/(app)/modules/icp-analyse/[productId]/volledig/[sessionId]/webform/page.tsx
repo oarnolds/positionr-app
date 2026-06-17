@@ -38,7 +38,7 @@ export default async function ICPVolledigWebformPage({
     .limit(1);
   if (!product || product.id !== session.productId) notFound();
 
-  const output = (session.output ?? {}) as {
+  const output = (session.output ? JSON.parse(session.output) : {}) as {
     webformAnswers?: Partial<WebformAnswers>;
     webformStep?: number;
   };

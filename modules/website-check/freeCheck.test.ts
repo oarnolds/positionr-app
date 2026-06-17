@@ -1,20 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { runFreeCheck } from "./freeCheck";
-import type { WebsiteCheckOutput } from "./schema";
-
-const OUTPUT: WebsiteCheckOutput = {
-  companyName: "Acme",
-  websiteUrl: "https://example.com",
-  overallScore: 7,
-  executiveSummary: "ok",
-  onderdelen: [],
-  sterkePunten: [],
-  verbeterpunten: [],
-  topActies: [],
-};
 
 describe("runFreeCheck", () => {
-  it("schrijft completed met resultaat bij succes", async () => {
+  it("schrijft completed met markdown-resultaat bij succes", async () => {
     const updateLead = vi.fn();
     await runFreeCheck(
       { leadId: "lead-1", websiteUrl: "https://example.com" },
@@ -24,12 +12,13 @@ describe("runFreeCheck", () => {
           prompt: "Analyseer {websiteUrl} {scrapedContent} {companyName}",
           provider: "claude",
         }),
+        fetchFormatExample: async () => "# Voorbeeld\n\n[KLANTNAAM]",
         analyze: async () => ({
-          data: OUTPUT,
-          llmModel: "test",
-          llmInputTokens: 1,
-          llmOutputTokens: 1,
-          llmCostCents: 0,
+          markdown: "# Resultaat\n\nAnalyse van example.com",
+          llmModel: "claude-sonnet-4-6",
+          llmInputTokens: 100,
+          llmOutputTokens: 50,
+          llmCostCents: 1,
           promptUsed: "Analyseer https://example.com",
         }),
         updateLead,
@@ -39,12 +28,12 @@ describe("runFreeCheck", () => {
     expect(updateLead.mock.calls[0][0]).toBe("lead-1");
     expect(updateLead.mock.calls[0][1]).toMatchObject({
       status: "completed",
-      result: OUTPUT,
+      result: { markdown: "# Resultaat\n\nAnalyse van example.com" },
     });
     expect(updateLead.mock.calls[0][1].completedAt).toBeInstanceOf(Date);
   });
 
-  it("schrijft failed met errorMessage bij fout", async () => {
+  it("schrijft failed met errorMessage bij scrape-fout", async () => {
     const updateLead = vi.fn();
     await runFreeCheck(
       { leadId: "lead-1", websiteUrl: "https://example.com" },
@@ -53,6 +42,7 @@ describe("runFreeCheck", () => {
           throw new Error("scrape kapot");
         },
         fetchPrompt: async () => ({ prompt: "", provider: "claude" }),
+        fetchFormatExample: async () => "# Voorbeeld",
         analyze: async () => {
           throw new Error("zou niet moeten gebeuren");
         },
@@ -63,6 +53,30 @@ describe("runFreeCheck", () => {
     expect(updateLead.mock.calls[0][1]).toMatchObject({
       status: "failed",
       errorMessage: "scrape kapot",
+    });
+  });
+
+  it("schrijft failed als format-template ontbreekt", async () => {
+    const updateLead = vi.fn();
+    await runFreeCheck(
+      { leadId: "lead-2", websiteUrl: "https://example.com" },
+      {
+        scrape: async () => "<html>...</html>",
+        fetchPrompt: async () => ({
+          prompt: "Analyseer {websiteUrl}",
+          provider: "claude",
+        }),
+        fetchFormatExample: async () => null,
+        analyze: async () => {
+          throw new Error("zou niet moeten worden aangeroepen");
+        },
+        updateLead,
+      },
+    );
+    expect(updateLead).toHaveBeenCalledTimes(1);
+    expect(updateLead.mock.calls[0][1]).toMatchObject({
+      status: "failed",
+      errorMessage: expect.stringContaining("format-template"),
     });
   });
 });

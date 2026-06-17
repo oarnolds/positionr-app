@@ -6,7 +6,6 @@ import { Save, RotateCcw, Loader2, BookOpen } from "lucide-react";
 
 import type { LayoutConfig } from "@/lib/modules/layout";
 import type { LayoutHistoryEntry } from "@/lib/modules/layout-actions";
-import type { WebsiteCheckOutput } from "@/modules/website-check/schema";
 import {
   saveModuleLayout,
   resetModuleLayout,
@@ -21,13 +20,11 @@ export function LayoutEditor({
   slug,
   initialLayout,
   history,
-  previewData,
   formatExample,
 }: {
   slug: string;
   initialLayout: LayoutConfig;
   history: LayoutHistoryEntry[];
-  previewData: WebsiteCheckOutput;
   formatExample: string | null;
 }) {
   const router = useRouter();
@@ -116,7 +113,6 @@ export function LayoutEditor({
       <LayoutCanvas
         mode={mode}
         layout={layout}
-        data={previewData}
         onChange={setLayout}
       />
 

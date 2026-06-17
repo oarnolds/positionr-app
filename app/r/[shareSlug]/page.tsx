@@ -2,10 +2,8 @@ import { notFound } from "next/navigation";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { sessions } from "@/lib/db/schema";
-import { WebsiteCheckOutputSchema } from "@/modules/website-check/schema";
 import { WebsiteCheckResultView } from "@/modules/website-check/components/WebsiteCheckResultView";
 import { MODULE_SLUG } from "@/modules/website-check";
-import { getModuleLayout } from "@/lib/modules/layouts";
 
 export default async function PublicSharePage({
   params,
@@ -21,9 +19,5 @@ export default async function PublicSharePage({
 
   if (!row || row.moduleSlug !== MODULE_SLUG) notFound();
 
-  const parsed = WebsiteCheckOutputSchema.safeParse(row.output);
-  if (!parsed.success) notFound();
-
-  const layout = await getModuleLayout(MODULE_SLUG);
-  return <WebsiteCheckResultView data={parsed.data} layout={layout} readOnly />;
+  return <WebsiteCheckResultView markdown={row.output ?? ""} />;
 }

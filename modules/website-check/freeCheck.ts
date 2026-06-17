@@ -1,26 +1,23 @@
-import { analyze, type AnalyzeArgs } from "@/lib/ai/analyze";
+import { analyzeClaudeRaw, type ClaudeRawResult } from "@/lib/ai/claude-raw";
 import { getModulePrompt, substitutePlaceholders } from "@/lib/modules/prompts";
 import { globalPlaceholders } from "@/lib/modules/global-placeholders";
+import { getFormatExample } from "@/lib/modules/format-examples";
 import { scrapeWebsite } from "./scraper";
-import {
-  WebsiteCheckOutputSchema,
-  type WebsiteCheckOutput,
-} from "./schema";
 import { MODULE_SLUG } from "./index";
 
 export type FreeCheckDeps = {
   scrape: (url: string) => Promise<string>;
   fetchPrompt: typeof getModulePrompt;
-  analyze: (
-    args: AnalyzeArgs<WebsiteCheckOutput>,
-  ) => ReturnType<typeof analyze<WebsiteCheckOutput>>;
+  fetchFormatExample: typeof getFormatExample;
+  analyze: (args: { prompt: string }) => Promise<ClaudeRawResult>;
   updateLead: (id: string, patch: Record<string, unknown>) => Promise<void>;
 };
 
 export const defaultFreeCheckDeps: FreeCheckDeps = {
   scrape: scrapeWebsite,
   fetchPrompt: getModulePrompt,
-  analyze: (args) => analyze<WebsiteCheckOutput>(args),
+  fetchFormatExample: getFormatExample,
+  analyze: analyzeClaudeRaw,
   updateLead: async (id, patch) => {
     const { eq, and } = await import("drizzle-orm");
     const { db } = await import("@/lib/db/client");
@@ -40,21 +37,26 @@ export async function runFreeCheck(
 ): Promise<void> {
   try {
     const scraped = await deps.scrape(args.websiteUrl);
-    const { prompt: template, provider } = await deps.fetchPrompt(MODULE_SLUG);
-    const prompt = substitutePlaceholders(template, {
+    const { prompt: template } = await deps.fetchPrompt(MODULE_SLUG);
+    const formatTemplate = await deps.fetchFormatExample(MODULE_SLUG);
+    if (!formatTemplate) {
+      throw new Error("Geen format-template voor website-check gevonden in DB");
+    }
+
+    const promptHeader = substitutePlaceholders(template, {
       ...globalPlaceholders(),
       websiteUrl: args.websiteUrl,
       companyName: "Onbekend",
       scrapedContent: scraped || "(Kon website niet laden)",
     });
-    const result = await deps.analyze({
-      provider,
-      prompt,
-      schema: WebsiteCheckOutputSchema,
-    });
+
+    const prompt = `${promptHeader}\n\n---\nFORMAT-TEMPLATE (volg deze structuur exact, vervang placeholders door inhoud op basis van de geschraapte data; behoud markdown-structuur, koppen en tabellen):\n\n${formatTemplate}\n\n---\nSchrijf nu de gevulde versie van bovenstaand format. Geef alleen de markdown terug, geen JSON, geen uitleg eromheen.`;
+
+    const result = await deps.analyze({ prompt });
+
     await deps.updateLead(args.leadId, {
       status: "completed",
-      result: result.data,
+      result: { markdown: result.markdown },
       completedAt: new Date(),
     });
   } catch (err) {

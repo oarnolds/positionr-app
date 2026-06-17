@@ -212,7 +212,7 @@ export default async function ICPSnelResultPage({
   }
 
   // ── Approved ─────────────────────────────────────────────────────
-  const output = (row.output ?? {}) as {
+  const output = (row.output ? JSON.parse(row.output) : {}) as {
     finalIcp?: unknown;
     betrouwbaarheid?: number;
   };

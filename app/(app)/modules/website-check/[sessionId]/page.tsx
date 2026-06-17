@@ -6,10 +6,8 @@ import { eq, and } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
 import { sessions } from "@/lib/db/schema";
-import { WebsiteCheckOutputSchema } from "@/modules/website-check/schema";
 import { WebsiteCheckResultView } from "@/modules/website-check/components/WebsiteCheckResultView";
 import { MODULE_SLUG } from "@/modules/website-check";
-import { getModuleLayout } from "@/lib/modules/layouts";
 import { regenerateAnalysis } from "../actions";
 import { RunningPoll } from "./running-poll";
 
@@ -162,28 +160,14 @@ export default async function WebsiteCheckResultPage({
   }
 
   // status === "approved"
-  const parsed = WebsiteCheckOutputSchema.safeParse(row.output);
-  if (!parsed.success) {
-    return (
-      <>
-        {header}
-        <div className="mx-auto max-w-4xl px-6 py-16 text-center text-rose-700">
-          Resultaat-output is ongeldig opgeslagen.
-        </div>
-      </>
-    );
-  }
-
   const shareUrl = row.shareSlug
     ? `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/r/${row.shareSlug}`
     : "";
 
-  const layout = await getModuleLayout(MODULE_SLUG);
-
   return (
     <>
       {header}
-      <WebsiteCheckResultView data={parsed.data} layout={layout} />
+      <WebsiteCheckResultView markdown={row.output ?? ""} />
       <div className="mx-auto mt-2 mb-12 flex max-w-4xl items-center gap-3 px-6">
         <form action={regenerateAnalysis}>
           <input type="hidden" name="sourceSessionId" value={row.id} />

@@ -130,7 +130,7 @@ export const sessions = pgTable("sessions", {
 
   // Input + output
   input: jsonb("input").notNull(),
-  output: jsonb("output"),
+  output: text("output"),
 
   // Audit-spoor van de prompt
   promptOverride: text("prompt_override"), // admin-edit per sessie

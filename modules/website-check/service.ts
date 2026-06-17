@@ -1,20 +1,16 @@
 import { randomBytes } from "node:crypto";
-import { analyze, type AnalyzeArgs } from "@/lib/ai/analyze";
+import { analyzeClaudeRaw, type ClaudeRawResult } from "@/lib/ai/claude-raw";
 import { getModulePrompt, substitutePlaceholders } from "@/lib/modules/prompts";
 import { globalPlaceholders } from "@/lib/modules/global-placeholders";
+import { getFormatExample } from "@/lib/modules/format-examples";
 import { scrapeWebsite } from "./scraper";
-import {
-  WebsiteCheckOutputSchema,
-  type WebsiteCheckOutput,
-} from "./schema";
 import { MODULE_SLUG } from "./index";
 
 export type ServiceDeps = {
   scrape: (url: string) => Promise<string>;
   fetchPrompt: typeof getModulePrompt;
-  analyze: (
-    args: AnalyzeArgs<WebsiteCheckOutput>,
-  ) => ReturnType<typeof analyze<WebsiteCheckOutput>>;
+  fetchFormatExample: typeof getFormatExample;
+  analyze: (args: { prompt: string }) => Promise<ClaudeRawResult>;
   updateSession: (id: string, patch: Record<string, unknown>) => Promise<void>;
 };
 
@@ -25,14 +21,12 @@ function generateShareSlug(): string {
 export const defaultDeps: ServiceDeps = {
   scrape: scrapeWebsite,
   fetchPrompt: getModulePrompt,
-  analyze: (args) => analyze<WebsiteCheckOutput>(args),
+  fetchFormatExample: getFormatExample,
+  analyze: analyzeClaudeRaw,
   updateSession: async (id, patch) => {
     const { eq, and } = await import("drizzle-orm");
     const { db } = await import("@/lib/db/client");
     const { sessions } = await import("@/lib/db/schema");
-    // WHERE-guard op status='running' voorkomt dat een late achtergrond-update
-    // een sessie overschrijft die ondertussen door de gebruiker is geannuleerd
-    // of door auto-fail op timeout is gezet.
     await db
       .update(sessions)
       .set(patch)
@@ -66,31 +60,27 @@ export async function runAnalysis(
   deps: ServiceDeps = defaultDeps,
 ): Promise<void> {
   try {
-    // 1. Scrape de website (zelfde als voorheen)
     const scraped = await deps.scrape(args.websiteUrl);
+    const { prompt: template } = await deps.fetchPrompt(MODULE_SLUG);
+    const formatTemplate = await deps.fetchFormatExample(MODULE_SLUG);
+    if (!formatTemplate) {
+      throw new Error("Geen format-template voor website-check gevonden in DB");
+    }
 
-    // 2. Haal de actieve prompt + provider uit de DB (met code-fallback)
-    const { prompt: template, provider } = await deps.fetchPrompt(MODULE_SLUG);
-
-    // 3. Substitueer placeholders met runtime-waarden (incl. globals zoals {DatumVandaag})
-    const prompt = substitutePlaceholders(template, {
+    const promptHeader = substitutePlaceholders(template, {
       ...globalPlaceholders(),
       websiteUrl: args.websiteUrl,
       companyName: args.companyName || "Onbekend",
       scrapedContent: scraped || "(Kon website niet laden)",
     });
 
-    // 4. Provider-agnostic analyze (routeert naar Claude of Perplexity)
-    const result = await deps.analyze({
-      provider,
-      prompt,
-      schema: WebsiteCheckOutputSchema,
-    });
+    const prompt = `${promptHeader}\n\n---\nFORMAT-TEMPLATE (volg deze structuur exact, vervang placeholders door inhoud op basis van de geschraapte data; behoud markdown-structuur, koppen en tabellen):\n\n${formatTemplate}\n\n---\nSchrijf nu de gevulde versie van bovenstaand format. Geef alleen de markdown terug, geen JSON, geen uitleg eromheen.`;
 
-    // 5. Sessie afronden
+    const result = await deps.analyze({ prompt });
+
     await deps.updateSession(args.sessionId, {
       status: "approved",
-      output: result.data,
+      output: result.markdown,
       promptUsed: result.promptUsed,
       llmModel: result.llmModel,
       llmInputTokens: result.llmInputTokens,

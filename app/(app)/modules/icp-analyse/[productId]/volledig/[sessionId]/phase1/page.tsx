@@ -36,7 +36,7 @@ export default async function ICPVolledigPhase1Page({
     .limit(1);
   if (!product || product.id !== session.productId) notFound();
 
-  const output = (session.output ?? {}) as { phase1Output?: unknown };
+  const output = (session.output ? JSON.parse(session.output) : {}) as { phase1Output?: unknown };
   const parsed = output.phase1Output
     ? Phase1Output.safeParse(output.phase1Output)
     : null;

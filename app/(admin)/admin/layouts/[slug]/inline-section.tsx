@@ -5,18 +5,16 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 import { SECTIONS } from "@/modules/website-check/sections";
+import { WEBSITE_CHECK_PREVIEW_FIXTURE } from "@/modules/website-check/preview-fixture";
 import type { LayoutItem } from "@/lib/modules/layout";
-import type { WebsiteCheckOutput } from "@/modules/website-check/schema";
 
 type SectionLayoutItem = Extract<LayoutItem, { kind: "section" }>;
 
 export function InlineSection({
   item,
-  data,
   onChange,
 }: {
   item: SectionLayoutItem;
-  data: WebsiteCheckOutput;
   onChange: (patch: Partial<SectionLayoutItem>) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -107,7 +105,7 @@ export function InlineSection({
       />
 
       <Component
-        data={data}
+        data={WEBSITE_CHECK_PREVIEW_FIXTURE}
         title={titleValue || def.defaultTitle}
         intro={null}
         hideHeader

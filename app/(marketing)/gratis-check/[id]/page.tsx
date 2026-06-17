@@ -6,10 +6,7 @@ import { ArrowRight, CheckCircle2, Circle, Globe, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { db } from "@/lib/db/client";
 import { leads } from "@/lib/db/schema";
-import { WebsiteCheckOutputSchema } from "@/modules/website-check/schema";
 import { WebsiteCheckResultView } from "@/modules/website-check/components/WebsiteCheckResultView";
-import { MODULE_SLUG } from "@/modules/website-check";
-import { getModuleLayout } from "@/lib/modules/layouts";
 import { RunningPoll } from "./running-poll";
 
 const STUCK_THRESHOLD_SECONDS = 6 * 60; // 1 min grace boven Vercel maxDuration
@@ -152,20 +149,11 @@ export default async function GratisCheckResultPage({
   }
 
   // status === "completed"
-  const parsed = WebsiteCheckOutputSchema.safeParse(row.result);
-  if (!parsed.success) {
-    return (
-      <div className="mx-auto max-w-2xl px-6 py-20 text-center text-rose-700">
-        Resultaat-output is ongeldig opgeslagen.
-      </div>
-    );
-  }
-
-  const layout = await getModuleLayout(MODULE_SLUG);
+  const markdownFromLead = (row.result as { markdown?: string } | null)?.markdown ?? "";
 
   return (
     <>
-      <WebsiteCheckResultView data={parsed.data} layout={layout} readOnly />
+      <WebsiteCheckResultView markdown={markdownFromLead} />
 
       {/* CTA-strip: word lid */}
       <section className="mx-auto mt-6 mb-16 max-w-4xl px-6">

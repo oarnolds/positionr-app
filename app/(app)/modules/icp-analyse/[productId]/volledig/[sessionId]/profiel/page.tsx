@@ -63,7 +63,7 @@ export default async function ICPVolledigProfielPage({
         )}
         {session.status === "approved" && session.output ? (
           (() => {
-            const output = session.output as {
+            const output = JSON.parse(session.output) as {
               finalIcp?: unknown;
               betrouwbaarheid?: number;
             };

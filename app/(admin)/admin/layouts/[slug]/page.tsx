@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { getModuleLayout } from "@/lib/modules/layouts";
 import { getModuleLayoutHistory } from "@/lib/modules/layout-actions";
-import { getPreviewData } from "@/lib/modules/preview-data";
 import { getFormatExample } from "@/lib/modules/format-examples";
 import { LayoutsSidebar } from "./sidebar";
 import { LayoutEditor } from "./layout-editor";
@@ -20,10 +19,9 @@ export default async function LayoutEditorPage({
   const { slug } = await params;
   if (!ALLOWED_SLUGS.has(slug)) notFound();
 
-  const [layout, history, previewData, formatExample] = await Promise.all([
+  const [layout, history, formatExample] = await Promise.all([
     getModuleLayout(slug),
     getModuleLayoutHistory(slug),
-    getPreviewData(slug),
     getFormatExample(slug),
   ]);
 
@@ -35,7 +33,6 @@ export default async function LayoutEditorPage({
           slug={slug}
           initialLayout={layout}
           history={history}
-          previewData={previewData}
           formatExample={formatExample}
         />
       </main>
