@@ -11,8 +11,7 @@ import {
   createWebsiteCheckSession,
   runAnalysis,
 } from "@/modules/website-check/service";
-import { WebsiteCheckInputSchema } from "@/modules/website-check/schema";
-import { MODULE_SLUG } from "@/modules/website-check";
+import { WebsiteCheckInputSchema, MODULE_SLUG } from "@/modules/website-check";
 
 async function requireUser() {
   const supabase = await createClient();

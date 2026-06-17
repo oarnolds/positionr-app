@@ -1,4 +1,11 @@
+import { z } from "zod";
+
 export const MODULE_SLUG = "website-check" as const;
+
+export const WebsiteCheckInputSchema = z.object({
+  websiteUrl: z.string().trim().min(3, "URL is verplicht"),
+  companyName: z.string().trim().optional(),
+});
 
 export const PLACEHOLDERS = [
   {
