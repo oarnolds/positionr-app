@@ -74,6 +74,7 @@ export const modules = pgTable("modules", {
   minTier: tierEnum("min_tier").default("fundament").notNull(),
   parentSlug: text("parent_slug"), // null = top-level module; non-null = sub-prompt (bv. ICP-subs)
   layoutConfig: jsonb("layout_config"), // null = gebruik default uit registry
+  formatExample: text("format_example"),
   outputSchema: jsonb("output_schema"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
