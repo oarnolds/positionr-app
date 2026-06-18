@@ -1,12 +1,34 @@
+import { randomUUID } from "node:crypto";
 import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   markdownSnapshots,
   type MarkdownSnapshot,
 } from "@/lib/db/schema";
+import { createServiceClient } from "@/lib/supabase/service";
 import { normalizeBaseUrl, urlToMarkdown, type UrlToMarkdownOptions } from "./url-to-markdown";
+import { pdfToMarkdown } from "./pdf-to-markdown";
+import { docxToMarkdown } from "./docx-to-markdown";
 
-export type MarkdownSnapshotKind = "website";
+export type MarkdownSnapshotKind = "website" | "pdf" | "docx";
+export type FileSnapshotKind = "pdf" | "docx";
+
+const STORAGE_BUCKET = "markdown-sources";
+
+/** Mime-type → kind + bestand-extensie (consistent met de Storage bucket-allow-list). */
+const MIME_TO_KIND: Record<string, { kind: FileSnapshotKind; ext: string }> = {
+  "application/pdf": { kind: "pdf", ext: "pdf" },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+    kind: "docx",
+    ext: "docx",
+  },
+};
+
+export function mimeTypeToFileKind(
+  mimeType: string
+): { kind: FileSnapshotKind; ext: string } | null {
+  return MIME_TO_KIND[mimeType] ?? null;
+}
 
 const DEFAULT_TTL_HOURS = 24;
 
@@ -139,4 +161,82 @@ export async function findFreshSnapshot(
   sourceUrl: string
 ): Promise<MarkdownSnapshot | null> {
   return findCached(userId, kind, normalizeKey(kind, sourceUrl));
+}
+
+export type CreateFileSnapshotInput = {
+  userId: string;
+  buffer: Buffer;
+  filename: string;
+  mimeType: string;
+};
+
+/**
+ * Verwerkt een door de gebruiker geüpload bestand (PDF of DOCX):
+ *   1. Schrijft het origineel naar de 'markdown-sources' Supabase Storage bucket.
+ *   2. Converteert naar markdown (Claude API voor PDF, mammoth voor DOCX).
+ *   3. Slaat de snapshot op met source_storage_path + source_filename.
+ *
+ * In tegenstelling tot URL-snapshots vervallen file-snapshots niet automatisch
+ * (bestand zit in Storage, markdown is al af). expires_at wordt ver in de
+ * toekomst gezet alleen om de NOT NULL constraint te bedienen.
+ */
+export async function createFileSnapshot(
+  input: CreateFileSnapshotInput
+): Promise<MarkdownSnapshot> {
+  const meta = mimeTypeToFileKind(input.mimeType);
+  if (!meta) {
+    throw new Error(`Niet-ondersteund bestandstype: ${input.mimeType}`);
+  }
+
+  const storagePath = `${input.userId}/${randomUUID()}.${meta.ext}`;
+  const supabase = createServiceClient();
+
+  const uploadRes = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(storagePath, input.buffer, {
+      contentType: input.mimeType,
+      upsert: false,
+    });
+  if (uploadRes.error) {
+    throw new Error(`Upload naar Storage mislukt: ${uploadRes.error.message}`);
+  }
+
+  let markdown: string;
+  let title: string | null = input.filename;
+  try {
+    if (meta.kind === "pdf") {
+      const result = await pdfToMarkdown(input.buffer);
+      markdown = result.markdown;
+    } else {
+      const result = await docxToMarkdown(input.buffer);
+      markdown = result.markdown;
+    }
+  } catch (err) {
+    // Rollback de Storage-upload zodat we geen weeskinderen achterlaten.
+    await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]).catch(() => undefined);
+    throw err;
+  }
+
+  const headingMatch = /^#\s+(.+)$/m.exec(markdown);
+  if (headingMatch) title = headingMatch[1].trim();
+
+  const expiresAt = new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000);
+
+  const rows = await db
+    .insert(markdownSnapshots)
+    .values({
+      userId: input.userId,
+      kind: meta.kind,
+      sourceUrl: storagePath,
+      sourceFilename: input.filename,
+      sourceStoragePath: storagePath,
+      title,
+      metaDescription: null,
+      markdown,
+      pages: [],
+      fetchedAt: new Date(),
+      expiresAt,
+    })
+    .returning();
+  return rows[0];
 }
