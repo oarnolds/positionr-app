@@ -212,6 +212,8 @@ export const leads = pgTable("leads", {
 
 export const markdownSnapshotKindEnum = pgEnum("markdown_snapshot_kind", [
   "website",
+  "pdf",
+  "docx",
   // Toekomstige soorten:
   // "linkedin_company",
   // "linkedin_person",
@@ -221,7 +223,13 @@ export const markdownSnapshots = pgTable("markdown_snapshots", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").notNull(), // = auth.users.id
   kind: markdownSnapshotKindEnum("kind").notNull(),
+  // Voor 'website' is dit de URL. Voor 'pdf'/'docx' is dit een stabiele
+  // identifier (storage path) — gebruikt als cache-sleutel en uniqueness.
   sourceUrl: text("source_url").notNull(),
+  // Alleen voor file-kinds: origineel bestand voor display.
+  sourceFilename: text("source_filename"),
+  // Alleen voor file-kinds: pad in de 'markdown-sources' Supabase bucket.
+  sourceStoragePath: text("source_storage_path"),
   title: text("title"),
   metaDescription: text("meta_description"),
   markdown: text("markdown").notNull(),
