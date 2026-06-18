@@ -205,6 +205,41 @@ export const leads = pgTable("leads", {
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });
 
+// ── Markdown Snapshots ──────────────────────────────────────────────
+// Gedeelde voorbewerking: URL (of andere bron) → schone markdown.
+// Wordt gebruikt door meerdere modules (website-check, icp-analyse, …)
+// en gecached zodat dezelfde URL niet bij elke run opnieuw gescraped wordt.
+
+export const markdownSnapshotKindEnum = pgEnum("markdown_snapshot_kind", [
+  "website",
+  // Toekomstige soorten:
+  // "linkedin_company",
+  // "linkedin_person",
+]);
+
+export const markdownSnapshots = pgTable("markdown_snapshots", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull(), // = auth.users.id
+  kind: markdownSnapshotKindEnum("kind").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  title: text("title"),
+  metaDescription: text("meta_description"),
+  markdown: text("markdown").notNull(),
+  pages: jsonb("pages")
+    .$type<Array<{
+      url: string;
+      status: "ok" | "failed" | "empty";
+      charCount: number;
+      errorMessage?: string;
+    }>>()
+    .default([])
+    .notNull(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
 // ── Types ──────────────────────────────────────────────────────────
 
 export type Profile = typeof profiles.$inferSelect;
@@ -221,3 +256,5 @@ export type Subscription = typeof subscriptions.$inferSelect;
 export type NewSubscription = typeof subscriptions.$inferInsert;
 export type Lead = typeof leads.$inferSelect;
 export type NewLead = typeof leads.$inferInsert;
+export type MarkdownSnapshot = typeof markdownSnapshots.$inferSelect;
+export type NewMarkdownSnapshot = typeof markdownSnapshots.$inferInsert;
