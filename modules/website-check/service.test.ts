@@ -1,6 +1,8 @@
 import { test, it, expect, vi, describe } from "vitest";
 import { runAnalysis, type ServiceDeps } from "./service";
 
+const USER_ID = "user-test-1";
+
 function makeDeps(): ServiceDeps {
   return {
     scrape: vi.fn().mockResolvedValue("scraped content"),
@@ -24,11 +26,11 @@ function makeDeps(): ServiceDeps {
 test("runAnalysis: scrape + fetchPrompt + fetchFormatExample + analyze + updateSession", async () => {
   const deps = makeDeps();
   await runAnalysis(
-    { sessionId: "s1", websiteUrl: "https://datapas.nl", companyName: "Datapas B.V." },
+    { sessionId: "s1", userId: USER_ID, websiteUrl: "https://datapas.nl", companyName: "Datapas B.V." },
     deps,
   );
 
-  expect(deps.scrape).toHaveBeenCalledWith("https://datapas.nl");
+  expect(deps.scrape).toHaveBeenCalledWith("https://datapas.nl", { userId: USER_ID });
   expect(deps.fetchPrompt).toHaveBeenCalledWith("website-check");
   expect(deps.fetchFormatExample).toHaveBeenCalledWith("website-check");
   expect(deps.analyze).toHaveBeenCalledWith({
@@ -46,7 +48,7 @@ test("runAnalysis: scrape + fetchPrompt + fetchFormatExample + analyze + updateS
 test("runAnalysis: completedAt is a Date on success", async () => {
   const deps = makeDeps();
   await runAnalysis(
-    { sessionId: "s1", websiteUrl: "https://datapas.nl", companyName: "Datapas B.V." },
+    { sessionId: "s1", userId: USER_ID, websiteUrl: "https://datapas.nl", companyName: "Datapas B.V." },
     deps,
   );
   const patch = (deps.updateSession as ReturnType<typeof vi.fn>).mock.calls[0][1];
@@ -57,7 +59,7 @@ test("runAnalysis: scrape-fout → status=failed + errorMessage", async () => {
   const deps = makeDeps();
   deps.scrape = vi.fn().mockRejectedValue(new Error("boom"));
   await runAnalysis(
-    { sessionId: "s1", websiteUrl: "https://x.nl", companyName: "X" },
+    { sessionId: "s1", userId: USER_ID, websiteUrl: "https://x.nl", companyName: "X" },
     deps,
   );
   expect(deps.updateSession).toHaveBeenCalledWith("s1", expect.objectContaining({
@@ -70,7 +72,7 @@ test("runAnalysis: fetchPrompt-fout → status=failed", async () => {
   const deps = makeDeps();
   deps.fetchPrompt = vi.fn().mockRejectedValue(new Error("DB onbereikbaar"));
   await runAnalysis(
-    { sessionId: "s2", websiteUrl: "https://x.nl", companyName: "X" },
+    { sessionId: "s2", userId: USER_ID, websiteUrl: "https://x.nl", companyName: "X" },
     deps,
   );
   expect(deps.updateSession).toHaveBeenCalledWith("s2", expect.objectContaining({
@@ -82,7 +84,7 @@ test("runAnalysis: fetchPrompt-fout → status=failed", async () => {
 test("runAnalysis: substitueert placeholders met fallback voor lege companyName", async () => {
   const deps = makeDeps();
   await runAnalysis(
-    { sessionId: "s3", websiteUrl: "https://x.nl", companyName: "" },
+    { sessionId: "s3", userId: USER_ID, websiteUrl: "https://x.nl", companyName: "" },
     deps,
   );
   const analyzeArgs = (deps.analyze as ReturnType<typeof vi.fn>).mock.calls[0][0];
@@ -94,7 +96,7 @@ describe("runAnalysis: ontbrekend format-template", () => {
     const deps = makeDeps();
     deps.fetchFormatExample = vi.fn().mockResolvedValue(null);
     await runAnalysis(
-      { sessionId: "s2", websiteUrl: "https://y.nl", companyName: "Y" },
+      { sessionId: "s2", userId: USER_ID, websiteUrl: "https://y.nl", companyName: "Y" },
       deps,
     );
     expect(deps.updateSession).toHaveBeenCalledWith("s2", expect.objectContaining({

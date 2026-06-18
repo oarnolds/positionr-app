@@ -48,6 +48,7 @@ export async function startAnalysis(formData: FormData): Promise<void> {
   after(() =>
     runAnalysis({
       sessionId,
+      userId: user.id,
       websiteUrl: parsed.websiteUrl,
       companyName: parsed.companyName ?? "",
     }),
@@ -77,6 +78,7 @@ export async function regenerateAnalysis(formData: FormData): Promise<void> {
   after(() =>
     runAnalysis({
       sessionId,
+      userId: user.id,
       websiteUrl: input.websiteUrl,
       companyName: input.companyName ?? "",
     }),

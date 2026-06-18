@@ -106,39 +106,9 @@ async function getProductOrThrow(productId: string, userId: string) {
   return product;
 }
 
-async function getOrFreshSnapshot(
-  clientId: string,
-  url: string
-): Promise<{ snapshot: WebsiteSnapshot; cached: boolean }> {
-  const [client] = await db
-    .select()
-    .from(clients)
-    .where(eq(clients.id, clientId))
-    .limit(1);
-  const facts = (client?.facts ?? {}) as Record<string, unknown>;
-  const cached = facts.website_snapshot as WebsiteSnapshot | undefined;
-  const ONE_DAY = 24 * 60 * 60 * 1000;
-  if (
-    cached &&
-    cached.url === url &&
-    Date.now() - new Date(cached.scrapedAt).getTime() < ONE_DAY
-  ) {
-    return { snapshot: cached, cached: true };
-  }
-  const fresh = await scrapeForIcp(url);
-  return { snapshot: fresh, cached: false };
-}
-
-async function persistSnapshot(clientId: string, snapshot: WebsiteSnapshot) {
-  const [client] = await db
-    .select()
-    .from(clients)
-    .where(eq(clients.id, clientId))
-    .limit(1);
-  const facts = (client?.facts ?? {}) as Record<string, unknown>;
-  facts.website_snapshot = snapshot;
-  await db.update(clients).set({ facts }).where(eq(clients.id, clientId));
-}
+// Snapshot-caching gebeurt nu in `markdown_snapshots` (gedeeld over modules).
+// `scrapeForIcp` haalt zelf uit cache of fetcht vers — geen aparte per-client
+// website_snapshot meer nodig in `clients.facts`.
 
 // ── 1. Scan website voor producten/diensten ─────────────────────────────────
 
@@ -153,9 +123,8 @@ export async function scanWebsiteForProducts(
 ): Promise<{ products: ScannedProduct[]; saved: number }> {
   const client = await getClientOrThrow(clientId, userId);
 
-  // Snapshot
-  const { snapshot, cached } = await getOrFreshSnapshot(clientId, url);
-  if (!cached) await persistSnapshot(clientId, snapshot);
+  // Snapshot (gedeelde cache via markdown_snapshots)
+  const snapshot = await scrapeForIcp(url, userId);
 
   // LLM-call (DB-prompt-gestuurd via getModulePrompt)
   const result = await callScan(snapshot);
@@ -266,9 +235,8 @@ export async function runSnelInBackground(sessionId: string): Promise<void> {
   }
 
   try {
-    // Snapshot
-    const { snapshot, cached } = await getOrFreshSnapshot(client.id, url);
-    if (!cached) await persistSnapshot(client.id, snapshot);
+    // Snapshot (gedeelde cache via markdown_snapshots)
+    const snapshot = await scrapeForIcp(url, userId);
 
     // Phase 1
     const phase1Result = await callPhase1(snapshot);
@@ -389,8 +357,7 @@ export async function runVolledigPhase1(
     .returning();
 
   try {
-    const { snapshot, cached } = await getOrFreshSnapshot(client.id, url);
-    if (!cached) await persistSnapshot(client.id, snapshot);
+    const snapshot = await scrapeForIcp(url, userId);
 
     const phase1Result = await callPhase1(snapshot);
 

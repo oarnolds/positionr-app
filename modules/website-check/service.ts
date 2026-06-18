@@ -7,7 +7,7 @@ import { scrapeWebsite } from "./scraper";
 import { MODULE_SLUG } from "./index";
 
 export type ServiceDeps = {
-  scrape: (url: string) => Promise<string>;
+  scrape: (url: string, options?: { userId?: string }) => Promise<string>;
   fetchPrompt: typeof getModulePrompt;
   fetchFormatExample: typeof getFormatExample;
   analyze: (args: { prompt: string }) => Promise<ClaudeRawResult>;
@@ -56,11 +56,11 @@ export async function createWebsiteCheckSession(input: {
 }
 
 export async function runAnalysis(
-  args: { sessionId: string; websiteUrl: string; companyName: string },
+  args: { sessionId: string; userId: string; websiteUrl: string; companyName: string },
   deps: ServiceDeps = defaultDeps,
 ): Promise<void> {
   try {
-    const scraped = await deps.scrape(args.websiteUrl);
+    const scraped = await deps.scrape(args.websiteUrl, { userId: args.userId });
     const { prompt: template } = await deps.fetchPrompt(MODULE_SLUG);
     const formatTemplate = await deps.fetchFormatExample(MODULE_SLUG);
     if (!formatTemplate) {
