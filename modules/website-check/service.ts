@@ -38,8 +38,6 @@ export async function createWebsiteCheckSession(input: {
   userId: string;
   websiteUrl: string;
   companyName: string;
-  /** Optionele koppeling aan een "Je start APK"-run. */
-  apkRunId?: string;
 }): Promise<{ sessionId: string; shareSlug: string }> {
   const { db } = await import("@/lib/db/client");
   const { sessions } = await import("@/lib/db/schema");
@@ -52,7 +50,6 @@ export async function createWebsiteCheckSession(input: {
       status: "running",
       input: { websiteUrl: input.websiteUrl, companyName: input.companyName },
       shareSlug,
-      apkRunId: input.apkRunId ?? null,
     })
     .returning({ id: sessions.id });
   return { sessionId: row.id, shareSlug };

@@ -6,7 +6,6 @@ import {
   jsonb,
   integer,
   pgEnum,
-  boolean,
 } from "drizzle-orm/pg-core";
 
 // ── Enums ───────────────────────────────────────────────────────────
@@ -148,10 +147,6 @@ export const sessions = pgTable("sessions", {
   // Deelbare link (publieke read-only URL)
   shareSlug: text("share_slug").unique(),
 
-  // Optionele koppeling aan een APK-run (groepering van sessies die samen
-  // gestart zijn vanuit de "Je start APK"-flow).
-  apkRunId: uuid("apk_run_id"),
-
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });
@@ -245,25 +240,6 @@ export const markdownSnapshots = pgTable("markdown_snapshots", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
-// ── APK Runs ────────────────────────────────────────────────────────
-// Eén "Je start APK"-run = URL + snapshot + N gestarte module-sessies.
-// Sessies linken terug via sessions.apk_run_id (nullable — sessies kunnen
-// ook los van een APK-run gestart worden).
-
-export const apkRuns = pgTable("apk_runs", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull(),
-  sourceUrl: text("source_url").notNull(),
-  snapshotId: uuid("snapshot_id").references(() => markdownSnapshots.id, {
-    onDelete: "set null",
-  }),
-  snapshotWasCached: boolean("snapshot_was_cached").notNull(),
-  selectedModules: text("selected_modules").array().notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
-
 // ── Types ──────────────────────────────────────────────────────────
 
 export type Profile = typeof profiles.$inferSelect;
@@ -282,5 +258,3 @@ export type Lead = typeof leads.$inferSelect;
 export type NewLead = typeof leads.$inferInsert;
 export type MarkdownSnapshot = typeof markdownSnapshots.$inferSelect;
 export type NewMarkdownSnapshot = typeof markdownSnapshots.$inferInsert;
-export type ApkRun = typeof apkRuns.$inferSelect;
-export type NewApkRun = typeof apkRuns.$inferInsert;

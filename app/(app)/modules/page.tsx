@@ -1,26 +1,8 @@
 import Link from "next/link";
-import { eq } from "drizzle-orm";
 import { MODULES } from "@/lib/modules/registry";
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/server";
-import { db } from "@/lib/db/client";
-import { profiles } from "@/lib/db/schema";
-import { StartApkCard } from "./_components/start-apk-card";
 
-export default async function ModulesPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const [profile] = user
-    ? await db
-        .select({ websiteUrl: profiles.websiteUrl })
-        .from(profiles)
-        .where(eq(profiles.id, user.id))
-        .limit(1)
-    : [];
-
+export default function ModulesPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
       <div className="text-center">
@@ -32,11 +14,7 @@ export default async function ModulesPage() {
         </p>
       </div>
 
-      <div className="mt-10">
-        <StartApkCard defaultWebsiteUrl={profile?.websiteUrl ?? undefined} />
-      </div>
-
-      <div className="mt-2 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {MODULES.filter((m) => !m.parentSlug).map((module) => {
           const Icon = module.icon;
           const isActive = module.status === "active";
