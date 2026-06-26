@@ -2,9 +2,12 @@ import {
   normalizeBaseUrl,
   urlToMarkdown,
 } from "@/lib/scraping/url-to-markdown";
-import { getOrCreateSnapshot } from "@/lib/scraping/snapshot-service";
+import {
+  findAnySnapshot,
+  getOrCreateSnapshot,
+} from "@/lib/scraping/snapshot-service";
 
-const MAX_CHARS = 6000;
+const DEFAULT_MAX_CHARS = 6000;
 
 export type ScrapeWebsiteOptions = {
   /**
@@ -15,12 +18,22 @@ export type ScrapeWebsiteOptions = {
   userId?: string;
   /** Time-to-live van de cache in uren. Default 24. Alleen relevant met userId. */
   ttlHours?: number;
+  /**
+   * Wanneer true: vereist een bestaande snapshot in de markdown-bibliotheek.
+   * Skipt elke fetch — gooit een fout als er geen snapshot voor deze URL bestaat.
+   * Gebruikt door de "Analyseer obv markdown"-knop.
+   */
+  requireExistingSnapshot?: boolean;
+  /** Cap op het aantal characters dat we returnen. Default 6000. Geef 0 voor 'geen cap'. */
+  maxChars?: number;
 };
 
 /**
- * Haalt een website op en retourneert de hoofd-content als markdown (max 6000 chars).
+ * Haalt een website op en retourneert de hoofd-content als markdown.
  *
- * - Met userId: deelt cache met andere modules (icp-analyse, …) via markdown_snapshots.
+ * - Met userId + requireExistingSnapshot: gebruikt UITSLUITEND de bestaande
+ *   bibliotheek-snapshot (geen TTL-check, geen fetch). Throwt als afwezig.
+ * - Met userId zonder require: deelt cache met andere modules via getOrCreateSnapshot.
  * - Zonder userId: directe call naar urlToMarkdown, geen DB-write.
  */
 export async function scrapeWebsite(
@@ -28,6 +41,18 @@ export async function scrapeWebsite(
   options: ScrapeWebsiteOptions = {}
 ): Promise<string> {
   const baseUrl = normalizeBaseUrl(rawUrl);
+  const cap = options.maxChars === 0 ? Infinity : options.maxChars ?? DEFAULT_MAX_CHARS;
+  const slice = (md: string) => (Number.isFinite(cap) ? md.slice(0, cap as number) : md);
+
+  if (options.userId && options.requireExistingSnapshot) {
+    const snapshot = await findAnySnapshot(options.userId, "website", baseUrl);
+    if (!snapshot) {
+      throw new Error(
+        "Geen markdown-snapshot gevonden voor deze URL. Maak 'm eerst aan via 'Markdown bibliotheek' op /modules."
+      );
+    }
+    return slice(snapshot.markdown);
+  }
 
   if (options.userId) {
     const { snapshot } = await getOrCreateSnapshot({
@@ -36,9 +61,9 @@ export async function scrapeWebsite(
       sourceUrl: baseUrl,
       ttlHours: options.ttlHours,
     });
-    return snapshot.markdown.slice(0, MAX_CHARS);
+    return slice(snapshot.markdown);
   }
 
   const result = await urlToMarkdown(baseUrl);
-  return result.markdown.slice(0, MAX_CHARS);
+  return slice(result.markdown);
 }

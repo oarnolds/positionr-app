@@ -41,6 +41,7 @@ export async function startAnalysis(formData: FormData): Promise<void> {
     userId: user.id,
     websiteUrl: parsed.websiteUrl,
     companyName: parsed.companyName ?? "",
+    analysisMode: "scrape",
   });
 
   // 3) Analyseren op de achtergrond ná het response (Next 15 unstable_after).
@@ -51,6 +52,42 @@ export async function startAnalysis(formData: FormData): Promise<void> {
       userId: user.id,
       websiteUrl: parsed.websiteUrl,
       companyName: parsed.companyName ?? "",
+    }),
+  );
+
+  revalidatePath("/modules/website-check");
+  redirect(`/modules/website-check/${sessionId}`);
+}
+
+export async function startAnalysisFromMarkdown(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const parsed = WebsiteCheckInputSchema.parse({
+    websiteUrl: formData.get("websiteUrl"),
+    companyName: formData.get("companyName") ?? undefined,
+  });
+
+  await db
+    .update(profiles)
+    .set({
+      websiteUrl: parsed.websiteUrl,
+      ...(parsed.companyName ? { companyName: parsed.companyName } : {}),
+    })
+    .where(eq(profiles.id, user.id));
+
+  const { sessionId } = await createWebsiteCheckSession({
+    userId: user.id,
+    websiteUrl: parsed.websiteUrl,
+    companyName: parsed.companyName ?? "",
+    analysisMode: "markdown",
+  });
+
+  after(() =>
+    runAnalysis({
+      sessionId,
+      userId: user.id,
+      websiteUrl: parsed.websiteUrl,
+      companyName: parsed.companyName ?? "",
+      useExistingMarkdown: true,
     }),
   );
 

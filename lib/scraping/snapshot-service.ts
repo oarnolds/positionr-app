@@ -172,6 +172,31 @@ export async function findFreshSnapshot(
   return findCached(userId, kind, normalizeKey(kind, sourceUrl));
 }
 
+/**
+ * Zelfde lookup als findFreshSnapshot maar zónder TTL-filter.
+ * Bedoeld voor "gebruik de markdown uit mijn bibliotheek"-flows waarin de
+ * gebruiker expliciet z'n eerder gemaakte snapshot wil hergebruiken,
+ * ongeacht hoe oud die is.
+ */
+export async function findAnySnapshot(
+  userId: string,
+  kind: MarkdownSnapshotKind,
+  sourceUrl: string
+): Promise<MarkdownSnapshot | null> {
+  const rows = await db
+    .select()
+    .from(markdownSnapshots)
+    .where(
+      and(
+        eq(markdownSnapshots.userId, userId),
+        eq(markdownSnapshots.kind, kind),
+        eq(markdownSnapshots.sourceUrl, normalizeKey(kind, sourceUrl))
+      )
+    )
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export type CreateFileSnapshotInput = {
   userId: string;
   buffer: Buffer;

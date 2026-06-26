@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
 import { profiles, sessions } from "@/lib/db/schema";
 import { MODULE_SLUG } from "@/modules/website-check";
-import { startAnalysis } from "./actions";
+import { startAnalysis, startAnalysisFromMarkdown } from "./actions";
+import { findAnySnapshot } from "@/lib/scraping/snapshot-service";
 
 // Vercel Pro: max 300s. runAnalysis loopt via after() binnen dezelfde
 // function-lifecycle, dus dit budget geldt ook voor de achtergrond-analyse.
@@ -37,6 +38,10 @@ export default async function WebsiteCheckHomePage() {
     .where(and(eq(sessions.userId, user.id), eq(sessions.moduleSlug, MODULE_SLUG)))
     .orderBy(desc(sessions.createdAt))
     .limit(20);
+
+  const existingSnapshot = profile?.websiteUrl
+    ? await findAnySnapshot(user.id, "website", profile.websiteUrl)
+    : null;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
@@ -77,9 +82,39 @@ export default async function WebsiteCheckHomePage() {
             className="mt-1 w-full rounded-lg border px-3 py-2"
           />
         </label>
-        <button type="submit" className="rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 font-semibold text-white">
-          Analyseer website
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="submit"
+            className="rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 font-semibold text-white"
+          >
+            Analyseer website
+          </button>
+          <button
+            type="submit"
+            formAction={startAnalysisFromMarkdown}
+            className="rounded-lg border-2 border-purple-600 bg-white px-4 py-2 font-semibold text-purple-700 hover:bg-purple-50"
+          >
+            Analyseer obv markdown
+          </button>
+        </div>
+        <p className="text-xs text-gray-600">
+          <strong>Analyseer website</strong>: scrape live + bestaande prompt.{" "}
+          <strong>Analyseer obv markdown</strong>: gebruikt de markdown-snapshot uit je bibliotheek
+          (rijker, geen verse fetch).{" "}
+          {existingSnapshot ? (
+            <span className="text-green-700">
+              ✓ Snapshot beschikbaar voor {profile?.websiteUrl}.
+            </span>
+          ) : (
+            <span className="text-amber-700">
+              Nog geen snapshot — maak er eerst één via{" "}
+              <Link href="/modules" className="underline">
+                Markdown bibliotheek
+              </Link>
+              .
+            </span>
+          )}
+        </p>
       </form>
 
       <h2 className="mt-10 mb-2 text-lg font-bold">Eerdere checks</h2>
