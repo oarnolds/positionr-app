@@ -1,15 +1,18 @@
 import Link from "next/link";
-import { BookMarked, Globe, FileText, Upload, Trash2, MessageSquare } from "lucide-react";
+import { BookMarked, Globe, FileText, Upload, Trash2, MessageSquare, RefreshCw } from "lucide-react";
 import type { MarkdownSnapshot } from "@/lib/db/schema";
 import {
   createUrlSnapshotAction,
   createFileSnapshotAction,
   deleteSnapshotAction,
+  reindexAllSnapshotsAction,
 } from "@/app/(app)/modules/markdown/actions";
 
 export type MarkdownLibraryCardProps = {
   defaultWebsiteUrl?: string;
   snapshots: MarkdownSnapshot[];
+  /** Snapshots zonder embedding-chunks — voor de reindex-hint. */
+  snapshotsWithoutChunks?: number;
 };
 
 function kindLabel(kind: MarkdownSnapshot["kind"]): string {
@@ -47,6 +50,7 @@ function formatAge(date: Date | string): string {
 export function MarkdownLibraryCard({
   defaultWebsiteUrl,
   snapshots,
+  snapshotsWithoutChunks = 0,
 }: MarkdownLibraryCardProps) {
   return (
     <section
@@ -142,17 +146,31 @@ export function MarkdownLibraryCard({
 
       {snapshots.length > 0 ? (
         <div className="mt-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-sm font-semibold text-gray-700">
               Eerder gemaakt ({snapshots.length})
             </div>
-            <Link
-              href="/modules/markdown/ask"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-purple-700 shadow-sm hover:bg-purple-50"
-            >
-              <MessageSquare className="h-3.5 w-3.5" />
-              Stel een vraag aan je bibliotheek
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              {snapshotsWithoutChunks > 0 ? (
+                <form action={reindexAllSnapshotsAction}>
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-800 shadow-sm hover:bg-amber-200"
+                    title={`${snapshotsWithoutChunks} snapshot(s) zonder embeddings — klik om te indexeren`}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Reindex ({snapshotsWithoutChunks})
+                  </button>
+                </form>
+              ) : null}
+              <Link
+                href="/modules/markdown/ask"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-purple-700 shadow-sm hover:bg-purple-50"
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Stel een vraag aan je bibliotheek
+              </Link>
+            </div>
           </div>
           <ul className="mt-2 space-y-2">
             {snapshots.map((s) => (

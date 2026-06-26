@@ -1,13 +1,23 @@
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql, inArray } from "drizzle-orm";
 import { MODULES } from "@/lib/modules/registry";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
-import { markdownSnapshots, profiles } from "@/lib/db/schema";
+import { markdownSnapshots, profiles, snapshotChunks } from "@/lib/db/schema";
 import { MarkdownLibraryCard } from "./_components/markdown-library-card";
 
-export default async function ModulesPage() {
+// Reindex kan even duren bij veel snapshots — geef 'm ruimte op Vercel.
+export const maxDuration = 180;
+
+type SearchParams = { [key: string]: string | string[] | undefined };
+
+export default async function ModulesPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const sp = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -30,6 +40,28 @@ export default async function ModulesPage() {
         .limit(10)
     : [];
 
+  // Bepaal hoeveel snapshots géén embeddings hebben (om de reindex-knop nuttig
+  // te tonen). Goedkoop: één GROUP BY query.
+  const snapshotIds = snapshots.map((s) => s.id);
+  const chunkCounts =
+    user && snapshotIds.length > 0
+      ? await db
+          .select({
+            snapshotId: snapshotChunks.snapshotId,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(snapshotChunks)
+          .where(inArray(snapshotChunks.snapshotId, snapshotIds))
+          .groupBy(snapshotChunks.snapshotId)
+      : [];
+  const chunkBySnapshotId = new Map(chunkCounts.map((r) => [r.snapshotId, r.count]));
+  const snapshotsWithoutChunks = snapshots.filter(
+    (s) => !chunkBySnapshotId.has(s.id)
+  ).length;
+
+  const reindexedCount = typeof sp.reindexed === "string" ? sp.reindexed : null;
+  const reindexedChunks = typeof sp.chunks === "string" ? sp.chunks : null;
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
       <div className="text-center">
@@ -41,10 +73,18 @@ export default async function ModulesPage() {
         </p>
       </div>
 
+      {reindexedCount ? (
+        <div className="mx-auto mt-6 max-w-2xl rounded-xl border border-green-200 bg-green-50 p-3 text-center text-sm text-green-800">
+          ✓ {reindexedCount} snapshot{reindexedCount === "1" ? "" : "s"} opnieuw
+          geïndexeerd ({reindexedChunks ?? 0} chunks).
+        </div>
+      ) : null}
+
       <div className="mt-10">
         <MarkdownLibraryCard
           defaultWebsiteUrl={profile?.websiteUrl ?? undefined}
           snapshots={snapshots}
+          snapshotsWithoutChunks={snapshotsWithoutChunks}
         />
       </div>
 

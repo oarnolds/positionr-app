@@ -13,6 +13,7 @@ import {
   getOrCreateSnapshot,
   mimeTypeToFileKind,
 } from "@/lib/scraping/snapshot-service";
+import { reindexAllForUser } from "@/lib/rag/index-snapshot";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB (matched aan bucket-limit)
 const STORAGE_BUCKET = "markdown-sources";
@@ -73,6 +74,15 @@ export async function createFileSnapshotAction(formData: FormData): Promise<void
 
   revalidatePath("/modules");
   redirect(`/modules/markdown/${snapshot.id}`);
+}
+
+export async function reindexAllSnapshotsAction(): Promise<void> {
+  const user = await requireUser();
+  const result = await reindexAllForUser(user.id);
+  revalidatePath("/modules");
+  redirect(
+    `/modules?reindexed=${result.total}&chunks=${result.chunkCount}`
+  );
 }
 
 export async function askLibraryAction(formData: FormData): Promise<void> {
