@@ -7,12 +7,14 @@ import {
   type DescriptionMap,
   type UrlImageInput,
 } from "./image-description";
+import { discoverSitemapUrls } from "./sitemap";
 
 const FETCH_TIMEOUT_MS = 12_000;
 const MAX_CHARS_PER_PAGE = 8_000;
-const MAX_CHARS_TOTAL = 24_000;
+const MAX_CHARS_TOTAL = 60_000;
 const USER_AGENT = "PositionrBot/1.0 (+https://app.positionr.nl)";
 const MAX_IMAGES_PER_PAGE = 25;
+const DEFAULT_MAX_PAGES = 30;
 
 const DEFAULT_PATHS = [
   "",
@@ -40,9 +42,9 @@ export type UrlMarkdownResult = {
 };
 
 export type UrlToMarkdownOptions = {
-  /** Extra paden bovenop de homepage. Default: een handvol veelvoorkomende NL/EN paden. */
+  /** Override-paden (relatieve segmenten). Skipt sitemap-discovery. */
   paths?: string[];
-  /** Alleen de homepage proberen (overschrijft paths). */
+  /** Alleen de homepage proberen (overschrijft paths en sitemap). */
   singlePage?: boolean;
   /**
    * Wanneer true (default): afbeeldingen worden opgehaald en door Claude vision
@@ -50,6 +52,13 @@ export type UrlToMarkdownOptions = {
    * gewoon weggegooid (sneller, gratis).
    */
   includeImages?: boolean;
+  /**
+   * Wanneer true (default): probeer sitemap.xml te lezen voor een complete
+   * paginalijst. Valt terug op DEFAULT_PATHS als geen sitemap gevonden wordt.
+   */
+  useSitemap?: boolean;
+  /** Max aantal pagina's om op te halen (default 30). */
+  maxPages?: number;
 };
 
 export function normalizeBaseUrl(url: string): string {
@@ -239,13 +248,31 @@ async function pageToMarkdown(
   };
 }
 
+async function resolveTargetUrls(
+  baseUrl: string,
+  options: UrlToMarkdownOptions
+): Promise<string[]> {
+  if (options.singlePage) return [baseUrl];
+  if (options.paths) return options.paths.map((p) => baseUrl + p);
+
+  const maxPages = options.maxPages ?? DEFAULT_MAX_PAGES;
+  if (options.useSitemap !== false) {
+    const sitemapUrls = await discoverSitemapUrls(baseUrl, { maxUrls: maxPages });
+    if (sitemapUrls.length > 0) {
+      const homepage = baseUrl;
+      const set = new Set<string>([homepage, ...sitemapUrls]);
+      return Array.from(set).slice(0, maxPages);
+    }
+  }
+  return DEFAULT_PATHS.map((p) => baseUrl + p).slice(0, maxPages);
+}
+
 export async function urlToMarkdown(
   rawUrl: string,
   options: UrlToMarkdownOptions = {}
 ): Promise<UrlMarkdownResult> {
   const baseUrl = normalizeBaseUrl(rawUrl);
-  const paths = options.singlePage ? [""] : options.paths ?? DEFAULT_PATHS;
-  const urls = paths.map((p) => baseUrl + p);
+  const urls = await resolveTargetUrls(baseUrl, options);
   const turndown = createTurndown();
   const includeImages = options.includeImages !== false;
 

@@ -75,6 +75,13 @@ export async function createFileSnapshotAction(formData: FormData): Promise<void
   redirect(`/modules/markdown/${snapshot.id}`);
 }
 
+export async function askLibraryAction(formData: FormData): Promise<void> {
+  await requireUser();
+  const q = String(formData.get("q") ?? "").trim();
+  if (q.length < 3) redirect("/modules/markdown/ask");
+  redirect(`/modules/markdown/ask?q=${encodeURIComponent(q)}`);
+}
+
 export async function deleteSnapshotAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const snapshotId = String(formData.get("snapshotId") ?? "");

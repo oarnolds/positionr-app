@@ -9,6 +9,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { normalizeBaseUrl, urlToMarkdown, type UrlToMarkdownOptions } from "./url-to-markdown";
 import { pdfToMarkdown } from "./pdf-to-markdown";
 import { docxToMarkdown } from "./docx-to-markdown";
+import { indexSnapshot } from "@/lib/rag/index-snapshot";
 
 export type MarkdownSnapshotKind = "website" | "pdf" | "docx";
 export type FileSnapshotKind = "pdf" | "docx";
@@ -148,6 +149,14 @@ export async function getOrCreateSnapshot(
     expiresAt,
   });
 
+  // Auto-indexeer voor RAG. Faalt zacht — als embeddings stuk zijn (bv. OpenAI
+  // key ontbreekt) blijft de snapshot zelf gewoon werken voor andere modules.
+  try {
+    await indexSnapshot(snapshot);
+  } catch (err) {
+    console.warn("indexSnapshot mislukt (snapshot blijft bruikbaar):", err);
+  }
+
   return { snapshot, fresh: true };
 }
 
@@ -246,5 +255,14 @@ export async function createFileSnapshot(
       expiresAt,
     })
     .returning();
-  return rows[0];
+  const snapshot = rows[0];
+
+  // Auto-indexeer voor RAG. Faalt zacht.
+  try {
+    await indexSnapshot(snapshot);
+  } catch (err) {
+    console.warn("indexSnapshot mislukt (snapshot blijft bruikbaar):", err);
+  }
+
+  return snapshot;
 }

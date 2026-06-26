@@ -6,7 +6,19 @@ import {
   jsonb,
   integer,
   pgEnum,
+  customType,
 } from "drizzle-orm/pg-core";
+
+// pgvector type — drizzle-kit kent 'm niet, dus we wrappen 'm.
+const vector = (dim: number) =>
+  customType<{ data: number[]; driverData: string }>({
+    dataType: () => `vector(${dim})`,
+    toDriver: (value) => `[${value.join(",")}]`,
+    fromDriver: (value) => {
+      const s = typeof value === "string" ? value : String(value);
+      return JSON.parse(s) as number[];
+    },
+  })("embedding");
 
 // ── Enums ───────────────────────────────────────────────────────────
 
@@ -248,6 +260,28 @@ export const markdownSnapshots = pgTable("markdown_snapshots", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
+// ── Snapshot Chunks (RAG) ──────────────────────────────────────────
+// Markdown-snapshots worden ge-chunkt (~500 tokens per stuk) en embedded met
+// OpenAI text-embedding-3-small (1536 dim). HNSW-index op embedding voor
+// snelle cosine-similarity search. user_id is gedenormaliseerd zodat we
+// user-scoped queries direct kunnen doen zonder join op snapshots.
+
+export const snapshotChunks = pgTable("snapshot_chunks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  snapshotId: uuid("snapshot_id")
+    .notNull()
+    .references(() => markdownSnapshots.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull(),
+  chunkIndex: integer("chunk_index").notNull(),
+  content: text("content").notNull(),
+  sourceKind: markdownSnapshotKindEnum("source_kind").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  sourceFilename: text("source_filename"),
+  headingPath: text("heading_path").array().notNull().default([]),
+  embedding: vector(1536),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ── Types ──────────────────────────────────────────────────────────
 
 export type Profile = typeof profiles.$inferSelect;
@@ -266,3 +300,5 @@ export type Lead = typeof leads.$inferSelect;
 export type NewLead = typeof leads.$inferInsert;
 export type MarkdownSnapshot = typeof markdownSnapshots.$inferSelect;
 export type NewMarkdownSnapshot = typeof markdownSnapshots.$inferInsert;
+export type SnapshotChunk = typeof snapshotChunks.$inferSelect;
+export type NewSnapshotChunk = typeof snapshotChunks.$inferInsert;
