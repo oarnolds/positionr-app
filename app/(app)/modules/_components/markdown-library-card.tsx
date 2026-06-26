@@ -7,6 +7,7 @@ import {
   deleteSnapshotAction,
   reindexAllSnapshotsAction,
 } from "@/app/(app)/modules/markdown/actions";
+import { SubmitButton } from "./submit-button";
 
 export type MarkdownLibraryCardProps = {
   defaultWebsiteUrl?: string;
@@ -100,12 +101,12 @@ export function MarkdownLibraryCard({
             />
             Afbeeldingen en logo&apos;s ook beschrijven (langzamer, hogere kosten)
           </label>
-          <button
-            type="submit"
-            className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md"
-          >
-            Maak markdown
-          </button>
+          <div className="mt-3">
+            <SubmitButton label="Maak markdown" pendingLabel="Bezig met scrapen…" />
+          </div>
+          <p className="mt-2 text-xs text-gray-500">
+            Sitemap-aware + image-analyse kan 30-60 sec duren. Niet sluiten tijdens conversie.
+          </p>
         </form>
 
         {/* File upload → markdown */}
@@ -135,12 +136,9 @@ export function MarkdownLibraryCard({
             />
             Afbeeldingen en logo&apos;s ook beschrijven (langzamer, hogere kosten)
           </label>
-          <button
-            type="submit"
-            className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md"
-          >
-            Maak markdown
-          </button>
+          <div className="mt-3">
+            <SubmitButton label="Maak markdown" pendingLabel="Bezig met converteren…" />
+          </div>
         </form>
       </div>
 
