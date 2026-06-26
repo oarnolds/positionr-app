@@ -87,6 +87,15 @@ export function MarkdownLibraryCard({
             className="mt-2 w-full rounded-lg border border-purple-200 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
             required
           />
+          <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-gray-700">
+            <input
+              type="checkbox"
+              name="includeImages"
+              defaultChecked
+              className="h-3.5 w-3.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            />
+            Afbeeldingen en logo&apos;s ook beschrijven (langzamer, hogere kosten)
+          </label>
           <button
             type="submit"
             className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md"
@@ -113,6 +122,15 @@ export function MarkdownLibraryCard({
             required
           />
           <p className="mt-1 text-xs text-gray-500">Max 10 MB. PDF of .docx.</p>
+          <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-gray-700">
+            <input
+              type="checkbox"
+              name="includeImages"
+              defaultChecked
+              className="h-3.5 w-3.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            />
+            Afbeeldingen en logo&apos;s ook beschrijven (langzamer, hogere kosten)
+          </label>
           <button
             type="submit"
             className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md"

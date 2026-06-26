@@ -19,6 +19,7 @@ const STORAGE_BUCKET = "markdown-sources";
 
 const UrlSchema = z.object({
   websiteUrl: z.string().trim().min(3, "URL is verplicht"),
+  includeImages: z.boolean(),
 });
 
 async function requireUser() {
@@ -32,12 +33,16 @@ async function requireUser() {
 
 export async function createUrlSnapshotAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  const parsed = UrlSchema.parse({ websiteUrl: formData.get("websiteUrl") });
+  const parsed = UrlSchema.parse({
+    websiteUrl: formData.get("websiteUrl"),
+    includeImages: formData.get("includeImages") === "on",
+  });
   const { snapshot } = await getOrCreateSnapshot({
     userId: user.id,
     kind: "website",
     sourceUrl: parsed.websiteUrl,
     forceRefresh: true,
+    scrapeOptions: { includeImages: parsed.includeImages },
   });
   revalidatePath("/modules");
   redirect(`/modules/markdown/${snapshot.id}`);
@@ -56,12 +61,14 @@ export async function createFileSnapshotAction(formData: FormData): Promise<void
     throw new Error("Alleen PDF of DOCX bestanden worden ondersteund");
   }
 
+  const includeImages = formData.get("includeImages") === "on";
   const buffer = Buffer.from(await file.arrayBuffer());
   const snapshot = await createFileSnapshot({
     userId: user.id,
     buffer,
     filename: file.name,
     mimeType: file.type,
+    includeImages,
   });
 
   revalidatePath("/modules");

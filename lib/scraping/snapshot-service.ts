@@ -168,6 +168,13 @@ export type CreateFileSnapshotInput = {
   buffer: Buffer;
   filename: string;
   mimeType: string;
+  /**
+   * Default true: stuur images door Claude vision om beschrijvingen toe te
+   * voegen aan de markdown. Voor PDF heeft dit geen extra effect (Claude leest
+   * embedded images al via het PDF document-block). Voor DOCX worden images
+   * via mammoth onderschept en apart beschreven.
+   */
+  includeImages?: boolean;
 };
 
 /**
@@ -201,6 +208,7 @@ export async function createFileSnapshot(
     throw new Error(`Upload naar Storage mislukt: ${uploadRes.error.message}`);
   }
 
+  const includeImages = input.includeImages !== false;
   let markdown: string;
   let title: string | null = input.filename;
   try {
@@ -208,7 +216,7 @@ export async function createFileSnapshot(
       const result = await pdfToMarkdown(input.buffer);
       markdown = result.markdown;
     } else {
-      const result = await docxToMarkdown(input.buffer);
+      const result = await docxToMarkdown(input.buffer, { includeImages });
       markdown = result.markdown;
     }
   } catch (err) {

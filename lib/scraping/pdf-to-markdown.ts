@@ -9,11 +9,15 @@ Regels:
 - Gebruik ATX-headings (# H1, ## H2, ### H3) voor de logische hiërarchie
 - Behoud lijsten, tabellen en citaten (gebruik markdown-syntax)
 - Strip overbodige metadata: paginanummers, herhalende kop/voettekst
-- Vervang afbeeldingen door: [Afbeelding: korte beschrijving van wat erop staat]
-- Sla aparte logo's, decoratieve elementen en lege blokken over
-- Behoud de oorspronkelijke leesvolgorde
 
-Geef ALLEEN de markdown terug. Geen uitleg, geen meta-commentaar, geen \`\`\`markdown-fences eromheen.`;
+Afbeeldingen — beschrijf zinvol, niet decoratief:
+- LOGO's (van het eigen bedrijf of klanten/partners): noem ALTIJD het bedrijfsnaam als je 'm herkent. Formaat: [Logo: Philips] of [Logo: onbekend bedrijf in tech-sector]. Als er meerdere logo's in een "trusted by" of "onze klanten"-blok staan, somt ze allemaal op: [Klantlogo's: Philips, KLM, ING, Microsoft].
+- FOTO's: één zin scene-beschrijving. Formaat: [Foto: team van 6 mensen aan vergadertafel met laptops].
+- DIAGRAMMEN/SCHEMA's: extraheer de tekst en relaties. Formaat: [Diagram: 3-staps proces — Onderzoek → Ontwerp → Levering, met pijlen tussen elke stap].
+- GRAFIEKEN: extraheer titel, assen en hoofdtrend. Formaat: [Grafiek: omzet 2020-2024, lineaire groei van €1M naar €4M].
+- Decoratieve elementen (banners, lijnen, achtergrond-iconen): SKIP — niet noemen.
+
+Behoud de oorspronkelijke leesvolgorde. Geef ALLEEN de markdown terug, geen uitleg eromheen, geen \`\`\`markdown-fences.`;
 
 let _client: Anthropic | null = null;
 function getClient(): Anthropic {
