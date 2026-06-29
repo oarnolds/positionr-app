@@ -116,6 +116,51 @@ async function fetchHtml(url: string): Promise<string> {
   }
 }
 
+/** Eén retry na 1500ms voor 429-responses (W3 Total Cache, Cloudflare etc.). */
+async function fetchHtmlWithRetry(url: string): Promise<string> {
+  try {
+    return await fetchHtml(url);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/HTTP 429/.test(msg)) {
+      await new Promise((r) => setTimeout(r, 1500));
+      return fetchHtml(url);
+    }
+    throw err;
+  }
+}
+
+const FETCH_CONCURRENCY = 5;
+
+/** Werker-pool-stijl mapper die maximaal `limit` taken parallel uitvoert.
+ *  Behoudt input-order in het results-array, zodat downstream-code dezelfde
+ *  zip-met-urls-loop kan gebruiken als met Promise.allSettled. */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = new Array(items.length);
+  let cursor = 0;
+  async function worker() {
+    while (true) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      try {
+        results[i] = { status: "fulfilled", value: await fn(items[i]) };
+      } catch (reason) {
+        results[i] = { status: "rejected", reason };
+      }
+    }
+  }
+  const workers = Array.from(
+    { length: Math.min(limit, items.length) },
+    () => worker(),
+  );
+  await Promise.all(workers);
+  return results;
+}
+
 function resolveImageUrl(src: string, pageUrl: string): string | null {
   try {
     if (src.startsWith("data:")) return null;
@@ -222,7 +267,7 @@ async function pageToMarkdown(
   images: UrlImageInput[];
   placeholderByUrl: Map<string, string>;
 } | null> {
-  const html = await fetchHtml(url);
+  const html = await fetchHtmlWithRetry(url);
   const $ = cheerio.load(html);
   const title = $("title").first().text().trim();
   const metaDescription =
@@ -293,8 +338,11 @@ export async function urlToMarkdown(
   const perPageCap = options.unlimited ? Infinity : MAX_CHARS_PER_PAGE;
   const totalCap = options.unlimited ? Infinity : MAX_CHARS_TOTAL;
 
-  const settled = await Promise.allSettled(
-    urls.map((u) => pageToMarkdown(u, turndown, includeImages))
+  // Concurrency-limit voorkomt HTTP 429 rate-limiting bij sites met
+  // W3 Total Cache / Cloudflare / vergelijkbare front-ends. Met 50 parallelle
+  // requests werden bij nleyes.com ~70% van de pagina's geblokkeerd.
+  const settled = await mapWithConcurrency(urls, FETCH_CONCURRENCY, (u) =>
+    pageToMarkdown(u, turndown, includeImages),
   );
 
   // Verzamel alle unique images uit alle pagina's voor één enkele vision-batch
