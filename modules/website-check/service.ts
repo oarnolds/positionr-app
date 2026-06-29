@@ -111,11 +111,24 @@ export async function runAnalysis(
       throw new Error("Geen format-template voor website-check gevonden in DB");
     }
 
+    // Perplexity sonar-pro heeft een 100KB-per-message limit. Cap de
+    // scraped content zodat de totale prompt (incl. template + format-
+    // template + footer) ruim onder de drempel blijft. Geldt zodra
+    // Perplexity in de keten zit; Claude alleen heeft hier geen last van.
+    const PERPLEXITY_SCRAPED_CAP = 80_000;
+    const needsPerplexityCap =
+      (provider === "perplexity" || provider === "both") &&
+      (scraped?.length ?? 0) > PERPLEXITY_SCRAPED_CAP;
+    const effectiveScraped = needsPerplexityCap
+      ? scraped.slice(0, PERPLEXITY_SCRAPED_CAP) +
+        "\n\n[… content afgekapt om binnen Perplexity API-limit van 100KB te blijven]"
+      : scraped;
+
     const promptHeader = substitutePlaceholders(template, {
       ...globalPlaceholders(),
       websiteUrl: args.websiteUrl,
       companyName: args.companyName || "Onbekend",
-      scrapedContent: scraped || "(Kon website niet laden)",
+      scrapedContent: effectiveScraped || "(Kon website niet laden)",
     });
 
     const prompt = `${promptHeader}\n\n---\nFORMAT-TEMPLATE (volg deze structuur exact, vervang placeholders door inhoud op basis van de geschraapte data; behoud markdown-structuur, koppen en tabellen):\n\n${formatTemplate}\n\n---\nSchrijf nu de gevulde versie van bovenstaand format. Geef alleen de markdown terug, geen JSON, geen uitleg eromheen.`;
