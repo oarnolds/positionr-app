@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { ArrowLeft, Globe } from "lucide-react";
+import { ArrowLeft, Globe, Trash2 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { eq, desc, and } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
 import { profiles, sessions } from "@/lib/db/schema";
 import { MODULE_SLUG } from "@/modules/website-check";
-import { startAnalysis, startAnalysisFromMarkdown } from "./actions";
+import { startAnalysis, startAnalysisFromMarkdown, deleteCheckAction } from "./actions";
 import { findAnySnapshot } from "@/lib/scraping/snapshot-service";
 
 // Vercel Pro: max 300s. runAnalysis loopt via after() binnen dezelfde
@@ -21,10 +21,15 @@ export default async function WebsiteCheckHomePage() {
   if (!user) redirect("/login?next=/modules/website-check");
 
   const [profile] = await db
-    .select({ companyName: profiles.companyName, websiteUrl: profiles.websiteUrl })
+    .select({
+      companyName: profiles.companyName,
+      websiteUrl: profiles.websiteUrl,
+      role: profiles.role,
+    })
     .from(profiles)
     .where(eq(profiles.id, user.id))
     .limit(1);
+  const isAdmin = profile?.role === "admin";
 
   const history = await db
     .select({
@@ -136,10 +141,10 @@ export default async function WebsiteCheckHomePage() {
                   : "perplexity"
               : null;
             return (
-              <li key={h.id}>
+              <li key={h.id} className="flex items-stretch gap-2">
                 <Link
                   href={`/modules/website-check/${h.id}`}
-                  className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 hover:bg-gray-50"
+                  className="flex flex-1 items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 hover:bg-gray-50"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -191,6 +196,19 @@ export default async function WebsiteCheckHomePage() {
                     </span>
                   )}
                 </Link>
+                {isAdmin && (
+                  <form action={deleteCheckAction} className="flex items-stretch">
+                    <input type="hidden" name="sessionId" value={h.id} />
+                    <button
+                      type="submit"
+                      aria-label="Verwijder deze check"
+                      title="Verwijder deze check (admin)"
+                      className="flex items-center rounded-xl border border-gray-200 bg-white px-3 text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </form>
+                )}
               </li>
             );
           })}
