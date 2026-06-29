@@ -101,11 +101,19 @@ export function MarkdownLibraryCard({
             />
             Afbeeldingen en logo&apos;s ook beschrijven (langzamer, hogere kosten)
           </label>
+          <label className="mt-1 flex cursor-pointer items-center gap-2 text-xs text-gray-700">
+            <input
+              type="checkbox"
+              name="unlimited"
+              className="h-3.5 w-3.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            />
+            Alle pagina&apos;s meenemen (kan minutenlang duren, hogere kosten)
+          </label>
           <div className="mt-3">
             <SubmitButton label="Maak markdown" pendingLabel="Bezig met scrapen…" />
           </div>
           <p className="mt-2 text-xs text-gray-500">
-            Sitemap-aware + image-analyse kan 30-60 sec duren. Niet sluiten tijdens conversie.
+            Sitemap-aware + image-analyse kan 30-60 sec duren (langer met &quot;alle pagina&apos;s&quot;). Niet sluiten tijdens conversie.
           </p>
         </form>
 

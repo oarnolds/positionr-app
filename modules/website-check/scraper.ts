@@ -65,7 +65,10 @@ export async function scrapeWebsite(
     // Live-pad: direct urlToMarkdown, geen DB-read, geen DB-write. Bewaart
     // het onderscheid met de bibliotheek-snapshot zodat A/B-vergelijking
     // tussen "Analyseer website" en "Analyseer obv markdown" eerlijk blijft.
-    const result = await urlToMarkdown(baseUrl);
+    // Cap op 30 pagina's: de LLM-input wordt sowieso afgekapt op
+    // DEFAULT_MAX_CHARS (6000), dus meer pagina's helpen de analyse niet
+    // en kosten alleen extra tijd binnen Vercel's 300s-budget.
+    const result = await urlToMarkdown(baseUrl, { maxPages: 30 });
     return slice(result.markdown);
   }
 

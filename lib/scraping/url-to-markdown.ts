@@ -10,11 +10,13 @@ import {
 import { discoverSitemapUrls } from "./sitemap";
 
 const FETCH_TIMEOUT_MS = 12_000;
-const MAX_CHARS_PER_PAGE = 8_000;
-const MAX_CHARS_TOTAL = 60_000;
+// Default-caps voor een rijke bibliotheek-snapshot. Met `unlimited: true`
+// worden alle drie de caps in feite uitgezet (zie urlToMarkdown).
+const MAX_CHARS_PER_PAGE = 50_000;
+const MAX_CHARS_TOTAL = 1_000_000;
 const USER_AGENT = "PositionrBot/1.0 (+https://app.positionr.nl)";
 const MAX_IMAGES_PER_PAGE = 25;
-const DEFAULT_MAX_PAGES = 30;
+const DEFAULT_MAX_PAGES = 200;
 
 const DEFAULT_PATHS = [
   "",
@@ -57,8 +59,15 @@ export type UrlToMarkdownOptions = {
    * paginalijst. Valt terug op DEFAULT_PATHS als geen sitemap gevonden wordt.
    */
   useSitemap?: boolean;
-  /** Max aantal pagina's om op te halen (default 30). */
+  /** Max aantal pagina's om op te halen (default 200). */
   maxPages?: number;
+  /**
+   * Wanneer true: schakel alle character-caps uit (per pagina én totaal) en
+   * maxPages naar 10.000 zodat álles wat in de sitemap zit meekomt. Bedoeld
+   * voor de "Alle pagina's meenemen"-checkbox in de Maak markdown UI.
+   * Kan minutenlang duren en flink wat vision-tokens vreten.
+   */
+  unlimited?: boolean;
 };
 
 export function normalizeBaseUrl(url: string): string {
@@ -255,7 +264,9 @@ async function resolveTargetUrls(
   if (options.singlePage) return [baseUrl];
   if (options.paths) return options.paths.map((p) => baseUrl + p);
 
-  const maxPages = options.maxPages ?? DEFAULT_MAX_PAGES;
+  const maxPages = options.unlimited
+    ? 10_000
+    : options.maxPages ?? DEFAULT_MAX_PAGES;
   if (options.useSitemap !== false) {
     const sitemapUrls = await discoverSitemapUrls(baseUrl, { maxUrls: maxPages });
     if (sitemapUrls.length > 0) {
@@ -275,6 +286,9 @@ export async function urlToMarkdown(
   const urls = await resolveTargetUrls(baseUrl, options);
   const turndown = createTurndown();
   const includeImages = options.includeImages !== false;
+  // Caps optioneel uitschakelen voor "alle pagina's"-modus.
+  const perPageCap = options.unlimited ? Infinity : MAX_CHARS_PER_PAGE;
+  const totalCap = options.unlimited ? Infinity : MAX_CHARS_TOTAL;
 
   const settled = await Promise.allSettled(
     urls.map((u) => pageToMarkdown(u, turndown, includeImages))
@@ -315,7 +329,9 @@ export async function urlToMarkdown(
     }
     const { markdown, title, metaDescription, placeholderByUrl } = r.value;
     const withImages = injectDescriptions(markdown, placeholderByUrl, descriptions);
-    const finalMd = withImages.slice(0, MAX_CHARS_PER_PAGE);
+    const finalMd = Number.isFinite(perPageCap)
+      ? withImages.slice(0, perPageCap as number)
+      : withImages;
     if (i === 0) {
       firstTitle = title;
       firstMetaDescription = metaDescription;
@@ -330,7 +346,10 @@ export async function urlToMarkdown(
     throw new Error(`Geen enkele pagina van ${baseUrl} kon worden opgehaald.`);
   }
 
-  const markdown = sections.join("\n\n---\n\n").slice(0, MAX_CHARS_TOTAL);
+  const joined = sections.join("\n\n---\n\n");
+  const markdown = Number.isFinite(totalCap)
+    ? joined.slice(0, totalCap as number)
+    : joined;
 
   return {
     baseUrl,

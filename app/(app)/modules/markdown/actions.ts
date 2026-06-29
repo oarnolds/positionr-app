@@ -21,6 +21,7 @@ const STORAGE_BUCKET = "markdown-sources";
 const UrlSchema = z.object({
   websiteUrl: z.string().trim().min(3, "URL is verplicht"),
   includeImages: z.boolean(),
+  unlimited: z.boolean(),
 });
 
 async function requireUser() {
@@ -37,13 +38,17 @@ export async function createUrlSnapshotAction(formData: FormData): Promise<void>
   const parsed = UrlSchema.parse({
     websiteUrl: formData.get("websiteUrl"),
     includeImages: formData.get("includeImages") === "on",
+    unlimited: formData.get("unlimited") === "on",
   });
   const { snapshot } = await getOrCreateSnapshot({
     userId: user.id,
     kind: "website",
     sourceUrl: parsed.websiteUrl,
     forceRefresh: true,
-    scrapeOptions: { includeImages: parsed.includeImages },
+    scrapeOptions: {
+      includeImages: parsed.includeImages,
+      unlimited: parsed.unlimited,
+    },
   });
   revalidatePath("/modules");
   redirect(`/modules/markdown/${snapshot.id}`);

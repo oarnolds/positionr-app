@@ -63,7 +63,7 @@ export async function discoverSitemapUrls(
   baseUrl: string,
   options: { maxUrls?: number } = {}
 ): Promise<string[]> {
-  const maxUrls = options.maxUrls ?? 30;
+  const maxUrls = options.maxUrls ?? 200;
   const baseOrigin = new URL(baseUrl).origin;
 
   let sitemapXml: string | null = null;
