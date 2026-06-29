@@ -1,9 +1,12 @@
 import { test, expect } from "vitest";
 import { FALLBACK_PROMPT } from "./prompt";
 
-test("FALLBACK_PROMPT eist Nederlands + JSON", () => {
+test("FALLBACK_PROMPT eist Nederlands en delegeert output-format aan FORMAT-TEMPLATE", () => {
   expect(FALLBACK_PROMPT).toMatch(/Nederlands/);
-  expect(FALLBACK_PROMPT.toLowerCase()).toMatch(/json/);
+  // Output-structuur komt uit het FORMAT-TEMPLATE (toegevoegd door service.ts),
+  // dus de prompt zelf mag GEEN JSON-instructies bevatten — die spraken eerder
+  // de FORMAT-TEMPLATE tegen en zorgden voor JSON-output bij Perplexity.
+  expect(FALLBACK_PROMPT.toLowerCase()).not.toMatch(/json/);
 });
 
 test("FALLBACK_PROMPT bevat alle 11 onderdelen", () => {

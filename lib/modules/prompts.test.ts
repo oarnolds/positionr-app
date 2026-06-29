@@ -80,7 +80,7 @@ describe("getModulePrompt", () => {
   it("valt terug op de echte Website Check FALLBACK_PROMPT als die slug leeg is", async () => {
     setMockRows([{ defaultPrompt: "", provider: "claude" }]);
     const result = await getModulePrompt("website-check");
-    expect(result.prompt).toContain("B2B website analyse");
+    expect(result.prompt).toContain("B2B-websiteanalyse");
     expect(result.provider).toBe("claude");
   });
 
