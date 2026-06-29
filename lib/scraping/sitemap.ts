@@ -46,9 +46,18 @@ function parseSitemapXml(xml: string): { urls: string[]; nestedSitemaps: string[
   return { urls, nestedSitemaps };
 }
 
+/** Strip "www." voor gelijkheid: WordPress/Yoast-sites verwijzen in hun
+ * sitemap vaak naar de bare hostname, terwijl gebruikers de www-variant
+ * invoeren (of andersom). Zonder normalisatie zou élke sitemap-entry als
+ * "andere origin" worden afgewezen.
+ */
+function normalizeOrigin(origin: string): string {
+  return origin.replace(/^(https?:\/\/)www\./i, "$1");
+}
+
 function sameOrigin(url: string, baseOrigin: string): boolean {
   try {
-    return new URL(url).origin === baseOrigin;
+    return normalizeOrigin(new URL(url).origin) === normalizeOrigin(baseOrigin);
   } catch {
     return false;
   }

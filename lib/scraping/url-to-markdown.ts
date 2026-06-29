@@ -178,7 +178,10 @@ function extractImages(
     }
     let placeholder = placeholderByUrl.get(resolved);
     if (!placeholder) {
-      placeholder = `__IMG_PH_${randomUUID().replace(/-/g, "")}__`;
+      // Alleen alfanumerieke tekens — turndown escapt `_`, `*`, `[` etc.
+      // tot `\_`, waardoor de inject-stap z'n eigen placeholder niet meer
+      // herkent. `IMGPH...` overleeft turndown ongeschonden.
+      placeholder = `IMGPH${randomUUID().replace(/-/g, "")}`;
       placeholderByUrl.set(resolved, placeholder);
       images.push({
         key: resolved,
