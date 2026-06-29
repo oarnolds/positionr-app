@@ -23,7 +23,19 @@ export async function analyzePerplexityRaw(args: {
     body: JSON.stringify({
       model: PRICING.perplexity.model,
       max_tokens: MAX_TOKENS,
-      messages: [{ role: "user", content: args.prompt }],
+      // System-instructie + user-prompt. Sonar-pro is van zichzelf geneigd
+      // om gestructureerde input als JSON-schema te interpreteren en JSON
+      // terug te geven — ook als de user-prompt expliciet om markdown vraagt.
+      // De system-message dwingt markdown af; de user-prompt herhaalt het
+      // nogmaals onderaan.
+      messages: [
+        {
+          role: "system",
+          content:
+            "Je bent een Nederlandstalige rapport-schrijver. Je output is ALTIJD platte markdown. NOOIT JSON, NOOIT code blocks rond de output, NOOIT YAML, NOOIT XML. Je eerste karakter is altijd `#` (een markdown-header) of `*` (vetgedrukte regel). Geef geen meta-uitleg vooraf of achteraf.",
+        },
+        { role: "user", content: args.prompt },
+      ],
     }),
   });
 
