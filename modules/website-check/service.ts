@@ -115,7 +115,9 @@ export async function runAnalysis(
     // We cappen scraped op bytes (niet chars) — Nederlandse tekst inflate't
     // door UTF-8 met ~5-10%, dus een char-cap is onbetrouwbaar. Geldt zodra
     // Perplexity in de keten zit; Claude alleen kan zonder cap.
-    const PERPLEXITY_BUDGET_BYTES = 95_000; // 5KB margin onder de 100KB harde grens
+    // Conservatieve grens (80KB ipv 95KB): Perplexity lijkt soms extra
+    // metadata/tokens mee te tellen, dus extra margin = robuustheid.
+    const PERPLEXITY_BUDGET_BYTES = 80_000;
     const TRUNC_MARKER =
       "\n\n[… content afgekapt om binnen Perplexity API-limit van 100KB te blijven]";
 
@@ -149,6 +151,15 @@ export async function runAnalysis(
     }
 
     const prompt = buildPrompt(effectiveScraped);
+
+    if (provider === "perplexity" || provider === "both") {
+      const finalBytes = new TextEncoder().encode(prompt).length;
+      // Logt naar Vercel runtime-logs (zichtbaar in get_runtime_logs)
+      // zodat we kunnen verifiëren dat we ruim onder de 100KB blijven.
+      console.log(
+        `[website-check] Perplexity prompt bytes=${finalBytes} provider=${provider}`,
+      );
+    }
 
     const analyzer = deps.pickAnalyzer(provider);
     const result = await analyzer({ prompt });
