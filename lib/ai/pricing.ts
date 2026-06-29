@@ -3,7 +3,15 @@
 // Tarieven per maart 2026 (peildatum spec). Update hier wanneer providers
 // hun prijzen aanpassen. Eenheid: USD per miljoen tokens.
 
+/** Daadwerkelijke call-providers (1 LLM-call). */
 export type Provider = "claude" | "perplexity";
+
+/**
+ * Wat een module in de admin-editor kan kiezen. "both" = synthese-modus:
+ * parallel Claude + Perplexity → derde Claude-call merget tot één rapport.
+ * Geen eigen pricing-entry — kosten zijn de som van de drie onderliggende calls.
+ */
+export type ConfigProvider = Provider | "both";
 
 export const PRICING: Record<
   Provider,

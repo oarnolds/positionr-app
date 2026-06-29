@@ -40,7 +40,7 @@ async function callScan(snapshot: WebsiteSnapshot) {
 async function composeIcpPrompt(
   subSlug: string,
   placeholders: Record<string, string>,
-): Promise<{ prompt: string; provider: "claude" | "perplexity" }> {
+): Promise<{ prompt: string; provider: import("@/lib/ai/pricing").ConfigProvider }> {
   const parent = await getModulePrompt(MODULE_SLUG);
   const sub = await getModulePrompt(subSlug);
   const combined = sub.prompt

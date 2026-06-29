@@ -33,6 +33,7 @@ export default async function WebsiteCheckHomePage() {
       input: sessions.input,
       output: sessions.output,
       status: sessions.status,
+      llmModel: sessions.llmModel,
     })
     .from(sessions)
     .where(and(eq(sessions.userId, user.id), eq(sessions.moduleSlug, MODULE_SLUG)))
@@ -123,22 +124,69 @@ export default async function WebsiteCheckHomePage() {
       ) : (
         <ul className="space-y-2">
           {history.map((h) => {
-            const input = (h.input as { websiteUrl?: string }) ?? {};
+            const input =
+              (h.input as { websiteUrl?: string; analysisMode?: "scrape" | "markdown" }) ?? {};
             const out = (h.output as { overallScore?: number } | null) ?? null;
+            const mode = input.analysisMode ?? "scrape";
+            const provider: "claude" | "perplexity" | "both" | null = h.llmModel
+              ? h.llmModel === "both"
+                ? "both"
+                : h.llmModel.toLowerCase().startsWith("claude")
+                  ? "claude"
+                  : "perplexity"
+              : null;
             return (
               <li key={h.id}>
                 <Link
                   href={`/modules/website-check/${h.id}`}
-                  className="flex items-center justify-between rounded-xl border bg-white px-3 py-2 hover:bg-gray-50"
+                  className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 hover:bg-gray-50"
                 >
-                  <div>
-                    <div className="text-sm font-semibold">{input.websiteUrl ?? "—"}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold">{input.websiteUrl ?? "—"}</span>
+                      <span
+                        className={
+                          mode === "markdown"
+                            ? "inline-flex items-center rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700"
+                            : "inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-700"
+                        }
+                        title={
+                          mode === "markdown"
+                            ? "Analyse op basis van markdown uit de bibliotheek"
+                            : "Analyse op basis van live scrape + prompt-instructie"
+                        }
+                      >
+                        {mode === "markdown" ? "Markdown" : "Scrape"}
+                      </span>
+                      {provider && (
+                        <span
+                          className={
+                            provider === "claude"
+                              ? "inline-flex items-center rounded-md bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-700"
+                              : provider === "perplexity"
+                                ? "inline-flex items-center rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-teal-700"
+                                : "inline-flex items-center rounded-md bg-fuchsia-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fuchsia-700"
+                          }
+                          title={
+                            provider === "both"
+                              ? "Synthese: Claude + Perplexity + merge-call"
+                              : `Model: ${h.llmModel}`
+                          }
+                        >
+                          {provider === "claude"
+                            ? "Claude"
+                            : provider === "perplexity"
+                              ? "Perplexity"
+                              : "Beide"}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-gray-500">
                       {h.createdAt instanceof Date ? h.createdAt.toLocaleString("nl-NL") : String(h.createdAt)} · {h.status}
                     </div>
                   </div>
                   {out?.overallScore !== undefined && (
-                    <span className="rounded-md bg-purple-100 px-2 py-0.5 text-sm font-bold text-purple-700">
+                    <span className="shrink-0 rounded-md bg-purple-100 px-2 py-0.5 text-sm font-bold text-purple-700">
                       {out.overallScore.toFixed(1)}
                     </span>
                   )}

@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { modules } from "@/lib/db/schema";
 import { FALLBACK_PROMPTS } from "./fallback-prompts";
-import type { Provider } from "@/lib/ai/pricing";
+import type { ConfigProvider } from "@/lib/ai/pricing";
 
 /**
  * Vervang `{naam}`-placeholders in `template` door waarden uit `values`.
@@ -29,7 +29,7 @@ export function substitutePlaceholders(
  */
 export async function getModulePrompt(
   slug: string,
-): Promise<{ prompt: string; provider: Provider }> {
+): Promise<{ prompt: string; provider: ConfigProvider }> {
   const [row] = await db
     .select({ defaultPrompt: modules.defaultPrompt, provider: modules.provider })
     .from(modules)
@@ -41,8 +41,8 @@ export async function getModulePrompt(
   if (!row.defaultPrompt || row.defaultPrompt.length === 0) {
     const fallback = FALLBACK_PROMPTS[slug];
     if (!fallback) throw new Error(`Geen fallback prompt voor module ${slug}`);
-    return { prompt: fallback, provider: row.provider as Provider };
+    return { prompt: fallback, provider: row.provider as ConfigProvider };
   }
 
-  return { prompt: row.defaultPrompt, provider: row.provider as Provider };
+  return { prompt: row.defaultPrompt, provider: row.provider as ConfigProvider };
 }

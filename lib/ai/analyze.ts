@@ -5,12 +5,13 @@
 // upstream-services niets hoeven te weten over de provider.
 
 import type { z } from "zod";
-import type { Provider } from "./pricing";
+import type { ConfigProvider } from "./pricing";
 import { analyzeClaude } from "./claude";
 import { analyzePerplexity } from "./perplexity";
+import { analyzeBoth } from "./synthesize";
 
 export type AnalyzeArgs<T> = {
-  provider: Provider;
+  provider: ConfigProvider;
   prompt: string;
   schema: z.ZodType<T>;
 };
@@ -35,5 +36,6 @@ export async function analyze<T>(
   const { provider, prompt, schema } = args;
   if (provider === "claude") return analyzeClaude({ prompt, schema });
   if (provider === "perplexity") return analyzePerplexity({ prompt, schema });
+  if (provider === "both") return analyzeBoth({ prompt, schema });
   throw new Error(`Onbekende provider: ${provider}`);
 }

@@ -14,7 +14,7 @@ import {
 import { savePrompt, resetPrompt } from "./actions";
 import { cn } from "@/lib/utils";
 
-type Provider = "claude" | "perplexity";
+type Provider = "claude" | "perplexity" | "both";
 type Placeholder = { key: string; label: string; example: string };
 
 // Modules waarvan de runtime al via getModulePrompt() de DB raadpleegt.
@@ -142,7 +142,16 @@ export function EditorPane({
         >
           <option value="claude">Claude</option>
           <option value="perplexity">Perplexity</option>
+          <option value="both">Beide (synthese)</option>
         </select>
+        {provider === "both" && (
+          <p className="mt-2 text-xs text-gray-600">
+            Synthese-modus: parallel Claude + Perplexity → derde Claude-call
+            voegt beide rapportages samen tot één rijkere versie. Drie LLM-calls
+            per run, dus ~3× duurder en langzamer. Bedoeld om de gecombineerde
+            kwaliteit te vergelijken.
+          </p>
+        )}
       </div>
 
       {placeholders.length > 0 && (

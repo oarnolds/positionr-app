@@ -38,7 +38,7 @@ export const moduleStatus = pgEnum("module_status", [
   "disabled",
 ]);
 
-export const providerEnum = pgEnum("provider", ["claude", "perplexity"]);
+export const providerEnum = pgEnum("provider", ["claude", "perplexity", "both"]);
 
 export const tierEnum = pgEnum("tier", ["fundament", "groei", "strategie"]);
 

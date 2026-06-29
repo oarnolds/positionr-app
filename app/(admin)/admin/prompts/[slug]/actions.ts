@@ -22,7 +22,7 @@ import {
 } from "@/lib/db/schema";
 import { FALLBACK_PROMPTS } from "@/lib/modules/fallback-prompts";
 
-const ProviderSchema = z.enum(["claude", "perplexity"]);
+const ProviderSchema = z.enum(["claude", "perplexity", "both"]);
 const SaveInputSchema = z.object({
   slug: z.string().min(1),
   prompt: z.string(),
