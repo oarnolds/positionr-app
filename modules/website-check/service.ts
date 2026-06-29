@@ -13,6 +13,8 @@ export type ScrapeOptions = {
   userId?: string;
   /** True = gebruik de bestaande markdown-bibliotheek-snapshot, geen verse scrape. */
   requireExistingSnapshot?: boolean;
+  /** True = forceer live scrape zonder DB-read/write. */
+  bypassCache?: boolean;
   /** 0 = geen cap, undefined = default 6000. */
   maxChars?: number;
 };
@@ -91,6 +93,8 @@ export async function runAnalysis(
     companyName: string;
     /** True = gebruik bestaande markdown-snapshot, geen verse scrape, geen cap. */
     useExistingMarkdown?: boolean;
+    /** True = forceer live scrape, geen cache-read of DB-write. */
+    bypassCache?: boolean;
   },
   deps: ServiceDeps = defaultDeps,
 ): Promise<void> {
@@ -98,6 +102,7 @@ export async function runAnalysis(
     const scraped = await deps.scrape(args.websiteUrl, {
       userId: args.userId,
       requireExistingSnapshot: args.useExistingMarkdown,
+      bypassCache: args.bypassCache,
       maxChars: args.useExistingMarkdown ? 0 : undefined,
     });
     const { prompt: template, provider } = await deps.fetchPrompt(MODULE_SLUG);

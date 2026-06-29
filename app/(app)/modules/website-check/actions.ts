@@ -52,6 +52,7 @@ export async function startAnalysis(formData: FormData): Promise<void> {
       userId: user.id,
       websiteUrl: parsed.websiteUrl,
       companyName: parsed.companyName ?? "",
+      bypassCache: true,
     }),
   );
 

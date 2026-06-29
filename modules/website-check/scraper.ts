@@ -24,6 +24,13 @@ export type ScrapeWebsiteOptions = {
    * Gebruikt door de "Analyseer obv markdown"-knop.
    */
   requireExistingSnapshot?: boolean;
+  /**
+   * Wanneer true: forceer een live scrape die NIET naar de markdown_snapshots
+   * cache kijkt en de DB-rij ook NIET bijwerkt. Gebruikt door "Analyseer
+   * website" om een onafhankelijk pad naast "Analyseer obv markdown" te hebben
+   * (zodat de twee paden eerlijk vergelijkbaar blijven).
+   */
+  bypassCache?: boolean;
   /** Cap op het aantal characters dat we returnen. Default 6000. Geef 0 voor 'geen cap'. */
   maxChars?: number;
 };
@@ -52,6 +59,14 @@ export async function scrapeWebsite(
       );
     }
     return slice(snapshot.markdown);
+  }
+
+  if (options.bypassCache) {
+    // Live-pad: direct urlToMarkdown, geen DB-read, geen DB-write. Bewaart
+    // het onderscheid met de bibliotheek-snapshot zodat A/B-vergelijking
+    // tussen "Analyseer website" en "Analyseer obv markdown" eerlijk blijft.
+    const result = await urlToMarkdown(baseUrl);
+    return slice(result.markdown);
   }
 
   if (options.userId) {
