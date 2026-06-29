@@ -111,27 +111,44 @@ export async function runAnalysis(
       throw new Error("Geen format-template voor website-check gevonden in DB");
     }
 
-    // Perplexity sonar-pro heeft een 100KB-per-message limit. Cap de
-    // scraped content zodat de totale prompt (incl. template + format-
-    // template + footer) ruim onder de drempel blijft. Geldt zodra
-    // Perplexity in de keten zit; Claude alleen heeft hier geen last van.
-    const PERPLEXITY_SCRAPED_CAP = 80_000;
-    const needsPerplexityCap =
-      (provider === "perplexity" || provider === "both") &&
-      (scraped?.length ?? 0) > PERPLEXITY_SCRAPED_CAP;
-    const effectiveScraped = needsPerplexityCap
-      ? scraped.slice(0, PERPLEXITY_SCRAPED_CAP) +
-        "\n\n[… content afgekapt om binnen Perplexity API-limit van 100KB te blijven]"
-      : scraped;
+    // Perplexity sonar-pro heeft een 100KB-per-message limit op user-content.
+    // We cappen scraped op bytes (niet chars) — Nederlandse tekst inflate't
+    // door UTF-8 met ~5-10%, dus een char-cap is onbetrouwbaar. Geldt zodra
+    // Perplexity in de keten zit; Claude alleen kan zonder cap.
+    const PERPLEXITY_BUDGET_BYTES = 95_000; // 5KB margin onder de 100KB harde grens
+    const TRUNC_MARKER =
+      "\n\n[… content afgekapt om binnen Perplexity API-limit van 100KB te blijven]";
 
-    const promptHeader = substitutePlaceholders(template, {
-      ...globalPlaceholders(),
-      websiteUrl: args.websiteUrl,
-      companyName: args.companyName || "Onbekend",
-      scrapedContent: effectiveScraped || "(Kon website niet laden)",
-    });
+    function buildPrompt(scrapedContent: string): string {
+      const header = substitutePlaceholders(template, {
+        ...globalPlaceholders(),
+        websiteUrl: args.websiteUrl,
+        companyName: args.companyName || "Onbekend",
+        scrapedContent: scrapedContent || "(Kon website niet laden)",
+      });
+      return `${header}\n\n---\nFORMAT-TEMPLATE (volg deze structuur exact, vervang placeholders door inhoud op basis van de geschraapte data; behoud markdown-structuur, koppen en tabellen):\n\n${formatTemplate}\n\n---\nSchrijf nu de gevulde versie van bovenstaand format. Geef alleen de markdown terug, geen JSON, geen uitleg eromheen.`;
+    }
 
-    const prompt = `${promptHeader}\n\n---\nFORMAT-TEMPLATE (volg deze structuur exact, vervang placeholders door inhoud op basis van de geschraapte data; behoud markdown-structuur, koppen en tabellen):\n\n${formatTemplate}\n\n---\nSchrijf nu de gevulde versie van bovenstaand format. Geef alleen de markdown terug, geen JSON, geen uitleg eromheen.`;
+    let effectiveScraped = scraped ?? "";
+    if (provider === "perplexity" || provider === "both") {
+      const encoder = new TextEncoder();
+      const overheadBytes = encoder.encode(buildPrompt("")).length;
+      const markerBytes = encoder.encode(TRUNC_MARKER).length;
+      const scrapedBudgetBytes = PERPLEXITY_BUDGET_BYTES - overheadBytes;
+
+      if (encoder.encode(effectiveScraped).length > scrapedBudgetBytes) {
+        // Truncate op bytes: bouw incrementeel tot we onder het budget zitten.
+        const targetBytes = scrapedBudgetBytes - markerBytes;
+        const encoded = encoder.encode(effectiveScraped);
+        let cutBytes = Math.min(targetBytes, encoded.length);
+        // UTF-8 byte-grens vinden: zorg dat we niet midden in een multi-byte
+        // sequence afkappen (continuation bytes beginnen met 10xxxxxx = 0x80-0xBF).
+        while (cutBytes > 0 && (encoded[cutBytes] & 0xc0) === 0x80) cutBytes--;
+        effectiveScraped = new TextDecoder().decode(encoded.slice(0, cutBytes)) + TRUNC_MARKER;
+      }
+    }
+
+    const prompt = buildPrompt(effectiveScraped);
 
     const analyzer = deps.pickAnalyzer(provider);
     const result = await analyzer({ prompt });
