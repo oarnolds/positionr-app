@@ -22,10 +22,48 @@ const DEFAULT_PATHS = [
   "",
   "/diensten",
   "/services",
+  "/oplossingen",
+  "/wat-we-doen",
+  "/producten",
   "/over-ons",
   "/about",
+  "/werkwijze",
+  "/aanpak",
+  "/proces",
   "/cases",
+  "/klantcases",
+  "/klanten",
   "/referenties",
+  "/portfolio",
+  "/blog",
+  "/nieuws",
+  "/kennis",
+  "/contact",
+  "/contact-us",
+];
+
+/** Selectors voor cookie-/consent-banners en chat-widgets. extractMainHtml
+ *  verwijdert deze vóór de main-content wordt gepakt; voorkomt dat
+ *  "Wij gebruiken cookies om..."-tekst in de markdown belandt. */
+const NOISE_SELECTORS = [
+  '[id*="cookie" i]',
+  '[class*="cookie" i]',
+  '[id*="consent" i]',
+  '[class*="consent" i]',
+  '[id*="onetrust" i]',
+  '[class*="onetrust" i]',
+  '[id*="cookiebot" i]',
+  '[class*="cookiebot" i]',
+  '[class*="gdpr" i]',
+  '[aria-label*="cookie" i]',
+  '[aria-label*="consent" i]',
+  '[role="dialog"][aria-modal="true"]',
+  '#hs-eu-cookie-confirmation',
+  '#osano-cm-window',
+  '.cc-window',
+  '[id*="chat-widget" i]',
+  '[class*="chat-widget" i]',
+  '[class*="intercom" i]',
 ];
 
 export type PageResult = {
@@ -89,6 +127,7 @@ function createTurndown(): TurndownService {
 
 function extractMainHtml($: cheerio.CheerioAPI): string {
   $("script, style, noscript, iframe, svg, nav, footer, aside, header").remove();
+  $(NOISE_SELECTORS.join(",")).remove();
 
   const candidates = ["main", "article", "[role=main]", "#content", ".content"];
   for (const sel of candidates) {
@@ -390,14 +429,46 @@ export async function urlToMarkdown(
       firstTitle = title;
     }
     pages.push({ url, status: "ok", charCount: finalMd.length });
-    sections.push(`# ${url}\n\n${finalMd}`);
+    // Sectie-format met expliciete "=== PAGINA: ===" marker + titel.
+    // Een markdown-heading blijft op zijn plek in finalMd (uit het HTML→MD-
+    // proces) zodat de RAG-chunker per-pagina nog steeds boundaries vindt.
+    const titleLine = title ? `Titel: ${title}\n\n` : "";
+    sections.push(`=== PAGINA: ${url} ===\n${titleLine}${finalMd}`);
   });
 
   if (sections.length === 0) {
     throw new Error(`Geen enkele pagina van ${baseUrl} kon worden opgehaald.`);
   }
 
-  const joined = sections.join("\n\n---\n\n");
+  // Frontmatter: gevonden + ontbrekende pagina's. Geeft de analyse-prompt
+  // expliciet zicht op wat wel/niet beschikbaar was zodat 'ie eerlijk kan
+  // zeggen "contactpagina niet meegescraped" i.p.v. te gokken.
+  const okPages = pages.filter((p) => p.status === "ok");
+  const failedPages = pages.filter((p) => p.status !== "ok");
+  const scrapeDate = new Date().toISOString().slice(0, 10);
+  const frontmatterLines = [
+    "---",
+    `website_url: ${baseUrl}`,
+    `scrape_datum: ${scrapeDate}`,
+    `titel: ${firstTitle || "(onbekend)"}`,
+    `aantal_paginas: ${okPages.length}`,
+    "gevonden_paginas:",
+    ...okPages.map((p) => `  - ${p.url}`),
+    ...(failedPages.length
+      ? [
+          "ontbrekende_paginas:",
+          ...failedPages.map((p) => {
+            const reason = p.errorMessage ?? (p.status === "empty" ? "lege pagina" : "onbekend");
+            return `  - ${p.url} (${reason})`;
+          }),
+        ]
+      : []),
+    "---",
+    "",
+  ];
+  const frontmatter = frontmatterLines.join("\n");
+
+  const joined = frontmatter + sections.join("\n\n");
   const markdown = Number.isFinite(totalCap)
     ? joined.slice(0, totalCap as number)
     : joined;
