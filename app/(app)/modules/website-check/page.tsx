@@ -9,11 +9,12 @@ import { MODULE_SLUG } from "@/modules/website-check";
 import { startAnalysis, startAnalysisFromMarkdown, deleteCheckAction } from "./actions";
 import { findAnySnapshot } from "@/lib/scraping/snapshot-service";
 
-// Vercel Pro: max 800s op serverless. runAnalysis loopt via after() binnen
-// dezelfde function-lifecycle, dus dit budget geldt ook voor de achtergrond-
-// analyse. 600s biedt ruimte voor provider=both (Claude + Perplexity + synthese
-// = 3 LLM-calls) bij API-vertraging zonder direct het plafond te raken.
-export const maxDuration = 600;
+// Vercel Hobby plan: max 300s op serverless. runAnalysis loopt via after()
+// binnen dezelfde function-lifecycle, dus dit budget geldt ook voor de
+// achtergrond-analyse. Provider=both met slimme synthesis (zonder ballast)
+// past binnen 300s zolang Claude/Perplexity niet samen rampzalig vertraagd
+// reageren. Upgrade naar Pro plan opent de deur naar 800s.
+export const maxDuration = 300;
 
 export default async function WebsiteCheckHomePage() {
   const supabase = await createClient();

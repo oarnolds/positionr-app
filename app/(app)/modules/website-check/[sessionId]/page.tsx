@@ -11,7 +11,7 @@ import { MODULE_SLUG } from "@/modules/website-check";
 import { regenerateAnalysis } from "../actions";
 import { RunningPoll } from "./running-poll";
 
-const STUCK_THRESHOLD_SECONDS = 11 * 60; // maxDuration=600s + 1 min grace
+const STUCK_THRESHOLD_SECONDS = 6 * 60; // maxDuration=300s + 1 min grace
 
 export default async function WebsiteCheckResultPage({
   params,
