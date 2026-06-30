@@ -19,8 +19,8 @@ const SYNTHESIS_HEADER = [
   "  behoud diepe analyse en structuur uit A.",
   "- Verwijder duplicatie. Bij tegenstrijdigheden: kies de best onderbouwde",
   "  uitspraak of zeg expliciet dat de bronnen verschillen.",
-  "- Volg exact het format en de markdown-structuur die in de originele prompt",
-  "  is voorgeschreven (onder 'FORMAT-TEMPLATE').",
+  "- Volg EXACT dezelfde markdown-structuur (koppen, sectie-volgorde, scores,",
+  "  bullets) als in rapport A en B. Verzin geen nieuwe secties.",
   "- Geef ALLEEN de gevulde markdown terug. Geen meta-uitleg, geen 'Hier is",
   "  de synthese', geen JSON.",
   "",
@@ -34,13 +34,13 @@ export async function analyzeBothRaw(args: {
     analyzePerplexityRaw({ prompt: args.prompt }),
   ]);
 
+  // De originele prompt (incl. ~80KB scraped content) bewust NIET meesturen
+  // — die zat bij eerdere runs in de synthesis-call en blies de Claude-input
+  // op tot ~100KB, met timeouts boven Vercel's 300s tot gevolg. Rapporten A
+  // en B bevatten alle benodigde inhoud en geven Claude de structuur om naar
+  // toe te werken.
   const synthesisPrompt = [
     SYNTHESIS_HEADER,
-    "ORIGINELE PROMPT (voor format-referentie):",
-    "---",
-    args.prompt,
-    "---",
-    "",
     "RAPPORT A (Claude):",
     "---",
     claudeResult.markdown,

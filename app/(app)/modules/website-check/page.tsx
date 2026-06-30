@@ -9,11 +9,11 @@ import { MODULE_SLUG } from "@/modules/website-check";
 import { startAnalysis, startAnalysisFromMarkdown, deleteCheckAction } from "./actions";
 import { findAnySnapshot } from "@/lib/scraping/snapshot-service";
 
-// Vercel Pro: max 300s. runAnalysis loopt via after() binnen dezelfde
-// function-lifecycle, dus dit budget geldt ook voor de achtergrond-analyse.
-// 60s was te krap voor grotere sites (de eerdere approved runs zaten 52-58s,
-// gevaarlijk dicht bij het plafond).
-export const maxDuration = 300;
+// Vercel Pro: max 800s op serverless. runAnalysis loopt via after() binnen
+// dezelfde function-lifecycle, dus dit budget geldt ook voor de achtergrond-
+// analyse. 600s biedt ruimte voor provider=both (Claude + Perplexity + synthese
+// = 3 LLM-calls) bij API-vertraging zonder direct het plafond te raken.
+export const maxDuration = 600;
 
 export default async function WebsiteCheckHomePage() {
   const supabase = await createClient();
