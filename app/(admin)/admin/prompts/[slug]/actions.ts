@@ -22,7 +22,10 @@ import {
 } from "@/lib/db/schema";
 import { FALLBACK_PROMPTS } from "@/lib/modules/fallback-prompts";
 
-const ProviderSchema = z.enum(["claude", "perplexity", "both"]);
+// "both" bewust uit de selectable set gehaald — synthese-modus leverde
+// geen betere rapportages tegenover ~3× kosten en runtime. DB-enum behoudt
+// 'both' nog voor historische sessies/llm_model-display.
+const ProviderSchema = z.enum(["claude", "perplexity"]);
 const SaveInputSchema = z.object({
   slug: z.string().min(1),
   prompt: z.string(),
