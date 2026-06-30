@@ -29,7 +29,7 @@ TAALREGELS (belangrijk)
 
 INHOUDSREGELS (belangrijk)
 
-- Baseer je oordeel UITSLUITEND op de werkelijke websitecontent in {scrapedContent}. Verzin geen feiten, cijfers, klantnamen of resultaten.
+- Baseer je oordeel UITSLUITEND op de werkelijke website-content hieronder (onder "WEBSITE CONTENT"). Verzin geen feiten, cijfers, klantnamen of resultaten.
 - Gebruik in voorbeelden alleen getallen of resultaten die echt in de content staan. Staat er geen cijfer, gebruik dan een voorbeeldzin en maak duidelijk dat het een voorbeeld is (begin met "bijvoorbeeld:"). Verzin nooit een concreet resultaat alsof het van dit bedrijf is.
 - Kun je een onderdeel niet beoordelen omdat de content ontbreekt (bijvoorbeeld de inhoud van de contactpagina is niet meegescraped)? Zeg dat dan eerlijk, geef een voorzichtige score en leg uit wat je wel en niet kon zien. Doe geen aannames.
 
