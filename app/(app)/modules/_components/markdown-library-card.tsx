@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookMarked, Globe, FileText, Upload, Trash2, MessageSquare, RefreshCw } from "lucide-react";
+import { BookMarked, Globe, FileText, Upload, Trash2, MessageSquare, RefreshCw, Download } from "lucide-react";
 import type { MarkdownSnapshot } from "@/lib/db/schema";
 import {
   createUrlSnapshotAction,
@@ -201,6 +201,15 @@ export function MarkdownLibraryCard({
                     </span>
                   </span>
                 </Link>
+                <a
+                  href={`/modules/markdown/${s.id}/download`}
+                  download
+                  aria-label="Download als .md"
+                  title="Download als .md"
+                  className="rounded-lg p-1.5 text-gray-400 hover:bg-purple-50 hover:text-purple-600"
+                >
+                  <Download className="h-4 w-4" />
+                </a>
                 <form action={deleteSnapshotAction}>
                   <input type="hidden" name="snapshotId" value={s.id} />
                   <button
