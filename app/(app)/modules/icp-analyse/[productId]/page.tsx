@@ -4,7 +4,7 @@ import { eq, desc } from "drizzle-orm";
 import { redirect, notFound } from "next/navigation";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
-import { clients, icpProducts, sessions } from "@/lib/db/schema";
+import { clients, icpProducts, markdownSnapshots, sessions } from "@/lib/db/schema";
 import { ModeSelector } from "@/modules/icp-analyse/components/ModeSelector";
 
 // Snelle analyse doet 2 LLM-calls (Phase 1 + Final) synchroon in de
@@ -42,6 +42,26 @@ export default async function ICPModeSelectPage({
     .where(eq(clients.id, productData.clientId))
     .limit(1);
   if (!clientData || clientData.userId !== user.id) notFound();
+
+  // Markdown-bibliotheek van de user — als bronkeuze voor de markdown-modus.
+  const snapshotRows = await db
+    .select({
+      id: markdownSnapshots.id,
+      title: markdownSnapshots.title,
+      sourceFilename: markdownSnapshots.sourceFilename,
+      sourceUrl: markdownSnapshots.sourceUrl,
+      fetchedAt: markdownSnapshots.fetchedAt,
+    })
+    .from(markdownSnapshots)
+    .where(eq(markdownSnapshots.userId, user.id))
+    .orderBy(desc(markdownSnapshots.fetchedAt))
+    .limit(20);
+  const snapshotOptions = snapshotRows.map((s) => ({
+    id: s.id,
+    label: `${s.title || s.sourceFilename || s.sourceUrl} (${new Date(
+      s.fetchedAt
+    ).toLocaleDateString("nl-NL")})`,
+  }));
 
   // Eerdere sessies voor dit product
   const previousSessions = await db
@@ -105,7 +125,7 @@ export default async function ICPModeSelectPage({
       )}
 
       <div className="mt-4">
-        <ModeSelector productId={productId} />
+        <ModeSelector productId={productId} snapshots={snapshotOptions} />
       </div>
 
       {previousSessions.length > 0 && (

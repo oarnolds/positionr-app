@@ -1,5 +1,8 @@
+import { and, eq } from "drizzle-orm";
 import type { WebsiteSnapshot } from "./schema";
 import { getOrCreateSnapshot } from "@/lib/scraping/snapshot-service";
+import { db } from "@/lib/db/client";
+import { markdownSnapshots } from "@/lib/db/schema";
 
 const MAX_BODY_CHARS = 15_000;
 
@@ -38,6 +41,37 @@ export async function scrapeForIcp(
     kind: "website",
     sourceUrl: url,
   });
+
+  return {
+    url: snapshot.sourceUrl,
+    title: snapshot.title ?? "",
+    metaDescription: snapshot.metaDescription ?? "",
+    heroText: extractHeroFromMarkdown(snapshot.markdown),
+    bodyExcerpt: snapshot.markdown.slice(0, MAX_BODY_CHARS),
+    scrapedAt: snapshot.fetchedAt.toISOString(),
+  };
+}
+
+/**
+ * Bouwt een ICP-snapshot uit een bestaand bibliotheek-snapshot (gekozen door
+ * de gebruiker) in plaats van de website te scrapen. Zelfde vorm als
+ * `scrapeForIcp`, andere bron.
+ */
+export async function snapshotFromLibrary(
+  snapshotId: string,
+  userId: string
+): Promise<WebsiteSnapshot> {
+  const [snapshot] = await db
+    .select()
+    .from(markdownSnapshots)
+    .where(
+      and(
+        eq(markdownSnapshots.id, snapshotId),
+        eq(markdownSnapshots.userId, userId)
+      )
+    )
+    .limit(1);
+  if (!snapshot) throw new Error("Markdown-snapshot niet gevonden");
 
   return {
     url: snapshot.sourceUrl,

@@ -174,6 +174,28 @@ export async function startSnelAnalyse(productId: string) {
   redirect(`/modules/icp-analyse/${productId}/snel/${sessionId}`);
 }
 
+/**
+ * Als startSnelAnalyse, maar met een door de gebruiker gekozen
+ * markdown-snapshot uit de bibliotheek als bron in plaats van live scraping.
+ */
+export async function startMarkdownAnalyse(
+  productId: string,
+  snapshotId: string,
+) {
+  const user = await getUser();
+  let sessionId: string;
+  try {
+    sessionId = await createSnelSession(user.id, productId, { snapshotId });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Analyse mislukt";
+    redirect(
+      `/modules/icp-analyse/${productId}?error=${encodeURIComponent(msg)}`,
+    );
+  }
+  after(() => runSnelInBackground(sessionId));
+  redirect(`/modules/icp-analyse/${productId}/snel/${sessionId}`);
+}
+
 // ── Volledige flow ───────────────────────────────────────────────────────────
 
 export async function startVolledigAnalyse(productId: string) {

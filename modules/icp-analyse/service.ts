@@ -1,10 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { clients, icpProducts, sessions } from "@/lib/db/schema";
+import { clients, icpProducts, markdownSnapshots, sessions } from "@/lib/db/schema";
 import { analyze } from "@/lib/ai/analyze";
 import { getModulePrompt, substitutePlaceholders } from "@/lib/modules/prompts";
 import { globalPlaceholders } from "@/lib/modules/global-placeholders";
-import { scrapeForIcp } from "./scraper";
+import { scrapeForIcp, snapshotFromLibrary } from "./scraper";
 import { buildFinalContext, FALLBACK_PROMPT_SCAN } from "./prompt";
 import {
   ScannedProducts,
@@ -176,12 +176,28 @@ const DEFAULT_WEBFORM_ANSWERS: WebformAnswers = {
 export async function createSnelSession(
   userId: string,
   productId: string,
+  opts?: { snapshotId?: string },
 ): Promise<string> {
   const product = await getProductOrThrow(productId, userId);
   const client = await getClientOrThrow(product.clientId, userId);
 
-  const url = product.websiteUrl ?? client.websiteUrl;
-  if (!url) throw new Error("Geen website-URL voor dit product/klant");
+  if (opts?.snapshotId) {
+    // Markdown-bron: verifieer dat het snapshot van deze user is.
+    const [snap] = await db
+      .select({ id: markdownSnapshots.id })
+      .from(markdownSnapshots)
+      .where(
+        and(
+          eq(markdownSnapshots.id, opts.snapshotId),
+          eq(markdownSnapshots.userId, userId)
+        )
+      )
+      .limit(1);
+    if (!snap) throw new Error("Markdown-snapshot niet gevonden");
+  } else {
+    const url = product.websiteUrl ?? client.websiteUrl;
+    if (!url) throw new Error("Geen website-URL voor dit product/klant");
+  }
 
   const [session] = await db
     .insert(sessions)
@@ -191,10 +207,11 @@ export async function createSnelSession(
       productId: product.id,
       moduleSlug: MODULE_SLUG,
       status: "running",
-      input: { productId, analysisMode: "snel" } as unknown as Record<
-        string,
-        unknown
-      >,
+      input: {
+        productId,
+        analysisMode: "snel",
+        ...(opts?.snapshotId ? { snapshotId: opts.snapshotId } : {}),
+      } as unknown as Record<string, unknown>,
     })
     .returning();
 
@@ -220,9 +237,10 @@ export async function runSnelInBackground(sessionId: string): Promise<void> {
   const userId = session.userId;
   const product = await getProductOrThrow(session.productId, userId);
   const client = await getClientOrThrow(product.clientId, userId);
+  const input = (session.input ?? {}) as { snapshotId?: string };
   const url = product.websiteUrl ?? client.websiteUrl;
 
-  if (!url) {
+  if (!input.snapshotId && !url) {
     await db
       .update(sessions)
       .set({
@@ -235,8 +253,11 @@ export async function runSnelInBackground(sessionId: string): Promise<void> {
   }
 
   try {
-    // Snapshot (gedeelde cache via markdown_snapshots)
-    const snapshot = await scrapeForIcp(url, userId);
+    // Bron: gekozen bibliotheek-snapshot, of anders scrapen (gedeelde cache
+    // via markdown_snapshots).
+    const snapshot = input.snapshotId
+      ? await snapshotFromLibrary(input.snapshotId, userId)
+      : await scrapeForIcp(url!, userId);
 
     // Phase 1
     const phase1Result = await callPhase1(snapshot);
