@@ -3,10 +3,10 @@ import { calculateCostCents, PRICING } from "./pricing";
 import type { ClaudeRawResult } from "./claude-raw";
 
 const MAX_TOKENS = 8000;
-// Begrens het aantal zoekopdrachten per analyse — elke search kost extra
-// bovenop de tokens. 8 is ruim voor een concurrent-discovery over 2-3
-// marktsegmenten.
-const MAX_SEARCHES = 8;
+// Begrens het aantal zoekopdrachten per analyse — elke search is een extra
+// sequentiële ronde binnen Vercel's 300s-budget. 4 volstaat voor 2-3
+// marktsegmenten mits de prompt om gerichte zoekopdrachten vraagt.
+const MAX_SEARCHES = 4;
 // pause_turn-vervolgen: server-side tool-loops kunnen pauzeren; we hervatten
 // max dit aantal keer voordat we de output nemen zoals die is.
 const MAX_CONTINUATIONS = 5;
@@ -37,11 +37,24 @@ export async function analyzeClaudeSearchRaw(args: {
     { type: "web_search_20260209", name: "web_search", max_uses: MAX_SEARCHES },
   ];
 
+  // cache_control op de (grote) prompt: pause_turn-vervolgen hergebruiken
+  // dezelfde prefix en lezen die dan uit cache — sneller en goedkoper dan
+  // per zoekronde de volledige snapshot-content opnieuw verwerken.
   let messages: Anthropic.MessageParam[] = [
-    { role: "user", content: args.prompt },
+    {
+      role: "user",
+      content: [
+        {
+          type: "text",
+          text: args.prompt,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+    },
   ];
   let totalInput = 0;
   let totalOutput = 0;
+  const startedAt = Date.now();
 
   let response = await client.messages.create({
     model: PRICING.claude.model,
@@ -73,6 +86,13 @@ export async function analyzeClaudeSearchRaw(args: {
     .map((b) => b.text)
     .join("\n")
     .trim();
+
+  // Zichtbaar in Vercel runtime-logs — om timing binnen het 300s-budget te
+  // kunnen volgen.
+  console.log(
+    `[claude-search] klaar in ${Math.round((Date.now() - startedAt) / 1000)}s, ` +
+      `continuations=${continuations}, in=${totalInput} out=${totalOutput}`,
+  );
 
   if (!text) {
     throw new Error("Claude (web search) retourneerde lege output");

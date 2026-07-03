@@ -29,19 +29,13 @@ Geef UITSLUITEND geldige JSON terug — geen markdown-fences, geen uitleg. Exact
 
 Regels:
 - Zoek ECHTE, bestaande bedrijven via web search — verzin geen namen. Controleer bij twijfel.
+- Werk snel: je hebt maximaal 4 web searches — gebruik één brede, gerichte zoekopdracht per marktsegment in plaats van veel kleine.
 - 6 tot 12 kandidaten, gesorteerd van meest naar minst directe concurrent.
 - Groepeer via "segment": bedrijven die in hetzelfde deel van de markt concurreren krijgen exact dezelfde segment-naam.
 - Alleen bedrijven die actief zijn in de opgegeven geografische focus.
 - Nederlandse tekst in "reden" en "samenvatting".`;
 
-/** Fallback voor de discovery-prompt (admin kan 'm in de DB verfijnen). */
-export const FALLBACK_PROMPT_DISCOVERY = `Je bent een marktonderzoeker gespecialiseerd in concurrentie-analyse voor B2B-bedrijven.
-
-Analyseer het bedrijf {companyName} ({sector}) op basis van de website-content hieronder. Bepaal welke producten en/of diensten het bedrijf aanbiedt en in welke marktsegmenten het daarmee opereert.
-
-Zoek vervolgens via web search naar bedrijven die met {companyName} concurreren binnen deze geografische focus: {geografie}. Kijk per marktsegment: een bedrijf dat meerdere soorten diensten levert heeft vaak concurrenten in meerdere, verschillende segmenten. Weeg zowel het aanbod (product/dienst-overlap) als geografie mee.
-
-Extra context van de gebruiker: {description}`;
+export { FALLBACK_PROMPT_DISCOVERY } from "./fallback";
 
 export function buildDiscoveryPrompt(args: {
   template: string;

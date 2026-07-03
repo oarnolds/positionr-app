@@ -26,6 +26,18 @@ import {
 
 export type SnapshotSource = { markdown: string; sourceUrl: string };
 
+// Input-caps: grote snapshots (100k+ tekens) gaan bij élke zoekronde opnieuw
+// mee in de prompt en drukken de analyse door Vercel's 300s-budget heen.
+// Het aanbod (producten/diensten) staat vooraan in het snapshot; voor de
+// vergelijking in fase 2 is iets meer eigen content nuttig.
+const DISCOVERY_CONTENT_CAP = 20_000;
+const DEEP_CONTENT_CAP = 30_000;
+
+function capContent(markdown: string, cap: number): string {
+  if (markdown.length <= cap) return markdown;
+  return `${markdown.slice(0, cap)}\n\n[… website-content ingekort tot ${cap.toLocaleString("nl-NL")} tekens]`;
+}
+
 export type ServiceDeps = {
   fetchSnapshot: (snapshotId: string, userId: string) => Promise<SnapshotSource>;
   fetchPrompt: typeof getModulePrompt;
@@ -127,7 +139,7 @@ export async function runDiscovery(
     const prompt = buildDiscoveryPrompt({
       template,
       input: args.input,
-      scrapedContent: snapshot.markdown,
+      scrapedContent: capContent(snapshot.markdown, DISCOVERY_CONTENT_CAP),
     });
 
     const analyzer = deps.pickAnalyzer(provider);
@@ -206,7 +218,7 @@ export async function runDeepAnalysis(
         sector: args.input.sector ?? "",
         description: args.input.description ?? "",
         competitors: competitorsBlock,
-        scrapedContent: snapshot.markdown,
+        scrapedContent: capContent(snapshot.markdown, DEEP_CONTENT_CAP),
       },
     });
 

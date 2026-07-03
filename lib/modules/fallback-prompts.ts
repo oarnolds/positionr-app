@@ -14,7 +14,7 @@ import {
   FALLBACK_PROMPT_PHASE1,
   FALLBACK_PROMPT_FINAL,
 } from "@/modules/icp-analyse/prompt";
-import { FALLBACK_PROMPT_DISCOVERY } from "@/modules/concurrenten/prompt";
+import { FALLBACK_PROMPT_DISCOVERY } from "@/modules/concurrenten/fallback";
 
 const SOON_PLACEHOLDER = (name: string) =>
   `[Placeholder prompt voor ${name} — vul aan via de admin-editor zodra deze module gebouwd wordt.]`;

@@ -147,6 +147,23 @@ test("runDeepAnalysis: bevestigde concurrenten in prompt + telemetrie opgeteld",
   expect(output.kind).toBe("report");
 });
 
+test("runDiscovery: groot snapshot wordt gecapped in de prompt", async () => {
+  const { deps, analyze } = makeDeps(VALID_DISCOVERY_JSON);
+  deps.fetchSnapshot = vi.fn().mockResolvedValue({
+    markdown: "x".repeat(150_000),
+    sourceUrl: "https://nleyes.com",
+  });
+  await runDiscovery(
+    { sessionId: "s1", userId: USER_ID, input: makeInput() },
+    deps,
+  );
+
+  const sentPrompt = analyze.mock.calls[0][0].prompt as string;
+  // Ruim onder de originele 150k — cap (20k) + template + contract.
+  expect(sentPrompt.length).toBeLessThan(25_000);
+  expect(sentPrompt).toContain("ingekort tot");
+});
+
 test("buildDiscoveryPrompt: placeholders + content-blok + contract", () => {
   const prompt = buildDiscoveryPrompt({
     template: "Zoek concurrenten van {companyName} in {geografie}.",
