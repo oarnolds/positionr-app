@@ -124,7 +124,8 @@ export const MODULES: ModuleMeta[] = [
     borderColor: "border-amber-200",
     bgLight: "bg-amber-50",
     iconColor: "text-amber-600",
-    status: "soon",
+    status: "active",
+    href: "/modules/klantcase-analyse",
     minTier: "fundament",
   },
   {
@@ -137,7 +138,8 @@ export const MODULES: ModuleMeta[] = [
     borderColor: "border-rose-200",
     bgLight: "bg-rose-50",
     iconColor: "text-rose-600",
-    status: "soon",
+    status: "active",
+    href: "/modules/propositie-analyse",
     minTier: "fundament",
   },
   {
@@ -166,7 +168,8 @@ export const MODULES: ModuleMeta[] = [
     borderColor: "border-teal-200",
     bgLight: "bg-teal-50",
     iconColor: "text-teal-600",
-    status: "soon",
+    status: "active",
+    href: "/modules/website-check-concurrenten",
     minTier: "groei",
   },
   {

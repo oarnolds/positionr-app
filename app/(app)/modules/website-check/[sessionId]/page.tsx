@@ -9,7 +9,7 @@ import { sessions } from "@/lib/db/schema";
 import { WebsiteCheckResultView } from "@/modules/website-check/components/WebsiteCheckResultView";
 import { MODULE_SLUG } from "@/modules/website-check";
 import { regenerateAnalysis } from "../actions";
-import { RunningPoll } from "./running-poll";
+import { RunningPoll } from "../../_components/running-poll";
 
 const STUCK_THRESHOLD_SECONDS = 6 * 60; // maxDuration=300s + 1 min grace
 

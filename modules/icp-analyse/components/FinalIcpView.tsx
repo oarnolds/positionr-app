@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { FinalIcp } from "@/modules/icp-analyse/schema";
 import { FINAL_ICP_KNOWN_FIELDS } from "@/modules/icp-analyse/schema";
+import { Section, Fact } from "@/lib/modules/report-sections";
 
 export function FinalIcpView({
   productName,
@@ -321,96 +322,8 @@ function ExtraFields({ data }: { data: FinalIcp }) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────
-
-const ACCENTS: Record<
-  string,
-  { border: string; bg: string; iconBg: string; iconText: string }
-> = {
-  purple: {
-    border: "border-purple-200",
-    bg: "bg-purple-50",
-    iconBg: "bg-purple-100",
-    iconText: "text-purple-700",
-  },
-  blue: {
-    border: "border-blue-200",
-    bg: "bg-white",
-    iconBg: "bg-blue-100",
-    iconText: "text-blue-700",
-  },
-  amber: {
-    border: "border-amber-200",
-    bg: "bg-white",
-    iconBg: "bg-amber-100",
-    iconText: "text-amber-700",
-  },
-  green: {
-    border: "border-green-200",
-    bg: "bg-white",
-    iconBg: "bg-green-100",
-    iconText: "text-green-700",
-  },
-  red: {
-    border: "border-red-200",
-    bg: "bg-white",
-    iconBg: "bg-red-100",
-    iconText: "text-red-700",
-  },
-  indigo: {
-    border: "border-indigo-200",
-    bg: "bg-white",
-    iconBg: "bg-indigo-100",
-    iconText: "text-indigo-700",
-  },
-  teal: {
-    border: "border-teal-200",
-    bg: "bg-white",
-    iconBg: "bg-teal-100",
-    iconText: "text-teal-700",
-  },
-};
-
-function Section({
-  accent,
-  icon,
-  title,
-  eyebrow,
-  children,
-}: {
-  accent: keyof typeof ACCENTS;
-  icon: React.ReactNode;
-  title?: string;
-  eyebrow?: string;
-  children: React.ReactNode;
-}) {
-  const a = ACCENTS[accent];
-  return (
-    <section className={`rounded-2xl border ${a.border} ${a.bg} p-5`}>
-      <div className="flex items-center gap-2">
-        <span className={`rounded-lg ${a.iconBg} p-1.5 ${a.iconText}`}>
-          {icon}
-        </span>
-        {eyebrow ? (
-          <span className={`text-xs font-bold uppercase tracking-wide ${a.iconText}`}>
-            {eyebrow}
-          </span>
-        ) : (
-          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-        )}
-      </div>
-      <div className="mt-3">{children}</div>
-    </section>
-  );
-}
-
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid grid-cols-[120px_1fr] gap-2">
-      <dt className="text-xs uppercase tracking-wide text-gray-500">{label}</dt>
-      <dd className="text-gray-900">{value || "—"}</dd>
-    </div>
-  );
-}
+// Section/Fact komen uit lib/modules/report-sections — gedeeld met de
+// generieke module-rapporten zodat alle modules dezelfde designtaal delen.
 
 function FunnelStep({ label, text }: { label: string; text: string }) {
   return (

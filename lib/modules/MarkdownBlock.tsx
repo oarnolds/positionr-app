@@ -1,10 +1,13 @@
 import { marked } from "marked";
 
-type Variant = "default" | "report";
+type Variant = "default" | "report" | "bare";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
   default:
     "prose prose-slate prose-sm max-w-none rounded-xl border border-slate-200 bg-slate-50/60 p-4",
+  // Voor markdown bínnen een kaart die zelf al border/bg/padding heeft
+  // (bv. de secties van GenericReportView).
+  bare: "prose prose-slate prose-sm max-w-none",
   report:
     "prose prose-slate max-w-none px-10 py-6 " +
     "prose-headings:font-medium " +
