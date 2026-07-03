@@ -123,7 +123,11 @@ export async function confirmCompetitorsAction(formData: FormData): Promise<void
   }
 
   const input = session.input as ConcurrentenSessionInput;
-  const updatedInput: ConcurrentenSessionInput = { ...input, confirmed };
+  const updatedInput: ConcurrentenSessionInput = {
+    ...input,
+    confirmed,
+    phase2StartedAt: new Date().toISOString(),
+  };
 
   // Sessie terug naar 'running' vóór de achtergrond-run; updateSession in de
   // service guard op status='running'.

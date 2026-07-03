@@ -56,6 +56,12 @@ export type ConfirmedCompetitor = z.infer<typeof ConfirmedCompetitor>;
 /** Sessie-input ná bevestiging (fase 2 gestart). */
 export type ConcurrentenSessionInput = ConcurrentenInput & {
   confirmed?: ConfirmedCompetitor[];
+  /**
+   * ISO-timestamp waarop fase 2 startte. De stuck-detectie op de
+   * sessie-pagina meet hiermee per fase — de review-tijd van de gebruiker
+   * telt anders mee in de timeout en fase 2 wordt dan onterecht afgebroken.
+   */
+  phase2StartedAt?: string;
 };
 
 // ── Sessie-output envelope ──────────────────────────────────────────────

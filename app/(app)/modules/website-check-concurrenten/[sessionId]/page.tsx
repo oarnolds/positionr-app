@@ -75,10 +75,18 @@ export default async function ConcurrentenSessionPage({
   const input = (row.input ?? {}) as ConcurrentenSessionInput;
   const isPhase2 = Array.isArray(input.confirmed) && input.confirmed.length > 0;
 
+  // Basis voor de stuck-detectie én de voortgangsweergave: fase 2 meet vanaf
+  // de bevestiging, niet vanaf sessie-aanmaak — anders telt de review-tijd
+  // van de gebruiker mee en wordt een lopende fase 2 onterecht afgebroken.
+  const phaseStartedAt =
+    isPhase2 && input.phase2StartedAt
+      ? new Date(input.phase2StartedAt)
+      : new Date(row.createdAt);
+
   // Auto-fail voor verloren 'running'-sessies (serverless function gekilled).
   if (row.status === "running") {
     const elapsedSec = Math.floor(
-      (Date.now() - new Date(row.createdAt).getTime()) / 1000,
+      (Date.now() - phaseStartedAt.getTime()) / 1000,
     );
     if (elapsedSec > STUCK_THRESHOLD_SECONDS) {
       const failedAt = new Date();
@@ -120,7 +128,7 @@ export default async function ConcurrentenSessionPage({
         ];
     const elapsed = Math.max(
       0,
-      Math.floor((Date.now() - new Date(row.createdAt).getTime()) / 1000),
+      Math.floor((Date.now() - phaseStartedAt.getTime()) / 1000),
     );
     const elapsedLabel =
       elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`;

@@ -56,14 +56,25 @@ export async function analyzeClaudeSearchRaw(args: {
   let totalOutput = 0;
   const startedAt = Date.now();
 
+  // Door cache_control verschuiven de meeste input-tokens naar de
+  // cache-velden; tel alles mee zodat de sessie-telemetrie klopt.
+  // (Kostencalculatie behandelt cache-writes/reads als reguliere input —
+  // een benadering: writes kosten 1,25x, reads 0,1x.)
+  function countUsage(usage: Anthropic.Usage) {
+    totalInput +=
+      (usage.input_tokens ?? 0) +
+      (usage.cache_creation_input_tokens ?? 0) +
+      (usage.cache_read_input_tokens ?? 0);
+    totalOutput += usage.output_tokens ?? 0;
+  }
+
   let response = await client.messages.create({
     model: PRICING.claude.model,
     max_tokens: MAX_TOKENS,
     tools,
     messages,
   });
-  totalInput += response.usage.input_tokens ?? 0;
-  totalOutput += response.usage.output_tokens ?? 0;
+  countUsage(response.usage);
 
   // Server-side zoek-loops kunnen pauzeren (stop_reason "pause_turn").
   // Assistant-content terugsturen laat de server hervatten waar hij was.
@@ -77,8 +88,7 @@ export async function analyzeClaudeSearchRaw(args: {
       tools,
       messages,
     });
-    totalInput += response.usage.input_tokens ?? 0;
-    totalOutput += response.usage.output_tokens ?? 0;
+    countUsage(response.usage);
   }
 
   const text = response.content
