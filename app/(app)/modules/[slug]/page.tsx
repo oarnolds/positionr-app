@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
 import { markdownSnapshots, profiles, sessions } from "@/lib/db/schema";
 import { getModule } from "@/lib/modules/registry";
-import { GENERIC_MODULES, isGenericModule } from "@/modules/generic/schema";
+import { isGenericModule } from "@/modules/generic/schema";
 import { cn } from "@/lib/utils";
 import { startGenericAnalysisAction } from "./actions";
 import { SubmitButton } from "../_components/submit-button";
@@ -73,7 +73,6 @@ export default async function GenericModulePage({
     .orderBy(desc(markdownSnapshots.fetchedAt))
     .limit(20);
 
-  const { needsCompetitors } = GENERIC_MODULES[slug];
   const Icon = moduleMeta.icon;
 
   return (
@@ -187,19 +186,6 @@ export default async function GenericModulePage({
             className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
           />
         </label>
-
-        {needsCompetitors ? (
-          <label className="mt-4 block text-sm">
-            <span className="font-semibold text-gray-700">Concurrenten</span>
-            <textarea
-              name="competitors"
-              rows={3}
-              required
-              placeholder={"Eén concurrent per regel (naam of URL)\nbijv. https://concurrent1.nl"}
-              className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-            />
-          </label>
-        ) : null}
 
         <div className="mt-5">
           <SubmitButton label="Analyse starten" pendingLabel="Bezig met starten…" />

@@ -82,14 +82,14 @@ export const GenericInputSchema = z.object({
 export type GenericInput = z.infer<typeof GenericInputSchema>;
 
 /**
- * Welke module-slugs op de generieke runner draaien, plus per-slug
- * invoer-opties. Een slug activeren = hier toevoegen + registry op
- * "active" met href `/modules/<slug>`.
+ * Welke module-slugs op de generieke runner draaien. Een slug activeren =
+ * hier toevoegen + registry op "active" met href `/modules/<slug>`.
+ * (website-check-concurrenten heeft een eigen twee-fasen-flow in
+ * modules/concurrenten + app/(app)/modules/website-check-concurrenten.)
  */
-export const GENERIC_MODULES: Record<string, { needsCompetitors: boolean }> = {
-  "propositie-analyse": { needsCompetitors: false },
-  "klantcase-analyse": { needsCompetitors: false },
-  "website-check-concurrenten": { needsCompetitors: true },
+export const GENERIC_MODULES: Record<string, Record<string, never>> = {
+  "propositie-analyse": {},
+  "klantcase-analyse": {},
 };
 
 export function isGenericModule(slug: string): boolean {

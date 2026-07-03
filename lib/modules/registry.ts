@@ -344,6 +344,22 @@ export const MODULES: ModuleMeta[] = [
     minTier: "strategie",
   },
 
+  // ── Concurrentie sub-extensies ──────────────────────────────────────
+  {
+    slug: "website-check-concurrenten-discovery",
+    name: "Concurrenten-discovery (fase 1)",
+    description:
+      "Zoekt via web search kandidaat-concurrenten obv producten/diensten en geografie. De gebruiker bevestigt de kandidaten vóór de diepe analyse.",
+    icon: Globe,
+    color: "from-teal-500 to-teal-700",
+    borderColor: "border-teal-200",
+    bgLight: "bg-teal-50",
+    iconColor: "text-teal-600",
+    status: "active",
+    minTier: "groei",
+    parentSlug: "website-check-concurrenten",
+  },
+
   // ── ICP sub-extensies (admin-bewerkbaar, verschijnen onder parent) ──
   // Worden geconcateneerd na de parent-prompt (icp-analyse) op runtime.
   // De producten-scan-stap is niet admin-bewerkbaar — die staat hardcoded

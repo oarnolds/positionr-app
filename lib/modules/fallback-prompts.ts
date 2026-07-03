@@ -14,6 +14,7 @@ import {
   FALLBACK_PROMPT_PHASE1,
   FALLBACK_PROMPT_FINAL,
 } from "@/modules/icp-analyse/prompt";
+import { FALLBACK_PROMPT_DISCOVERY } from "@/modules/concurrenten/prompt";
 
 const SOON_PLACEHOLDER = (name: string) =>
   `[Placeholder prompt voor ${name} — vul aan via de admin-editor zodra deze module gebouwd wordt.]`;
@@ -29,6 +30,9 @@ export const FALLBACK_PROMPTS: Record<string, string> = {
   "icp-analyse-phase1": FALLBACK_PROMPT_PHASE1,
   "icp-analyse-final": FALLBACK_PROMPT_FINAL,
   // Geen icp-analyse-scan — die prompt is hardcoded (niet admin-bewerkbaar).
+
+  // ── Concurrentie sub-extensie (active, fase 1 van de twee-fasen-flow) ──
+  "website-check-concurrenten-discovery": FALLBACK_PROMPT_DISCOVERY,
 
   // ── Fundament — soon ──────────────────────────────────────────────
   "linkedin-analyse": SOON_PLACEHOLDER("LinkedIn analyse"),
