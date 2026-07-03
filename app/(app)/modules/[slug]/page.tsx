@@ -4,12 +4,12 @@
 // route, dus die behouden hun eigen flows.
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, BookMarked } from "lucide-react";
 import { redirect, notFound } from "next/navigation";
 import { desc, eq, and } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
-import { profiles, sessions } from "@/lib/db/schema";
+import { markdownSnapshots, profiles, sessions } from "@/lib/db/schema";
 import { getModule } from "@/lib/modules/registry";
 import { GENERIC_MODULES, isGenericModule } from "@/modules/generic/schema";
 import { cn } from "@/lib/utils";
@@ -58,6 +58,21 @@ export default async function GenericModulePage({
     .orderBy(desc(sessions.createdAt))
     .limit(10);
 
+  // Bibliotheek-snapshots als bronkeuze (alle kinds: website, PDF, Word).
+  const snapshots = await db
+    .select({
+      id: markdownSnapshots.id,
+      title: markdownSnapshots.title,
+      sourceFilename: markdownSnapshots.sourceFilename,
+      sourceUrl: markdownSnapshots.sourceUrl,
+      kind: markdownSnapshots.kind,
+      fetchedAt: markdownSnapshots.fetchedAt,
+    })
+    .from(markdownSnapshots)
+    .where(eq(markdownSnapshots.userId, user.id))
+    .orderBy(desc(markdownSnapshots.fetchedAt))
+    .limit(20);
+
   const { needsCompetitors } = GENERIC_MODULES[slug];
   const Icon = moduleMeta.icon;
 
@@ -91,6 +106,22 @@ export default async function GenericModulePage({
         </div>
       )}
 
+      {snapshots.length === 0 ? (
+        <div className="mt-8 rounded-2xl border-2 border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
+          <div className="flex items-center gap-2 font-semibold">
+            <BookMarked className="h-4 w-4" />
+            Je markdown-bibliotheek is nog leeg
+          </div>
+          <p className="mt-2">
+            Deze analyse draait op een markdown-snapshot van je website, PDF of
+            Word-document. Maak er eerst één aan via de{" "}
+            <Link href="/modules" className="font-semibold underline">
+              Markdown bibliotheek
+            </Link>{" "}
+            en kom daarna terug.
+          </p>
+        </div>
+      ) : (
       <form
         action={startGenericAnalysisAction}
         className={cn(
@@ -114,15 +145,21 @@ export default async function GenericModulePage({
             />
           </label>
           <label className="block text-sm">
-            <span className="font-semibold text-gray-700">Website-URL</span>
-            <input
-              name="websiteUrl"
-              type="text"
-              defaultValue={profile?.websiteUrl ?? ""}
-              placeholder="bijv. https://uwbedrijf.nl"
+            <span className="font-semibold text-gray-700">
+              Markdown-bron uit je bibliotheek
+            </span>
+            <select
+              name="snapshotId"
               required
               className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-            />
+            >
+              {snapshots.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title || s.sourceFilename || s.sourceUrl} (
+                  {new Date(s.fetchedAt).toLocaleDateString("nl-NL")})
+                </option>
+              ))}
+            </select>
           </label>
         </div>
 
@@ -164,37 +201,19 @@ export default async function GenericModulePage({
           </label>
         ) : null}
 
-        <fieldset className="mt-4 text-sm">
-          <legend className="font-semibold text-gray-700">Bron</legend>
-          <label className="mt-1 flex cursor-pointer items-center gap-2">
-            <input
-              type="radio"
-              name="analysisMode"
-              value="scrape"
-              defaultChecked
-              className="h-3.5 w-3.5 text-purple-600 focus:ring-purple-500"
-            />
-            <span className="text-gray-700">
-              Live website scrapen (of recente cache)
-            </span>
-          </label>
-          <label className="mt-1 flex cursor-pointer items-center gap-2">
-            <input
-              type="radio"
-              name="analysisMode"
-              value="markdown"
-              className="h-3.5 w-3.5 text-purple-600 focus:ring-purple-500"
-            />
-            <span className="text-gray-700">
-              Markdown-snapshot uit je bibliotheek (moet al bestaan voor deze URL)
-            </span>
-          </label>
-        </fieldset>
-
         <div className="mt-5">
           <SubmitButton label="Analyse starten" pendingLabel="Bezig met starten…" />
         </div>
+        <p className="mt-2 text-xs text-gray-500">
+          De analyse gebruikt het gekozen markdown-snapshot als bron. Nieuwe of
+          verse markdown maak je in de{" "}
+          <Link href="/modules" className="underline">
+            Markdown bibliotheek
+          </Link>
+          .
+        </p>
       </form>
+      )}
 
       {previousSessions.length > 0 && (
         <div className="mt-10">
@@ -203,7 +222,10 @@ export default async function GenericModulePage({
           </h3>
           <ul className="mt-3 space-y-2">
             {previousSessions.map((s) => {
-              const input = (s.input ?? {}) as { websiteUrl?: string };
+              const input = (s.input ?? {}) as {
+                websiteUrl?: string;
+                companyName?: string;
+              };
               const date = s.createdAt
                 ? new Date(s.createdAt).toLocaleString("nl-NL", {
                     dateStyle: "short",
@@ -216,7 +238,9 @@ export default async function GenericModulePage({
                   className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm"
                 >
                   <div className="flex min-w-0 items-center gap-2 text-gray-700">
-                    <span className="truncate">{input.websiteUrl ?? "—"}</span>
+                    <span className="truncate">
+                      {input.companyName ?? input.websiteUrl ?? "—"}
+                    </span>
                     <span className="text-gray-400">·</span>
                     <span className="shrink-0">{date}</span>
                     <span className="text-gray-400">·</span>

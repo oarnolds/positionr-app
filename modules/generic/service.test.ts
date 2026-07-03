@@ -1,9 +1,15 @@
 import { test, expect, vi } from "vitest";
-import { runGenericAnalysis, toGenericOutput, type ServiceDeps } from "./service";
+import {
+  runGenericAnalysis,
+  toGenericOutput,
+  truncateForPerplexity,
+  type ServiceDeps,
+} from "./service";
 import { GenericInputSchema } from "./schema";
 import { buildGenericPrompt, JSON_CONTRACT } from "./prompt";
 
 const USER_ID = "user-test-1";
+const SNAPSHOT_ID = "3f9f6f6a-4c1e-4b3a-9b1e-1a2b3c4d5e6f";
 
 const VALID_REPORT_JSON = JSON.stringify({
   heroTekst: "Sterke propositie met ruimte voor scherpte.",
@@ -28,17 +34,19 @@ const VALID_REPORT_JSON = JSON.stringify({
 
 function makeInput(overrides: Record<string, unknown> = {}) {
   return GenericInputSchema.parse({
-    websiteUrl: "https://datapas.nl",
+    snapshotId: SNAPSHOT_ID,
     companyName: "Datapas B.V.",
     sector: "IT",
     description: "Data-dienstverlener",
     competitors: "",
-    analysisMode: "scrape",
     ...overrides,
   });
 }
 
-function makeDeps(llmResponse: string): {
+function makeDeps(
+  llmResponse: string,
+  provider: "claude" | "perplexity" = "claude",
+): {
   deps: ServiceDeps;
   analyze: ReturnType<typeof vi.fn>;
 } {
@@ -51,10 +59,13 @@ function makeDeps(llmResponse: string): {
     llmCostCents: 1,
   });
   const deps: ServiceDeps = {
-    scrape: vi.fn().mockResolvedValue("# Website content"),
+    fetchSnapshot: vi.fn().mockResolvedValue({
+      markdown: "# Website content",
+      sourceUrl: "https://datapas.nl",
+    }),
     fetchPrompt: vi.fn().mockResolvedValue({
       prompt: "Analyseer {companyName} ({sector}) op {websiteUrl}.",
-      provider: "claude" as const,
+      provider,
     }),
     fetchFormatExample: vi.fn().mockResolvedValue("1. Scorecard — blue"),
     pickAnalyzer: vi.fn().mockReturnValue(analyze),
@@ -64,7 +75,7 @@ function makeDeps(llmResponse: string): {
 }
 
 test("runGenericAnalysis: geldige JSON → report-envelope + approved", async () => {
-  const { deps } = makeDeps(VALID_REPORT_JSON);
+  const { deps, analyze } = makeDeps(VALID_REPORT_JSON);
   await runGenericAnalysis(
     {
       sessionId: "s1",
@@ -75,7 +86,11 @@ test("runGenericAnalysis: geldige JSON → report-envelope + approved", async ()
     deps,
   );
 
+  expect(deps.fetchSnapshot).toHaveBeenCalledWith(SNAPSHOT_ID, USER_ID);
   expect(deps.fetchPrompt).toHaveBeenCalledWith("propositie-analyse");
+  // sourceUrl van het snapshot wordt als {websiteUrl} gesubstitueerd
+  const sentPrompt = analyze.mock.calls[0][0].prompt as string;
+  expect(sentPrompt).toContain("https://datapas.nl");
   const patch = (deps.updateSession as ReturnType<typeof vi.fn>).mock
     .calls[0][1];
   expect(patch.status).toBe("approved");
@@ -104,31 +119,11 @@ test("runGenericAnalysis: ongeldige JSON → markdown-fallback, geen failure", a
   expect(output.markdown).toContain("Gewoon een markdown-rapport");
 });
 
-test("runGenericAnalysis: markdown-modus → requireExistingSnapshot + geen cap", async () => {
+test("runGenericAnalysis: ontbrekend snapshot → failed met errorMessage", async () => {
   const { deps } = makeDeps(VALID_REPORT_JSON);
-  await runGenericAnalysis(
-    {
-      sessionId: "s1",
-      userId: USER_ID,
-      moduleSlug: "klantcase-analyse",
-      input: makeInput({ analysisMode: "markdown" }),
-    },
-    deps,
-  );
-
-  expect(deps.scrape).toHaveBeenCalledWith(
-    "https://datapas.nl",
-    expect.objectContaining({
-      userId: USER_ID,
-      requireExistingSnapshot: true,
-      maxChars: 0,
-    }),
-  );
-});
-
-test("runGenericAnalysis: scrape-fout → failed met errorMessage", async () => {
-  const { deps } = makeDeps(VALID_REPORT_JSON);
-  deps.scrape = vi.fn().mockRejectedValue(new Error("Site onbereikbaar"));
+  deps.fetchSnapshot = vi
+    .fn()
+    .mockRejectedValue(new Error("Markdown-snapshot niet gevonden"));
   await runGenericAnalysis(
     {
       sessionId: "s1",
@@ -142,7 +137,43 @@ test("runGenericAnalysis: scrape-fout → failed met errorMessage", async () => 
   const patch = (deps.updateSession as ReturnType<typeof vi.fn>).mock
     .calls[0][1];
   expect(patch.status).toBe("failed");
-  expect(patch.errorMessage).toBe("Site onbereikbaar");
+  expect(patch.errorMessage).toContain("niet gevonden");
+});
+
+test("runGenericAnalysis: perplexity-provider → content binnen byte-budget", async () => {
+  const { deps, analyze } = makeDeps(VALID_REPORT_JSON, "perplexity");
+  // 200KB aan content — ruim boven het 80KB-budget
+  deps.fetchSnapshot = vi.fn().mockResolvedValue({
+    markdown: "x".repeat(200_000),
+    sourceUrl: "https://datapas.nl",
+  });
+  await runGenericAnalysis(
+    {
+      sessionId: "s1",
+      userId: USER_ID,
+      moduleSlug: "website-check-concurrenten",
+      input: makeInput(),
+    },
+    deps,
+  );
+
+  const sentPrompt = analyze.mock.calls[0][0].prompt as string;
+  expect(new TextEncoder().encode(sentPrompt).length).toBeLessThan(100_000);
+  expect(sentPrompt).toContain("afgekapt");
+});
+
+test("truncateForPerplexity: korte content blijft ongemoeid", () => {
+  const result = truncateForPerplexity("korte tekst", (c) => c);
+  expect(result).toBe("korte tekst");
+});
+
+test("truncateForPerplexity: kapt niet midden in een multi-byte teken", () => {
+  // é = 2 bytes in UTF-8; een lange reeks forceert een knip op de grens
+  const content = "é".repeat(60_000); // 120KB
+  const result = truncateForPerplexity(content, (c) => c);
+  // Decoderen zonder replacement chars bewijst een schone UTF-8-grens
+  expect(result).not.toContain("�");
+  expect(new TextEncoder().encode(result).length).toBeLessThan(85_000);
 });
 
 test("toGenericOutput: JSON in markdown-fences wordt geparsed", () => {

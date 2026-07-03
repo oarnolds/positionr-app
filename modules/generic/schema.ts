@@ -71,13 +71,13 @@ export function parseGenericOutput(raw: string | null): GenericOutput | null {
 // ── Module-invoer ────────────────────────────────────────────────────────
 
 export const GenericInputSchema = z.object({
-  websiteUrl: z.string().trim().min(3, "URL is verplicht"),
+  /** Bibliotheek-snapshot dat als bron dient (website, PDF of Word). */
+  snapshotId: z.string().uuid("Kies een markdown-bron uit je bibliotheek"),
   companyName: z.string().trim().min(1, "Bedrijfsnaam is verplicht"),
   sector: z.string().trim().optional().default(""),
   description: z.string().trim().optional().default(""),
   /** Eén concurrent (naam of URL) per regel. */
   competitors: z.string().trim().optional().default(""),
-  analysisMode: z.enum(["scrape", "markdown"]).default("scrape"),
 });
 export type GenericInput = z.infer<typeof GenericInputSchema>;
 

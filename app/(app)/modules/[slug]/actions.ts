@@ -56,25 +56,24 @@ export async function startGenericAnalysisAction(
   let input: GenericInput;
   try {
     input = GenericInputSchema.parse({
-      websiteUrl: formData.get("websiteUrl"),
+      snapshotId: formData.get("snapshotId"),
       companyName: formData.get("companyName"),
       sector: formData.get("sector") ?? "",
       description: formData.get("description") ?? "",
       competitors: formData.get("competitors") ?? "",
-      analysisMode: formData.get("analysisMode") ?? "scrape",
     });
   } catch {
     redirect(
       `/modules/${slug}?error=${encodeURIComponent(
-        "Vul minimaal een geldige URL en bedrijfsnaam in",
+        "Kies een markdown-bron en vul een bedrijfsnaam in",
       )}`,
     );
   }
 
-  // Profiel bijwerken (gedeeld voor alle modules) — zelfde gedrag als website-check.
+  // Bedrijfsnaam in profiel bijwerken (gedeeld voor alle modules).
   await db
     .update(profiles)
-    .set({ websiteUrl: input.websiteUrl, companyName: input.companyName })
+    .set({ companyName: input.companyName })
     .where(eq(profiles.id, user.id));
 
   await startRun(user.id, slug, input);
@@ -97,6 +96,17 @@ export async function regenerateGenericAnalysisAction(
     redirect(`/modules/${slug}`);
   }
 
-  const input = GenericInputSchema.parse(src.input);
+  let input: GenericInput;
+  try {
+    input = GenericInputSchema.parse(src.input);
+  } catch {
+    // Sessies van vóór de markdown-only-omschakeling hebben geen snapshotId
+    // in hun input — die kunnen niet 1-op-1 opnieuw draaien.
+    redirect(
+      `/modules/${slug}?error=${encodeURIComponent(
+        "Deze analyse is met een oudere invoer gemaakt — start een nieuwe analyse",
+      )}`,
+    );
+  }
   await startRun(user.id, slug, input);
 }

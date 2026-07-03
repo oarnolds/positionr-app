@@ -1,6 +1,10 @@
-// Generieke runner-service — naar het model van website-check:
-// sessie aanmaken → op de achtergrond scrapen (of markdown-snapshot lezen)
-// → prompt bouwen → raw-LLM-call → JSON parsen/valideren → sessie updaten.
+// Generieke runner-service: sessie aanmaken → op de achtergrond het gekozen
+// markdown-snapshot uit de bibliotheek lezen → prompt bouwen → raw-LLM-call
+// → JSON parsen/valideren → sessie updaten.
+//
+// Live scraping is bewust uit dit proces gehaald (besluit juli 2026): alle
+// analyses draaien op een door de gebruiker gekozen bibliotheek-snapshot.
+// De markdown-conversie zelf gebeurt in de Markdown-bibliotheek op /modules.
 //
 // Het vangnet: we gebruiken bewust de RAW-adapters (één call, provider-
 // agnostisch) en parsen zelf. Levert de LLM geen geldig contract, dan slaan
@@ -13,9 +17,6 @@ import { analyzeBothRaw } from "@/lib/ai/synthesize-raw";
 import { extractAndParseJson } from "@/lib/ai/claude";
 import { getModulePrompt } from "@/lib/modules/prompts";
 import { getFormatExample } from "@/lib/modules/format-examples";
-// Herbruikt de website-check-scraper: die kent scrape-cache én
-// markdown-bibliotheek-modus. Verhuist naar lib/ zodra een derde consument opduikt.
-import { scrapeWebsite } from "@/modules/website-check/scraper";
 import type { ConfigProvider } from "@/lib/ai/pricing";
 import { buildGenericPrompt } from "./prompt";
 import {
@@ -25,8 +26,14 @@ import {
   type GenericOutput,
 } from "./schema";
 
+export type SnapshotSource = {
+  markdown: string;
+  sourceUrl: string;
+};
+
 export type ServiceDeps = {
-  scrape: typeof scrapeWebsite;
+  /** Laadt het gekozen bibliotheek-snapshot (elke kind: website/pdf/docx). */
+  fetchSnapshot: (snapshotId: string, userId: string) => Promise<SnapshotSource>;
   fetchPrompt: typeof getModulePrompt;
   fetchFormatExample: typeof getFormatExample;
   pickAnalyzer: (
@@ -43,8 +50,36 @@ function defaultPickAnalyzer(
   return analyzeClaudeRaw;
 }
 
+async function defaultFetchSnapshot(
+  snapshotId: string,
+  userId: string,
+): Promise<SnapshotSource> {
+  const { eq, and } = await import("drizzle-orm");
+  const { db } = await import("@/lib/db/client");
+  const { markdownSnapshots } = await import("@/lib/db/schema");
+  const [snapshot] = await db
+    .select({
+      markdown: markdownSnapshots.markdown,
+      sourceUrl: markdownSnapshots.sourceUrl,
+    })
+    .from(markdownSnapshots)
+    .where(
+      and(
+        eq(markdownSnapshots.id, snapshotId),
+        eq(markdownSnapshots.userId, userId),
+      ),
+    )
+    .limit(1);
+  if (!snapshot) {
+    throw new Error(
+      "Markdown-snapshot niet gevonden. Maak 'm eerst aan via 'Markdown bibliotheek' op /modules.",
+    );
+  }
+  return snapshot;
+}
+
 export const defaultDeps: ServiceDeps = {
-  scrape: scrapeWebsite,
+  fetchSnapshot: defaultFetchSnapshot,
   fetchPrompt: getModulePrompt,
   fetchFormatExample: getFormatExample,
   pickAnalyzer: defaultPickAnalyzer,
@@ -94,6 +129,33 @@ export function toGenericOutput(rawMarkdown: string): GenericOutput {
   }
 }
 
+// Perplexity sonar-pro heeft een 100KB-per-message limit op user-content.
+// Cap op bytes (niet chars): Nederlandse tekst inflate't door UTF-8 met
+// ~5-10%. Conservatieve grens voor extra marge (zelfde aanpak als
+// website-check).
+const PERPLEXITY_BUDGET_BYTES = 80_000;
+const TRUNC_MARKER =
+  "\n\n[… content afgekapt om binnen Perplexity API-limit van 100KB te blijven]";
+
+export function truncateForPerplexity(
+  content: string,
+  buildPrompt: (content: string) => string,
+): string {
+  const encoder = new TextEncoder();
+  const overheadBytes = encoder.encode(buildPrompt("")).length;
+  const markerBytes = encoder.encode(TRUNC_MARKER).length;
+  const budgetBytes = PERPLEXITY_BUDGET_BYTES - overheadBytes;
+
+  const encoded = encoder.encode(content);
+  if (encoded.length <= budgetBytes) return content;
+
+  let cutBytes = Math.max(0, Math.min(budgetBytes - markerBytes, encoded.length));
+  // UTF-8 byte-grens vinden: niet midden in een multi-byte sequence afkappen
+  // (continuation bytes beginnen met 10xxxxxx = 0x80-0xBF).
+  while (cutBytes > 0 && (encoded[cutBytes] & 0xc0) === 0x80) cutBytes--;
+  return new TextDecoder().decode(encoded.slice(0, cutBytes)) + TRUNC_MARKER;
+}
+
 export async function runGenericAnalysis(
   args: {
     sessionId: string;
@@ -104,30 +166,35 @@ export async function runGenericAnalysis(
   deps: ServiceDeps = defaultDeps,
 ): Promise<void> {
   try {
-    const useMarkdown = args.input.analysisMode === "markdown";
-    const scraped = await deps.scrape(args.input.websiteUrl, {
-      userId: args.userId,
-      requireExistingSnapshot: useMarkdown,
-      maxChars: useMarkdown ? 0 : undefined,
-    });
+    const snapshot = await deps.fetchSnapshot(
+      args.input.snapshotId,
+      args.userId,
+    );
 
     const { prompt: template, provider } = await deps.fetchPrompt(
       args.moduleSlug,
     );
     const formatExample = await deps.fetchFormatExample(args.moduleSlug);
 
-    const prompt = buildGenericPrompt({
-      template,
-      formatExample,
-      values: {
-        websiteUrl: args.input.websiteUrl,
-        companyName: args.input.companyName,
-        sector: args.input.sector,
-        description: args.input.description,
-        competitors: args.input.competitors,
-        scrapedContent: scraped ?? "",
-      },
-    });
+    const build = (scrapedContent: string) =>
+      buildGenericPrompt({
+        template,
+        formatExample,
+        values: {
+          websiteUrl: snapshot.sourceUrl,
+          companyName: args.input.companyName,
+          sector: args.input.sector,
+          description: args.input.description,
+          competitors: args.input.competitors,
+          scrapedContent,
+        },
+      });
+
+    const content =
+      provider === "perplexity" || provider === "both"
+        ? truncateForPerplexity(snapshot.markdown, build)
+        : snapshot.markdown;
+    const prompt = build(content);
 
     const analyzer = deps.pickAnalyzer(provider);
     const result = await analyzer({ prompt });

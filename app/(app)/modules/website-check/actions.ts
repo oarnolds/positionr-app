@@ -31,46 +31,8 @@ async function requireAdmin(): Promise<{ userId: string }> {
   return { userId: user.id };
 }
 
-export async function startAnalysis(formData: FormData): Promise<void> {
-  const user = await requireUser();
-  const parsed = WebsiteCheckInputSchema.parse({
-    websiteUrl: formData.get("websiteUrl"),
-    companyName: formData.get("companyName") ?? undefined,
-  });
-
-  // 1) Profiel bijwerken (gedeeld profiel voor alle modules)
-  await db
-    .update(profiles)
-    .set({
-      websiteUrl: parsed.websiteUrl,
-      ...(parsed.companyName ? { companyName: parsed.companyName } : {}),
-    })
-    .where(eq(profiles.id, user.id));
-
-  // 2) Sessie aanmaken
-  const { sessionId } = await createWebsiteCheckSession({
-    userId: user.id,
-    websiteUrl: parsed.websiteUrl,
-    companyName: parsed.companyName ?? "",
-    analysisMode: "scrape",
-  });
-
-  // 3) Analyseren op de achtergrond ná het response (Next 15 unstable_after).
-  //    Sessie staat al op 'running'; runAnalysis vangt fouten en zet 'failed'.
-  after(() =>
-    runAnalysis({
-      sessionId,
-      userId: user.id,
-      websiteUrl: parsed.websiteUrl,
-      companyName: parsed.companyName ?? "",
-      bypassCache: true,
-    }),
-  );
-
-  revalidatePath("/modules/website-check");
-  redirect(`/modules/website-check/${sessionId}`);
-}
-
+// Live scraping is uit het proces gehaald (besluit juli 2026): de check
+// draait altijd op de markdown-snapshot uit de bibliotheek.
 export async function startAnalysisFromMarkdown(formData: FormData): Promise<void> {
   const user = await requireUser();
   const parsed = WebsiteCheckInputSchema.parse({
@@ -131,10 +93,12 @@ export async function regenerateAnalysis(formData: FormData): Promise<void> {
     redirect("/modules/website-check");
   }
   const input = src.input as { websiteUrl: string; companyName?: string };
+  // Opnieuw draaien gebeurt ook altijd via de markdown-snapshot.
   const { sessionId } = await createWebsiteCheckSession({
     userId: user.id,
     websiteUrl: input.websiteUrl,
     companyName: input.companyName ?? "",
+    analysisMode: "markdown",
   });
   after(() =>
     runAnalysis({
@@ -142,6 +106,7 @@ export async function regenerateAnalysis(formData: FormData): Promise<void> {
       userId: user.id,
       websiteUrl: input.websiteUrl,
       companyName: input.companyName ?? "",
+      useExistingMarkdown: true,
     }),
   );
   revalidatePath("/modules/website-check");

@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
 import { profiles, sessions } from "@/lib/db/schema";
 import { MODULE_SLUG } from "@/modules/website-check";
-import { startAnalysis, startAnalysisFromMarkdown, deleteCheckAction } from "./actions";
+import { startAnalysisFromMarkdown, deleteCheckAction } from "./actions";
 import { findAnySnapshot } from "@/lib/scraping/snapshot-service";
 
 // Vercel Hobby plan: max 300s op serverless. runAnalysis loopt via after()
@@ -68,7 +68,7 @@ export default async function WebsiteCheckHomePage() {
         </div>
       </div>
 
-      <form action={startAnalysis} className="mt-8 space-y-3 rounded-2xl border-2 border-purple-200 bg-purple-50 p-5">
+      <form action={startAnalysisFromMarkdown} className="mt-8 space-y-3 rounded-2xl border-2 border-purple-200 bg-purple-50 p-5">
         <label className="block">
           <span className="text-sm font-semibold text-gray-700">Website-URL</span>
           <input
@@ -94,20 +94,12 @@ export default async function WebsiteCheckHomePage() {
             type="submit"
             className="rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 font-semibold text-white"
           >
-            Analyseer website
-          </button>
-          <button
-            type="submit"
-            formAction={startAnalysisFromMarkdown}
-            className="rounded-lg border-2 border-purple-600 bg-white px-4 py-2 font-semibold text-purple-700 hover:bg-purple-50"
-          >
             Analyseer obv markdown
           </button>
         </div>
         <p className="text-xs text-gray-600">
-          <strong>Analyseer website</strong>: scrape live + bestaande prompt.{" "}
-          <strong>Analyseer obv markdown</strong>: gebruikt de markdown-snapshot uit je bibliotheek
-          (rijker, geen verse fetch).{" "}
+          De check gebruikt de markdown-snapshot van deze URL uit je
+          bibliotheek als bron.{" "}
           {existingSnapshot ? (
             <span className="text-green-700">
               ✓ Snapshot beschikbaar voor {profile?.websiteUrl}.
