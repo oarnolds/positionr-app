@@ -15,6 +15,7 @@ import { isGenericModule } from "@/modules/generic/schema";
 import { cn } from "@/lib/utils";
 import { startGenericAnalysisAction } from "./actions";
 import { SubmitButton } from "../_components/submit-button";
+import { DeleteSessionButton } from "../_components/delete-session-button";
 
 export const maxDuration = 300;
 
@@ -243,12 +244,18 @@ export default async function GenericModulePage({
                       {s.status}
                     </span>
                   </div>
-                  <Link
-                    href={`/modules/${slug}/${s.id}`}
-                    className="shrink-0 text-xs font-semibold text-purple-700 hover:underline"
-                  >
-                    Bekijk →
-                  </Link>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Link
+                      href={`/modules/${slug}/${s.id}`}
+                      className="text-xs font-semibold text-purple-700 hover:underline"
+                    >
+                      Bekijk →
+                    </Link>
+                    <DeleteSessionButton
+                      sessionId={s.id}
+                      path={`/modules/${slug}`}
+                    />
+                  </div>
                 </li>
               );
             })}

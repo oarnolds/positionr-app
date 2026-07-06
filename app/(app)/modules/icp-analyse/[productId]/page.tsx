@@ -6,6 +6,7 @@ import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
 import { clients, icpProducts, markdownSnapshots, sessions } from "@/lib/db/schema";
 import { ModeSelector } from "@/modules/icp-analyse/components/ModeSelector";
+import { DeleteSessionButton } from "../../_components/delete-session-button";
 
 // Snelle analyse doet 2 LLM-calls (Phase 1 + Final) synchroon in de
 // startSnelAnalyse-actie; default Vercel-timeout (60s) was net te krap
@@ -183,16 +184,22 @@ export default async function ICPModeSelectPage({
                       {s.status}
                     </span>
                   </div>
-                  {link ? (
-                    <Link
-                      href={link}
-                      className="text-xs font-semibold text-cyan-700 hover:underline"
-                    >
-                      Bekijk →
-                    </Link>
-                  ) : (
-                    <span className="text-xs text-gray-400">—</span>
-                  )}
+                  <div className="flex shrink-0 items-center gap-2">
+                    {link ? (
+                      <Link
+                        href={link}
+                        className="text-xs font-semibold text-cyan-700 hover:underline"
+                      >
+                        Bekijk →
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                    <DeleteSessionButton
+                      sessionId={s.id}
+                      path={`/modules/icp-analyse/${productId}`}
+                    />
+                  </div>
                 </li>
               );
             })}

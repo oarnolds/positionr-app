@@ -13,6 +13,7 @@ import { MODULE_SLUG } from "@/modules/concurrenten/schema";
 import { cn } from "@/lib/utils";
 import { startConcurrentenAction } from "./actions";
 import { SubmitButton } from "../_components/submit-button";
+import { DeleteSessionButton } from "../_components/delete-session-button";
 
 export const maxDuration = 300;
 
@@ -245,12 +246,18 @@ export default async function ConcurrentenStartPage({
                       {s.status === "review" ? "wacht op review" : s.status}
                     </span>
                   </div>
-                  <Link
-                    href={`/modules/${MODULE_SLUG}/${s.id}`}
-                    className="shrink-0 text-xs font-semibold text-teal-700 hover:underline"
-                  >
-                    Bekijk →
-                  </Link>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Link
+                      href={`/modules/${MODULE_SLUG}/${s.id}`}
+                      className="text-xs font-semibold text-teal-700 hover:underline"
+                    >
+                      Bekijk →
+                    </Link>
+                    <DeleteSessionButton
+                      sessionId={s.id}
+                      path={`/modules/${MODULE_SLUG}`}
+                    />
+                  </div>
                 </li>
               );
             })}

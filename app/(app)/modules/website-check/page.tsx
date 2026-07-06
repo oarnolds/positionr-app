@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { ArrowLeft, Globe, Trash2 } from "lucide-react";
+import { ArrowLeft, Globe } from "lucide-react";
 import { redirect } from "next/navigation";
 import { eq, desc, and } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
 import { profiles, sessions } from "@/lib/db/schema";
 import { MODULE_SLUG } from "@/modules/website-check";
-import { startAnalysisFromMarkdown, deleteCheckAction } from "./actions";
+import { startAnalysisFromMarkdown } from "./actions";
 import { findAnySnapshot } from "@/lib/scraping/snapshot-service";
+import { DeleteSessionButton } from "../_components/delete-session-button";
 
 // Vercel Hobby plan: max 300s op serverless. runAnalysis loopt via after()
 // binnen dezelfde function-lifecycle, dus dit budget geldt ook voor de
@@ -25,12 +26,10 @@ export default async function WebsiteCheckHomePage() {
     .select({
       companyName: profiles.companyName,
       websiteUrl: profiles.websiteUrl,
-      role: profiles.role,
     })
     .from(profiles)
     .where(eq(profiles.id, user.id))
     .limit(1);
-  const isAdmin = profile?.role === "admin";
 
   const history = await db
     .select({
@@ -189,19 +188,11 @@ export default async function WebsiteCheckHomePage() {
                     </span>
                   )}
                 </Link>
-                {isAdmin && (
-                  <form action={deleteCheckAction} className="flex items-stretch">
-                    <input type="hidden" name="sessionId" value={h.id} />
-                    <button
-                      type="submit"
-                      aria-label="Verwijder deze check"
-                      title="Verwijder deze check (admin)"
-                      className="flex items-center rounded-xl border border-gray-200 bg-white px-3 text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </form>
-                )}
+                <DeleteSessionButton
+                  sessionId={h.id}
+                  path="/modules/website-check"
+                  className="flex items-center rounded-xl border border-gray-200 bg-white px-3 text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                />
               </li>
             );
           })}
