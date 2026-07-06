@@ -129,13 +129,33 @@ function extractMainHtml($: cheerio.CheerioAPI): string {
   $("script, style, noscript, iframe, svg, nav, footer, aside, header").remove();
   $(NOISE_SELECTORS.join(",")).remove();
 
-  const candidates = ["main", "article", "[role=main]", "#content", ".content"];
+  const textLength = (el: ReturnType<typeof $>): number =>
+    el.text().replace(/\s+/g, " ").trim().length;
+
+  // Niet de eerste matchende kandidaat pakken maar de tekst-rijkste:
+  // themes zonder <main> hebben vaak losse <article>-teaser-kaartjes
+  // (blog-widgets) die anders de hele pagina verdringen — zie de
+  // biqql.com-case waar 96% van de sectorpagina's zo verloren ging.
+  // <article> telt alleen mee als er precies één op de pagina staat;
+  // meerdere articles zijn vrijwel altijd teaser-kaartjes.
+  const candidates = ["main", "[role=main]", "#content", ".content", "article"];
+  let best: { html: string; textLen: number } | null = null;
   for (const sel of candidates) {
-    const el = $(sel).first();
-    if (el.length && el.html()?.trim()) {
-      return el.html() ?? "";
-    }
+    const all = $(sel);
+    if (!all.length) continue;
+    if (sel === "article" && all.length !== 1) continue;
+    const el = all.first();
+    const html = el.html()?.trim();
+    if (!html) continue;
+    const textLen = textLength(el);
+    if (!best || textLen > best.textLen) best = { html, textLen };
   }
+
+  // Vangnet: dekt zelfs de beste kandidaat minder dan de helft van de
+  // (al opgeschoonde) body-tekst, dan is het vermoedelijk een fragment —
+  // ontbrekende inhoud is voor de analyse schadelijker dan wat extra ruis.
+  const bodyTextLen = textLength($("body"));
+  if (best && best.textLen >= bodyTextLen / 2) return best.html;
   return $("body").html() ?? "";
 }
 

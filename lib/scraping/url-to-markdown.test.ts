@@ -62,6 +62,57 @@ test("urlToMarkdown: alle pagina's falen → throws", async () => {
   await expect(urlToMarkdown("https://x.nl", { singlePage: true })).rejects.toThrow();
 });
 
+test("urlToMarkdown: teaser-<article>s verdringen #content niet (BIQQL-case)", async () => {
+  // Nagebouwd naar biqql.com/industrie-en-logistiek/: geen <main>, de echte
+  // inhoud zit in #content, en een "recente blogs"-widget levert meerdere
+  // <article>-teaser-kaartjes. De oude first-match-logica pakte alleen de
+  // eerste teaser en gooide 96% van de pagina weg.
+  const html = `
+    <html><body>
+      <div id="content">
+        <section>
+          <h1>Industrie en logistiek</h1>
+          <p>Echte pagina-inhoud over procesautomatisering in de industrie.</p>
+          <p>${"Meer diepgaande inhoud over logistieke processen. ".repeat(20)}</p>
+        </section>
+        <section class="recente-blogs">
+          <article><h3>Blog teaser een</h3><p>Korte teaser.</p></article>
+          <article><h3>Blog teaser twee</h3><p>Nog een teaser.</p></article>
+          <article><h3>Blog teaser drie</h3><p>Laatste teaser.</p></article>
+        </section>
+      </div>
+    </body></html>`;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({ ok: true, status: 200, text: async () => html }))
+  );
+  const r = await urlToMarkdown("https://x.nl", { singlePage: true });
+  expect(r.markdown).toContain("# Industrie en logistiek");
+  expect(r.markdown).toContain("Echte pagina-inhoud over procesautomatisering");
+});
+
+test("urlToMarkdown: één enkele <article> blijft de hoofdinhoud", async () => {
+  // Blogpost-pagina's zonder <main> wikkelen hun inhoud vaak in precies één
+  // <article>; die moet als container vertrouwd blijven zodat sidebar-divs
+  // eromheen niet meekomen.
+  const html = `
+    <html><body>
+      <div class="sidebar-junk"><p>Zoeken</p></div>
+      <article>
+        <h1>Blogpost</h1>
+        <p>${"De volledige blogtekst met alle inhoud. ".repeat(10)}</p>
+      </article>
+    </body></html>`;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({ ok: true, status: 200, text: async () => html }))
+  );
+  const r = await urlToMarkdown("https://x.nl", { singlePage: true });
+  expect(r.markdown).toContain("# Blogpost");
+  expect(r.markdown).toContain("De volledige blogtekst");
+  expect(r.markdown).not.toContain("Zoeken");
+});
+
 test("urlToMarkdown: fallback naar <body> als <main> ontbreekt", async () => {
   const html = `<html><body><h1>Geen main</h1><p>Maar wel content</p></body></html>`;
   vi.stubGlobal(
