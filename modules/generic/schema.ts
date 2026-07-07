@@ -102,6 +102,8 @@ export type GenericModuleConfig = {
   urlPattern?: RegExp;
   /** Foutmelding wanneer urlPattern niet matcht. */
   urlPatternError?: string;
+  /** Extra, module-specifieke hint boven het upload-veld. */
+  fileHint?: string;
 };
 
 /**
@@ -115,16 +117,19 @@ export const GENERIC_MODULES: Record<string, GenericModuleConfig> = {
   "klantcase-analyse": { sourceTypes: ["library", "url", "file"] },
   // Flyercheck draait op een geüploade flyer/salespresentatie (PDF/Word).
   flyercheck: { sourceTypes: ["library", "url", "file"] },
-  // LinkedIn-analyse draait uitsluitend op een LinkedIn-bedrijfspagina.
-  // LinkedIn serveert crawlers een publieke gastversie (bedrijfsinfo +
-  // recente posts), dus de normale single-page-scrape werkt hier gewoon.
+  // LinkedIn-analyse: óf de bedrijfspagina-URL (LinkedIn serveert crawlers een
+  // publieke gastversie met bedrijfsinfo + recente posts, dus de single-page-
+  // scrape werkt), óf een geüploade Analytics-export (volgers per branche +
+  // impressies — de enige bron voor gemeten bereik binnen een doelgroep).
   "linkedin-analyse": {
-    sourceTypes: ["url"],
+    sourceTypes: ["url", "file"],
     urlLabel: "LinkedIn-bedrijfspagina",
     urlPlaceholder: "bijv. https://www.linkedin.com/company/jouw-bedrijf",
     urlPattern: /linkedin\.com\/company\//i,
     urlPatternError:
       "Vul de URL van een LinkedIn-bedrijfspagina in (linkedin.com/company/…)",
+    fileHint:
+      "Upload je LinkedIn Analytics-export (.xlsx) — in LinkedIn: bedrijfspagina → Analytics → Volgers of Content → knop Exporteren. Vul hieronder bij Sector je doelgroep in (bijv. maak- & procesindustrie) voor een bereik-analyse binnen die groep.",
   },
   // Markttrends draait op het website-snapshot + sector; provider perplexity
   // haalt de actuele trends van het web.

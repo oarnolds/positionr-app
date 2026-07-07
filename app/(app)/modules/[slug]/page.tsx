@@ -192,6 +192,7 @@ export default async function GenericModulePage({
                 snapshots={snapshotOptions}
                 urlLabel={moduleConfig?.urlLabel}
                 urlPlaceholder={moduleConfig?.urlPlaceholder}
+                fileHint={moduleConfig?.fileHint}
               />
             </div>
           </div>

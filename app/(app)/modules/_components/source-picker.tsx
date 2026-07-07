@@ -20,11 +20,13 @@ export function SourcePicker({
   snapshots,
   urlLabel,
   urlPlaceholder,
+  fileHint,
 }: {
   sourceTypes: GenericSourceType[];
   snapshots: SnapshotOption[];
   urlLabel?: string;
   urlPlaceholder?: string;
+  fileHint?: string;
 }) {
   // Bibliotheek-tab heeft alleen zin als er snapshots zijn.
   const available = sourceTypes.filter(
@@ -115,6 +117,9 @@ export function SourcePicker({
             accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,.pdf,.docx,.xlsx,.xls,.csv"
             className="mt-3 block w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-purple-700 hover:file:bg-purple-200"
           />
+          {fileHint && (
+            <p className="mt-1 text-xs font-medium text-gray-600">{fileHint}</p>
+          )}
           <p className="mt-1 text-xs text-gray-500">
             Max 10 MB. PDF, .docx of spreadsheet (.xlsx/.xls/.csv). Het bestand
             wordt als snapshot in je bibliotheek bewaard. Converteren kan even

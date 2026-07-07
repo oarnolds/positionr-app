@@ -13,8 +13,9 @@ test("moduleSourceTypes: toegestane bronnen per module", () => {
     "file",
   ]);
   expect(moduleSourceTypes("flyercheck")).toEqual(["library", "url", "file"]);
-  // LinkedIn-analyse accepteert uitsluitend een LinkedIn-bedrijfspagina-URL.
-  expect(moduleSourceTypes("linkedin-analyse")).toEqual(["url"]);
+  // LinkedIn-analyse: bedrijfspagina-URL (gastpagina-scrape) óf een geüploade
+  // analytics-export.
+  expect(moduleSourceTypes("linkedin-analyse")).toEqual(["url", "file"]);
   // Markttrends, propositie en onbekende slugs: alleen bibliotheek.
   expect(moduleSourceTypes("markttrends-rapport")).toEqual(["library"]);
   expect(moduleSourceTypes("propositie-analyse")).toEqual(["library"]);
