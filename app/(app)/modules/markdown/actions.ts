@@ -64,7 +64,9 @@ export async function createFileSnapshotAction(formData: FormData): Promise<void
     throw new Error(`Bestand te groot (max ${MAX_FILE_BYTES / 1024 / 1024} MB)`);
   }
   if (!mimeTypeToFileKind(file.type)) {
-    throw new Error("Alleen PDF of DOCX bestanden worden ondersteund");
+    throw new Error(
+      "Alleen PDF, Word (.docx) of spreadsheet (.xlsx/.xls/.csv) worden ondersteund",
+    );
   }
 
   const includeImages = formData.get("includeImages") === "on";

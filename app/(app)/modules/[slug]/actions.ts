@@ -104,7 +104,10 @@ async function resolveSourceSnapshotId(
       return { error: `Bestand te groot (max ${MAX_UPLOAD_BYTES / 1024 / 1024} MB)` };
     }
     if (!mimeTypeToFileKind(file.type)) {
-      return { error: "Alleen PDF of DOCX bestanden worden ondersteund" };
+      return {
+        error:
+          "Alleen PDF, Word (.docx) of spreadsheet (.xlsx/.xls/.csv) worden ondersteund",
+      };
     }
     try {
       const snapshot = await createFileSnapshot({

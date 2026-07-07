@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookMarked, Globe, FileText, Upload, Trash2, MessageSquare, RefreshCw, Download } from "lucide-react";
+import { BookMarked, Globe, FileText, FileSpreadsheet, Upload, Trash2, MessageSquare, RefreshCw, Download } from "lucide-react";
 import type { MarkdownSnapshot } from "@/lib/db/schema";
 import {
   createUrlSnapshotAction,
@@ -24,6 +24,8 @@ function kindLabel(kind: MarkdownSnapshot["kind"]): string {
       return "PDF";
     case "docx":
       return "Word";
+    case "xlsx":
+      return "Spreadsheet";
   }
 }
 
@@ -31,6 +33,8 @@ function kindIcon(kind: MarkdownSnapshot["kind"]) {
   switch (kind) {
     case "website":
       return <Globe className="h-4 w-4" />;
+    case "xlsx":
+      return <FileSpreadsheet className="h-4 w-4" />;
     case "pdf":
     case "docx":
       return <FileText className="h-4 w-4" />;
@@ -125,16 +129,19 @@ export function MarkdownLibraryCard({
         >
           <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
             <Upload className="h-4 w-4 text-purple-600" />
-            Vanuit PDF of Word
+            Vanuit PDF, Word of spreadsheet
           </div>
           <input
             name="file"
             type="file"
-            accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.docx"
+            accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,.pdf,.docx,.xlsx,.xls,.csv"
             className="mt-2 block w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-purple-700 hover:file:bg-purple-200"
             required
           />
-          <p className="mt-1 text-xs text-gray-500">Max 10 MB. PDF of .docx.</p>
+          <p className="mt-1 text-xs text-gray-500">
+            Max 10 MB. PDF, .docx of spreadsheet (.xlsx/.xls/.csv, bijv. een
+            LinkedIn Analytics-export).
+          </p>
           <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-gray-700">
             <input
               type="checkbox"

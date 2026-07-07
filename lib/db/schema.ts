@@ -226,6 +226,7 @@ export const markdownSnapshotKindEnum = pgEnum("markdown_snapshot_kind", [
   "website",
   "pdf",
   "docx",
+  "xlsx", // spreadsheets (xlsx/xls/csv) — o.a. LinkedIn Analytics-exports
   // Toekomstige soorten:
   // "linkedin_company",
   // "linkedin_person",

@@ -40,7 +40,7 @@ export function SourcePicker({
   > = {
     library: { label: "Uit bibliotheek", icon: BookMarked },
     url: { label: urlLabel ?? "Specifieke URL", icon: Link2 },
-    file: { label: "PDF of Word", icon: Upload },
+    file: { label: "PDF, Word of spreadsheet", icon: Upload },
   };
 
   return (
@@ -112,12 +112,13 @@ export function SourcePicker({
             name="file"
             type="file"
             required
-            accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.docx"
+            accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,.pdf,.docx,.xlsx,.xls,.csv"
             className="mt-3 block w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-purple-700 hover:file:bg-purple-200"
           />
           <p className="mt-1 text-xs text-gray-500">
-            Max 10 MB, PDF of .docx. Het document wordt als snapshot in je
-            bibliotheek bewaard. Converteren kan even duren — niet sluiten.
+            Max 10 MB. PDF, .docx of spreadsheet (.xlsx/.xls/.csv). Het bestand
+            wordt als snapshot in je bibliotheek bewaard. Converteren kan even
+            duren — niet sluiten.
           </p>
         </>
       )}

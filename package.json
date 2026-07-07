@@ -52,6 +52,7 @@
     "tailwind-merge": "^2.6.0",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",
+    "xlsx": "^0.18.5",
     "zod": "^3.24.1"
   },
   "devDependencies": {

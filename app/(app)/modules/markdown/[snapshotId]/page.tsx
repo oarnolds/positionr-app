@@ -10,6 +10,7 @@ function kindLabel(kind: string): string {
   if (kind === "website") return "Website";
   if (kind === "pdf") return "PDF";
   if (kind === "docx") return "Word";
+  if (kind === "xlsx") return "Spreadsheet";
   return kind;
 }
 

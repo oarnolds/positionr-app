@@ -9,10 +9,11 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { normalizeBaseUrl, urlToMarkdown, type UrlToMarkdownOptions } from "./url-to-markdown";
 import { pdfToMarkdown } from "./pdf-to-markdown";
 import { docxToMarkdown } from "./docx-to-markdown";
+import { xlsxToMarkdown } from "./xlsx-to-markdown";
 import { indexSnapshot } from "@/lib/rag/index-snapshot";
 
-export type MarkdownSnapshotKind = "website" | "pdf" | "docx";
-export type FileSnapshotKind = "pdf" | "docx";
+export type MarkdownSnapshotKind = "website" | "pdf" | "docx" | "xlsx";
+export type FileSnapshotKind = "pdf" | "docx" | "xlsx";
 
 const STORAGE_BUCKET = "markdown-sources";
 
@@ -23,6 +24,12 @@ const MIME_TO_KIND: Record<string, { kind: FileSnapshotKind; ext: string }> = {
     kind: "docx",
     ext: "docx",
   },
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+    kind: "xlsx",
+    ext: "xlsx",
+  },
+  "application/vnd.ms-excel": { kind: "xlsx", ext: "xls" },
+  "text/csv": { kind: "xlsx", ext: "csv" },
 };
 
 export function mimeTypeToFileKind(
@@ -249,6 +256,10 @@ export async function createFileSnapshot(
     if (meta.kind === "pdf") {
       const result = await pdfToMarkdown(input.buffer);
       markdown = result.markdown;
+    } else if (meta.kind === "xlsx") {
+      // Spreadsheets zijn tabulair — deterministisch parsen naar markdown-
+      // tabellen, geen LLM nodig.
+      markdown = xlsxToMarkdown(input.buffer);
     } else {
       const result = await docxToMarkdown(input.buffer, { includeImages });
       markdown = result.markdown;
