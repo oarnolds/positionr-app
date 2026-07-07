@@ -85,7 +85,8 @@ export const MODULES: ModuleMeta[] = [
     borderColor: "border-blue-300",
     bgLight: "bg-blue-50",
     iconColor: "text-blue-700",
-    status: "soon",
+    status: "active",
+    href: "/modules/linkedin-analyse",
     minTier: "fundament",
   },
   {
@@ -98,7 +99,8 @@ export const MODULES: ModuleMeta[] = [
     borderColor: "border-blue-200",
     bgLight: "bg-blue-50",
     iconColor: "text-blue-600",
-    status: "soon",
+    status: "active",
+    href: "/modules/markttrends-rapport",
     minTier: "fundament",
   },
   {
@@ -111,7 +113,8 @@ export const MODULES: ModuleMeta[] = [
     borderColor: "border-orange-200",
     bgLight: "bg-orange-50",
     iconColor: "text-orange-600",
-    status: "soon",
+    status: "active",
+    href: "/modules/flyercheck",
     minTier: "fundament",
   },
   {

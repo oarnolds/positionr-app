@@ -101,6 +101,14 @@ export type GenericModuleConfig = {
 export const GENERIC_MODULES: Record<string, GenericModuleConfig> = {
   "propositie-analyse": {},
   "klantcase-analyse": { extraSources: true },
+  // Flyercheck draait op een geüploade flyer/salespresentatie (PDF/Word).
+  flyercheck: { extraSources: true },
+  // LinkedIn-analyse draait op door de gebruiker aangeleverde LinkedIn-data
+  // (bv. een PDF-export van de bedrijfspagina); live scrapen kan niet.
+  "linkedin-analyse": { extraSources: true },
+  // Markttrends draait op het website-snapshot + sector; provider perplexity
+  // haalt de actuele trends van het web.
+  "markttrends-rapport": {},
 };
 
 export function isGenericModule(slug: string): boolean {
