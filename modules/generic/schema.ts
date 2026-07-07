@@ -104,6 +104,10 @@ export type GenericModuleConfig = {
   urlPatternError?: string;
   /** Extra, module-specifieke hint boven het upload-veld. */
   fileHint?: string;
+  /** Label van het sector-veld (default "Sector"). */
+  sectorLabel?: string;
+  /** Placeholder van het sector-veld (default "bijv. IT-dienstverlening"). */
+  sectorPlaceholder?: string;
 };
 
 /**
@@ -129,7 +133,9 @@ export const GENERIC_MODULES: Record<string, GenericModuleConfig> = {
     urlPatternError:
       "Vul de URL van een LinkedIn-bedrijfspagina in (linkedin.com/company/…)",
     fileHint:
-      "Upload je LinkedIn Analytics-export (.xlsx) — in LinkedIn: bedrijfspagina → Analytics → Volgers of Content → knop Exporteren. Vul hieronder bij Sector je doelgroep in (bijv. maak- & procesindustrie) voor een bereik-analyse binnen die groep.",
+      "Upload je LinkedIn Analytics-export (.xlsx) — in LinkedIn: bedrijfspagina → Analytics → Volgers of Content → knop Exporteren. Vul hieronder bij Doelgroep je focus in (bijv. maak- & procesindustrie) voor een bereik-analyse binnen die groep.",
+    sectorLabel: "Doelgroep of sector",
+    sectorPlaceholder: "bijv. maak- & procesindustrie",
   },
   // Markttrends draait op het website-snapshot + sector; provider perplexity
   // haalt de actuele trends van het web.

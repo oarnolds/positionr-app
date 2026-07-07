@@ -200,12 +200,15 @@ export default async function GenericModulePage({
 
         <label className="mt-4 block text-sm">
           <span className="font-semibold text-gray-700">
-            Sector <span className="font-normal text-gray-500">(optioneel)</span>
+            {moduleConfig?.sectorLabel ?? "Sector"}{" "}
+            <span className="font-normal text-gray-500">(optioneel)</span>
           </span>
           <input
             name="sector"
             type="text"
-            placeholder="bijv. IT-dienstverlening"
+            placeholder={
+              moduleConfig?.sectorPlaceholder ?? "bijv. IT-dienstverlening"
+            }
             className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
           />
         </label>
