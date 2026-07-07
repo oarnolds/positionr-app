@@ -114,6 +114,22 @@ export function normalizeBaseUrl(url: string): string {
   return n.replace(/\/$/, "");
 }
 
+/**
+ * Herkent pagina's die er verouderd/gearchiveerd uitzien aan hun URL-pad
+ * (segmenten of -suffixen als "oud", "old", "archief", "archive"). Die
+ * worden niet mee-gescraped — verouderde content vervuilt de analysebron —
+ * maar wel in de frontmatter genoteerd: dat ze nog live staan is een
+ * mogelijk technisch verbeterpunt voor de klant.
+ */
+export function isLegacyUrl(url: string): boolean {
+  try {
+    const path = new URL(url).pathname;
+    return /(^|[/\-_])(oud|old|archief|archive)([/\-_]|$)/i.test(path);
+  } catch {
+    return false;
+  }
+}
+
 function createTurndown(): TurndownService {
   const td = new TurndownService({
     headingStyle: "atx",
@@ -367,9 +383,13 @@ async function pageToMarkdown(
 async function resolveTargetUrls(
   baseUrl: string,
   options: UrlToMarkdownOptions
-): Promise<string[]> {
-  if (options.singlePage) return [baseUrl];
-  if (options.paths) return options.paths.map((p) => baseUrl + p);
+): Promise<{ urls: string[]; skippedLegacyUrls: string[] }> {
+  // Expliciet opgegeven doelen (single page of vaste paden) respecteren we
+  // altijd, ook als de URL er "oud" uitziet — dat is bewuste gebruikersintentie.
+  if (options.singlePage) return { urls: [baseUrl], skippedLegacyUrls: [] };
+  if (options.paths) {
+    return { urls: options.paths.map((p) => baseUrl + p), skippedLegacyUrls: [] };
+  }
 
   const maxPages = options.unlimited
     ? 10_000
@@ -378,11 +398,16 @@ async function resolveTargetUrls(
     const sitemapUrls = await discoverSitemapUrls(baseUrl, { maxUrls: maxPages });
     if (sitemapUrls.length > 0) {
       const homepage = baseUrl;
-      const set = new Set<string>([homepage, ...sitemapUrls]);
-      return Array.from(set).slice(0, maxPages);
+      const all = Array.from(new Set<string>([homepage, ...sitemapUrls]));
+      const skippedLegacyUrls = all.filter(isLegacyUrl);
+      const urls = all.filter((u) => !isLegacyUrl(u)).slice(0, maxPages);
+      return { urls, skippedLegacyUrls };
     }
   }
-  return DEFAULT_PATHS.map((p) => baseUrl + p).slice(0, maxPages);
+  return {
+    urls: DEFAULT_PATHS.map((p) => baseUrl + p).slice(0, maxPages),
+    skippedLegacyUrls: [],
+  };
 }
 
 export async function urlToMarkdown(
@@ -390,7 +415,7 @@ export async function urlToMarkdown(
   options: UrlToMarkdownOptions = {}
 ): Promise<UrlMarkdownResult> {
   const baseUrl = normalizeBaseUrl(rawUrl);
-  const urls = await resolveTargetUrls(baseUrl, options);
+  const { urls, skippedLegacyUrls } = await resolveTargetUrls(baseUrl, options);
   const turndown = createTurndown();
   const includeImages = options.includeImages !== false;
   // Caps optioneel uitschakelen voor "alle pagina's"-modus.
@@ -481,6 +506,15 @@ export async function urlToMarkdown(
             const reason = p.errorMessage ?? (p.status === "empty" ? "lege pagina" : "onbekend");
             return `  - ${p.url} (${reason})`;
           }),
+        ]
+      : []),
+    ...(skippedLegacyUrls.length
+      ? [
+          "# Onderstaande URL's uit de sitemap zien er verouderd uit (oud/old/archief)",
+          "# en zijn bewust NIET mee-gescraped. Dat ze nog live staan is een mogelijk",
+          "# technisch verbeterpunt: verouderde pagina's schaden de vindbaarheid.",
+          "verouderde_paginas_gevonden:",
+          ...skippedLegacyUrls.map((u) => `  - ${u}`),
         ]
       : []),
     "---",

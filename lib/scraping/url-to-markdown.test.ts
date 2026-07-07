@@ -1,7 +1,46 @@
 import { test, expect, vi, afterEach } from "vitest";
-import { normalizeBaseUrl, urlToMarkdown } from "./url-to-markdown";
+import { isLegacyUrl, normalizeBaseUrl, urlToMarkdown } from "./url-to-markdown";
 
 afterEach(() => vi.restoreAllMocks());
+
+test("isLegacyUrl: herkent oud/old/archief-markers in het pad", () => {
+  expect(isLegacyUrl("https://x.nl/diensten-oud/")).toBe(true);
+  expect(isLegacyUrl("https://x.nl/oud/diensten")).toBe(true);
+  expect(isLegacyUrl("https://x.nl/old-site")).toBe(true);
+  expect(isLegacyUrl("https://x.nl/archief/2019")).toBe(true);
+  expect(isLegacyUrl("https://x.nl/nieuws-archive/")).toBe(true);
+  // Geen false positives op woorden die 'oud' bevatten:
+  expect(isLegacyUrl("https://x.nl/goud-verkopen")).toBe(false);
+  expect(isLegacyUrl("https://x.nl/oude-meesters")).toBe(false);
+  expect(isLegacyUrl("https://x.nl/inhoud")).toBe(false);
+  expect(isLegacyUrl("https://x.nl/diensten")).toBe(false);
+  expect(isLegacyUrl("niet-eens-een-url")).toBe(false);
+});
+
+test("urlToMarkdown: verouderde pagina's uit sitemap worden niet gescraped maar wél genoteerd", async () => {
+  const sitemap = `<?xml version="1.0"?>
+    <urlset>
+      <url><loc>https://x.nl/diensten</loc></url>
+      <url><loc>https://x.nl/diensten-oud/</loc></url>
+    </urlset>`;
+  const page = `<html><body><main><h2>Diensten</h2><p>Actuele inhoud</p></main></body></html>`;
+  const fetchMock = vi.fn(async (url: string) => {
+    if (String(url).includes("sitemap"))
+      return { ok: true, status: 200, text: async () => sitemap };
+    return { ok: true, status: 200, text: async () => page };
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  const r = await urlToMarkdown("https://x.nl", { includeImages: false });
+
+  // De oude pagina is nooit opgehaald…
+  const fetchedUrls = fetchMock.mock.calls.map((c) => String(c[0]));
+  expect(fetchedUrls.some((u) => u.includes("diensten-oud"))).toBe(false);
+  expect(r.pages.some((p) => p.url.includes("diensten-oud"))).toBe(false);
+  // …maar staat wél vermeld in de frontmatter als gevonden verouderde pagina.
+  expect(r.markdown).toContain("verouderde_paginas_gevonden:");
+  expect(r.markdown).toContain("https://x.nl/diensten-oud/");
+});
 
 test("normalizeBaseUrl: voegt https toe en strip trailing slash", () => {
   expect(normalizeBaseUrl("datapas.nl/")).toBe("https://datapas.nl");
