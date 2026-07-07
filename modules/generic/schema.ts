@@ -81,17 +81,45 @@ export const GenericInputSchema = z.object({
 });
 export type GenericInput = z.infer<typeof GenericInputSchema>;
 
+/** Per-module opties voor de generieke runner. */
+export type GenericModuleConfig = {
+  /**
+   * Wanneer true toont het startformulier naast de bibliotheek-select ook
+   * "specifieke URL" (single-page scrape) en "PDF/Word-upload" als bron.
+   * Beide worden eerst een bibliotheek-snapshot, daarna draait de analyse
+   * gewoon op dat snapshot.
+   */
+  extraSources?: boolean;
+};
+
 /**
  * Welke module-slugs op de generieke runner draaien. Een slug activeren =
  * hier toevoegen + registry op "active" met href `/modules/<slug>`.
  * (website-check-concurrenten heeft een eigen twee-fasen-flow in
  * modules/concurrenten + app/(app)/modules/website-check-concurrenten.)
  */
-export const GENERIC_MODULES: Record<string, Record<string, never>> = {
+export const GENERIC_MODULES: Record<string, GenericModuleConfig> = {
   "propositie-analyse": {},
-  "klantcase-analyse": {},
+  "klantcase-analyse": { extraSources: true },
 };
 
 export function isGenericModule(slug: string): boolean {
   return Object.prototype.hasOwnProperty.call(GENERIC_MODULES, slug);
+}
+
+export function moduleAllowsExtraSources(slug: string): boolean {
+  return GENERIC_MODULES[slug]?.extraSources === true;
+}
+
+// ── Bronkeuze op het startformulier ──────────────────────────────────────
+
+export const SOURCE_TYPES = ["library", "url", "file"] as const;
+export type GenericSourceType = (typeof SOURCE_TYPES)[number];
+
+/** Onbekende of ontbrekende waarden vallen terug op de bibliotheek-select. */
+export function parseSourceType(raw: unknown): GenericSourceType {
+  const value = String(raw ?? "");
+  return (SOURCE_TYPES as readonly string[]).includes(value)
+    ? (value as GenericSourceType)
+    : "library";
 }

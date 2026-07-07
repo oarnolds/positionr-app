@@ -11,11 +11,15 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
 import { markdownSnapshots, profiles, sessions } from "@/lib/db/schema";
 import { getModule } from "@/lib/modules/registry";
-import { isGenericModule } from "@/modules/generic/schema";
+import {
+  isGenericModule,
+  moduleAllowsExtraSources,
+} from "@/modules/generic/schema";
 import { cn } from "@/lib/utils";
 import { startGenericAnalysisAction } from "./actions";
 import { SubmitButton } from "../_components/submit-button";
 import { DeleteSessionButton } from "../_components/delete-session-button";
+import { SourcePicker } from "../_components/source-picker";
 
 export const maxDuration = 300;
 
@@ -75,6 +79,13 @@ export default async function GenericModulePage({
     .limit(20);
 
   const Icon = moduleMeta.icon;
+  const extraSources = moduleAllowsExtraSources(slug);
+  const snapshotOptions = snapshots.map((s) => ({
+    id: s.id,
+    label: `${s.title || s.sourceFilename || s.sourceUrl} (${new Date(
+      s.fetchedAt,
+    ).toLocaleDateString("nl-NL")})`,
+  }));
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
@@ -106,7 +117,7 @@ export default async function GenericModulePage({
         </div>
       )}
 
-      {snapshots.length === 0 ? (
+      {snapshots.length === 0 && !extraSources ? (
         <div className="mt-8 rounded-2xl border-2 border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
           <div className="flex items-center gap-2 font-semibold">
             <BookMarked className="h-4 w-4" />
@@ -124,6 +135,7 @@ export default async function GenericModulePage({
       ) : (
       <form
         action={startGenericAnalysisAction}
+        encType="multipart/form-data"
         className={cn(
           "mt-8 rounded-2xl border-2 p-6",
           moduleMeta.borderColor,
@@ -144,24 +156,36 @@ export default async function GenericModulePage({
               className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
           </label>
-          <label className="block text-sm">
-            <span className="font-semibold text-gray-700">
-              Markdown-bron uit je bibliotheek
-            </span>
-            <select
-              name="snapshotId"
-              required
-              className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-            >
-              {snapshots.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title || s.sourceFilename || s.sourceUrl} (
-                  {new Date(s.fetchedAt).toLocaleDateString("nl-NL")})
-                </option>
-              ))}
-            </select>
-          </label>
+          {!extraSources && (
+            <label className="block text-sm">
+              <span className="font-semibold text-gray-700">
+                Markdown-bron uit je bibliotheek
+              </span>
+              <select
+                name="snapshotId"
+                required
+                className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+              >
+                {snapshotOptions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
+
+        {extraSources && (
+          <div className="mt-4 text-sm">
+            <span className="font-semibold text-gray-700">
+              Bron voor de analyse
+            </span>
+            <div className="mt-2">
+              <SourcePicker snapshots={snapshotOptions} />
+            </div>
+          </div>
+        )}
 
         <label className="mt-4 block text-sm">
           <span className="font-semibold text-gray-700">
