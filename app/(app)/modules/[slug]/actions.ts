@@ -3,10 +3,10 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
-import { profiles, sessions } from "@/lib/db/schema";
+import { markdownSnapshots, profiles, sessions } from "@/lib/db/schema";
 import {
   GENERIC_MODULES,
   GenericInputSchema,
@@ -24,6 +24,10 @@ import {
   getOrCreateSnapshot,
   mimeTypeToFileKind,
 } from "@/lib/scraping/snapshot-service";
+import {
+  isLinkedInAuthwall,
+  normalizeLinkedInCompanyUrl,
+} from "@/lib/scraping/linkedin";
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB, gelijk aan de bibliotheek
 
@@ -75,12 +79,16 @@ async function resolveSourceSnapshotId(
   if (!allowed.includes(sourceType)) sourceType = allowed[0];
 
   if (sourceType === "url") {
-    const caseUrl = String(formData.get("caseUrl") ?? "").trim();
+    let caseUrl = String(formData.get("caseUrl") ?? "").trim();
     if (caseUrl.length < 4) return { error: "Vul een geldige URL in" };
     const config = GENERIC_MODULES[slug];
     if (config?.urlPattern && !config.urlPattern.test(caseUrl)) {
       return { error: config.urlPatternError ?? "Deze URL past niet bij deze module" };
     }
+    const isLinkedIn = slug === "linkedin-analyse";
+    // Uit de browser geplakte admin-/post-URL's terugbrengen tot de publieke
+    // bedrijfspagina, anders serveert LinkedIn een inlogscherm.
+    if (isLinkedIn) caseUrl = normalizeLinkedInCompanyUrl(caseUrl);
     try {
       const { snapshot } = await getOrCreateSnapshot({
         userId,
@@ -88,6 +96,26 @@ async function resolveSourceSnapshotId(
         sourceUrl: caseUrl,
         scrapeOptions: { singlePage: true },
       });
+      // Detecteer of we (ondanks normalisatie) toch een LinkedIn-inlogscherm
+      // hebben gescrapet: dan is de snapshot nutteloos. Opruimen en de
+      // gebruiker een bruikbare instructie geven i.p.v. een lege analyse.
+      if (
+        isLinkedIn &&
+        isLinkedInAuthwall({ title: snapshot.title, markdown: snapshot.markdown })
+      ) {
+        await db
+          .delete(markdownSnapshots)
+          .where(
+            and(
+              eq(markdownSnapshots.id, snapshot.id),
+              eq(markdownSnapshots.userId, userId),
+            ),
+          );
+        return {
+          error:
+            "LinkedIn toonde een inlogscherm in plaats van de bedrijfspagina. Gebruik de openbare bedrijfspagina-URL (linkedin.com/company/<naam>, zonder /admin/ of /posts). Blijft dit gebeuren, dan blokkeert LinkedIn geautomatiseerde toegang — upload dan je Analytics-export als bron.",
+        };
+      }
       return { snapshotId: snapshot.id };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Ophalen mislukt";

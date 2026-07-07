@@ -127,11 +127,11 @@ export const GENERIC_MODULES: Record<string, GenericModuleConfig> = {
   // impressies — de enige bron voor gemeten bereik binnen een doelgroep).
   "linkedin-analyse": {
     sourceTypes: ["url", "file"],
-    urlLabel: "LinkedIn-bedrijfspagina",
+    urlLabel: "LinkedIn-bedrijfspagina (openbare pagina, niet je admin-weergave)",
     urlPlaceholder: "bijv. https://www.linkedin.com/company/jouw-bedrijf",
-    urlPattern: /linkedin\.com\/company\//i,
+    urlPattern: /linkedin\.com\/company\/[^/?#]+/i,
     urlPatternError:
-      "Vul de URL van een LinkedIn-bedrijfspagina in (linkedin.com/company/…)",
+      "Vul de URL van een LinkedIn-bedrijfspagina in (linkedin.com/company/<naam>)",
     fileHint:
       "Upload je LinkedIn Analytics-export (.xlsx) — in LinkedIn: bedrijfspagina → Analytics → Volgers of Content → knop Exporteren. Vul hieronder bij Doelgroep je focus in (bijv. maak- & procesindustrie) voor een bereik-analyse binnen die groep.",
     sectorLabel: "Doelgroep of sector",
