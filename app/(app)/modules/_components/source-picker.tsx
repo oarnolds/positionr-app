@@ -8,51 +8,68 @@ import type { GenericSourceType } from "@/modules/generic/schema";
 export type SnapshotOption = { id: string; label: string };
 
 /**
- * Bronkeuze voor modules met `extraSources`: bestaand bibliotheek-snapshot,
- * één specifieke URL (single-page scrape) of een PDF/Word-upload. De twee
- * nieuwe varianten worden server-side eerst een bibliotheek-snapshot, daarna
- * draait de analyse gewoon op dat snapshot. Alleen het actieve invoerveld
- * wordt gerenderd zodat `required` nooit op een verborgen veld blokkeert.
+ * Bronkeuze voor de generieke runner: bibliotheek-snapshot, één specifieke
+ * URL (single-page scrape) en/of een PDF/Word-upload — welke tabs zichtbaar
+ * zijn bepaalt de module-config (sourceTypes). URL en upload worden
+ * server-side eerst een bibliotheek-snapshot, daarna draait de analyse
+ * gewoon op dat snapshot. Alleen het actieve invoerveld wordt gerenderd
+ * zodat `required` nooit op een verborgen veld blokkeert.
  */
-export function SourcePicker({ snapshots }: { snapshots: SnapshotOption[] }) {
-  const hasLibrary = snapshots.length > 0;
+export function SourcePicker({
+  sourceTypes,
+  snapshots,
+  urlLabel,
+  urlPlaceholder,
+}: {
+  sourceTypes: GenericSourceType[];
+  snapshots: SnapshotOption[];
+  urlLabel?: string;
+  urlPlaceholder?: string;
+}) {
+  // Bibliotheek-tab heeft alleen zin als er snapshots zijn.
+  const available = sourceTypes.filter(
+    (t) => t !== "library" || snapshots.length > 0,
+  );
   const [source, setSource] = useState<GenericSourceType>(
-    hasLibrary ? "library" : "url",
+    available[0] ?? "url",
   );
 
-  const tabs: { key: GenericSourceType; label: string; icon: typeof Link2 }[] = [
-    ...(hasLibrary
-      ? [{ key: "library" as const, label: "Uit bibliotheek", icon: BookMarked }]
-      : []),
-    { key: "url" as const, label: "Specifieke URL", icon: Link2 },
-    { key: "file" as const, label: "PDF of Word", icon: Upload },
-  ];
+  const TAB_META: Record<
+    GenericSourceType,
+    { label: string; icon: typeof Link2 }
+  > = {
+    library: { label: "Uit bibliotheek", icon: BookMarked },
+    url: { label: urlLabel ?? "Specifieke URL", icon: Link2 },
+    file: { label: "PDF of Word", icon: Upload },
+  };
 
   return (
     <div>
       <input type="hidden" name="sourceType" value={source} />
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => {
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setSource(t.key)}
-              aria-pressed={source === t.key}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
-                source === t.key
-                  ? "border-purple-500 bg-purple-100 text-purple-800"
-                  : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50",
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
+      {available.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {available.map((key) => {
+            const { label, icon: Icon } = TAB_META[key];
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSource(key)}
+                aria-pressed={source === key}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+                  source === key
+                    ? "border-purple-500 bg-purple-100 text-purple-800"
+                    : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {source === "library" && (
         <select
@@ -70,12 +87,17 @@ export function SourcePicker({ snapshots }: { snapshots: SnapshotOption[] }) {
 
       {source === "url" && (
         <>
+          {available.length === 1 && urlLabel && (
+            <span className="block font-semibold text-gray-700">
+              {urlLabel}
+            </span>
+          )}
           <input
             name="caseUrl"
             type="text"
             required
-            placeholder="bijv. https://uwbedrijf.nl/klantcase-x"
-            className="mt-3 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            placeholder={urlPlaceholder ?? "bijv. https://uwbedrijf.nl/klantcase-x"}
+            className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
           />
           <p className="mt-1 text-xs text-gray-500">
             Alleen deze ene pagina wordt opgehaald en als snapshot in je

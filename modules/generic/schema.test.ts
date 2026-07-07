@@ -1,20 +1,32 @@
 import { test, expect } from "vitest";
 import {
+  GENERIC_MODULES,
   isGenericModule,
-  moduleAllowsExtraSources,
+  moduleSourceTypes,
   parseSourceType,
 } from "./schema";
 
-test("moduleAllowsExtraSources: upload/URL-bron per module", () => {
-  expect(moduleAllowsExtraSources("klantcase-analyse")).toBe(true);
-  // Flyercheck draait op een geüploade flyer, LinkedIn op aangeleverde
-  // LinkedIn-data (PDF-export of case-URL) — beide hebben de bronkeuze nodig.
-  expect(moduleAllowsExtraSources("flyercheck")).toBe(true);
-  expect(moduleAllowsExtraSources("linkedin-analyse")).toBe(true);
-  // Markttrends en propositie draaien op het website-snapshot uit de bibliotheek.
-  expect(moduleAllowsExtraSources("markttrends-rapport")).toBe(false);
-  expect(moduleAllowsExtraSources("propositie-analyse")).toBe(false);
-  expect(moduleAllowsExtraSources("bestaat-niet")).toBe(false);
+test("moduleSourceTypes: toegestane bronnen per module", () => {
+  expect(moduleSourceTypes("klantcase-analyse")).toEqual([
+    "library",
+    "url",
+    "file",
+  ]);
+  expect(moduleSourceTypes("flyercheck")).toEqual(["library", "url", "file"]);
+  // LinkedIn-analyse accepteert uitsluitend een LinkedIn-bedrijfspagina-URL.
+  expect(moduleSourceTypes("linkedin-analyse")).toEqual(["url"]);
+  // Markttrends, propositie en onbekende slugs: alleen bibliotheek.
+  expect(moduleSourceTypes("markttrends-rapport")).toEqual(["library"]);
+  expect(moduleSourceTypes("propositie-analyse")).toEqual(["library"]);
+  expect(moduleSourceTypes("bestaat-niet")).toEqual(["library"]);
+});
+
+test("linkedin-analyse: urlPattern accepteert alleen LinkedIn-bedrijfspagina's", () => {
+  const pattern = GENERIC_MODULES["linkedin-analyse"].urlPattern;
+  expect(pattern?.test("https://www.linkedin.com/company/biqql/")).toBe(true);
+  expect(pattern?.test("https://linkedin.com/company/acme")).toBe(true);
+  expect(pattern?.test("https://biqql.com/")).toBe(false);
+  expect(pattern?.test("https://www.linkedin.com/in/persoon/")).toBe(false);
 });
 
 test("isGenericModule blijft werken met config-objecten", () => {

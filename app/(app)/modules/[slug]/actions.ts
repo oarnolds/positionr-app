@@ -8,9 +8,10 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
 import { profiles, sessions } from "@/lib/db/schema";
 import {
+  GENERIC_MODULES,
   GenericInputSchema,
   isGenericModule,
-  moduleAllowsExtraSources,
+  moduleSourceTypes,
   parseSourceType,
   type GenericInput,
 } from "@/modules/generic/schema";
@@ -69,13 +70,17 @@ async function resolveSourceSnapshotId(
   slug: string,
   formData: FormData,
 ): Promise<{ snapshotId: string } | { error: string }> {
-  const sourceType = moduleAllowsExtraSources(slug)
-    ? parseSourceType(formData.get("sourceType"))
-    : "library";
+  const allowed = moduleSourceTypes(slug);
+  let sourceType = parseSourceType(formData.get("sourceType"));
+  if (!allowed.includes(sourceType)) sourceType = allowed[0];
 
   if (sourceType === "url") {
     const caseUrl = String(formData.get("caseUrl") ?? "").trim();
     if (caseUrl.length < 4) return { error: "Vul een geldige URL in" };
+    const config = GENERIC_MODULES[slug];
+    if (config?.urlPattern && !config.urlPattern.test(caseUrl)) {
+      return { error: config.urlPatternError ?? "Deze URL past niet bij deze module" };
+    }
     try {
       const { snapshot } = await getOrCreateSnapshot({
         userId,

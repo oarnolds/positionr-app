@@ -12,8 +12,9 @@ import { db } from "@/lib/db/client";
 import { markdownSnapshots, profiles, sessions } from "@/lib/db/schema";
 import { getModule } from "@/lib/modules/registry";
 import {
+  GENERIC_MODULES,
   isGenericModule,
-  moduleAllowsExtraSources,
+  moduleSourceTypes,
 } from "@/modules/generic/schema";
 import { cn } from "@/lib/utils";
 import { startGenericAnalysisAction } from "./actions";
@@ -79,7 +80,11 @@ export default async function GenericModulePage({
     .limit(20);
 
   const Icon = moduleMeta.icon;
-  const extraSources = moduleAllowsExtraSources(slug);
+  const sourceTypes = moduleSourceTypes(slug);
+  const moduleConfig = GENERIC_MODULES[slug];
+  // Alleen-bibliotheek-modules houden de klassieke select in het formulier;
+  // alle andere combinaties lopen via de SourcePicker.
+  const libraryOnly = sourceTypes.length === 1 && sourceTypes[0] === "library";
   const snapshotOptions = snapshots.map((s) => ({
     id: s.id,
     label: `${s.title || s.sourceFilename || s.sourceUrl} (${new Date(
@@ -117,7 +122,7 @@ export default async function GenericModulePage({
         </div>
       )}
 
-      {snapshots.length === 0 && !extraSources ? (
+      {snapshots.length === 0 && libraryOnly ? (
         <div className="mt-8 rounded-2xl border-2 border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
           <div className="flex items-center gap-2 font-semibold">
             <BookMarked className="h-4 w-4" />
@@ -156,7 +161,7 @@ export default async function GenericModulePage({
               className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
           </label>
-          {!extraSources && (
+          {libraryOnly && (
             <label className="block text-sm">
               <span className="font-semibold text-gray-700">
                 Markdown-bron uit je bibliotheek
@@ -176,13 +181,18 @@ export default async function GenericModulePage({
           )}
         </div>
 
-        {extraSources && (
+        {!libraryOnly && (
           <div className="mt-4 text-sm">
             <span className="font-semibold text-gray-700">
               Bron voor de analyse
             </span>
             <div className="mt-2">
-              <SourcePicker snapshots={snapshotOptions} />
+              <SourcePicker
+                sourceTypes={sourceTypes}
+                snapshots={snapshotOptions}
+                urlLabel={moduleConfig?.urlLabel}
+                urlPlaceholder={moduleConfig?.urlPlaceholder}
+              />
             </div>
           </div>
         )}
@@ -215,14 +225,16 @@ export default async function GenericModulePage({
         <div className="mt-5">
           <SubmitButton label="Analyse starten" pendingLabel="Bezig met starten…" />
         </div>
-        <p className="mt-2 text-xs text-gray-500">
-          De analyse gebruikt het gekozen markdown-snapshot als bron. Nieuwe of
-          verse markdown maak je in de{" "}
-          <Link href="/modules" className="underline">
-            Markdown bibliotheek
-          </Link>
-          .
-        </p>
+        {sourceTypes.includes("library") && (
+          <p className="mt-2 text-xs text-gray-500">
+            De analyse gebruikt het gekozen markdown-snapshot als bron. Nieuwe
+            of verse markdown maak je in de{" "}
+            <Link href="/modules" className="underline">
+              Markdown bibliotheek
+            </Link>
+            .
+          </p>
+        )}
       </form>
       )}
 

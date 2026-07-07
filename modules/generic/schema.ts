@@ -81,15 +81,27 @@ export const GenericInputSchema = z.object({
 });
 export type GenericInput = z.infer<typeof GenericInputSchema>;
 
+// ── Bronkeuze op het startformulier ──────────────────────────────────────
+
+export const SOURCE_TYPES = ["library", "url", "file"] as const;
+export type GenericSourceType = (typeof SOURCE_TYPES)[number];
+
 /** Per-module opties voor de generieke runner. */
 export type GenericModuleConfig = {
   /**
-   * Wanneer true toont het startformulier naast de bibliotheek-select ook
-   * "specifieke URL" (single-page scrape) en "PDF/Word-upload" als bron.
-   * Beide worden eerst een bibliotheek-snapshot, daarna draait de analyse
-   * gewoon op dat snapshot.
+   * Toegestane bronnen op het startformulier. URL- en file-bronnen worden
+   * eerst een bibliotheek-snapshot, daarna draait de analyse gewoon op dat
+   * snapshot. Default (undefined): alleen de bibliotheek-select.
    */
-  extraSources?: boolean;
+  sourceTypes?: GenericSourceType[];
+  /** Label boven het URL-veld (default "Specifieke URL"). */
+  urlLabel?: string;
+  /** Placeholder in het URL-veld. */
+  urlPlaceholder?: string;
+  /** Wanneer gezet: de opgegeven URL moet hierop matchen. */
+  urlPattern?: RegExp;
+  /** Foutmelding wanneer urlPattern niet matcht. */
+  urlPatternError?: string;
 };
 
 /**
@@ -100,12 +112,20 @@ export type GenericModuleConfig = {
  */
 export const GENERIC_MODULES: Record<string, GenericModuleConfig> = {
   "propositie-analyse": {},
-  "klantcase-analyse": { extraSources: true },
+  "klantcase-analyse": { sourceTypes: ["library", "url", "file"] },
   // Flyercheck draait op een geüploade flyer/salespresentatie (PDF/Word).
-  flyercheck: { extraSources: true },
-  // LinkedIn-analyse draait op door de gebruiker aangeleverde LinkedIn-data
-  // (bv. een PDF-export van de bedrijfspagina); live scrapen kan niet.
-  "linkedin-analyse": { extraSources: true },
+  flyercheck: { sourceTypes: ["library", "url", "file"] },
+  // LinkedIn-analyse draait uitsluitend op een LinkedIn-bedrijfspagina.
+  // LinkedIn serveert crawlers een publieke gastversie (bedrijfsinfo +
+  // recente posts), dus de normale single-page-scrape werkt hier gewoon.
+  "linkedin-analyse": {
+    sourceTypes: ["url"],
+    urlLabel: "LinkedIn-bedrijfspagina",
+    urlPlaceholder: "bijv. https://www.linkedin.com/company/jouw-bedrijf",
+    urlPattern: /linkedin\.com\/company\//i,
+    urlPatternError:
+      "Vul de URL van een LinkedIn-bedrijfspagina in (linkedin.com/company/…)",
+  },
   // Markttrends draait op het website-snapshot + sector; provider perplexity
   // haalt de actuele trends van het web.
   "markttrends-rapport": {},
@@ -115,14 +135,10 @@ export function isGenericModule(slug: string): boolean {
   return Object.prototype.hasOwnProperty.call(GENERIC_MODULES, slug);
 }
 
-export function moduleAllowsExtraSources(slug: string): boolean {
-  return GENERIC_MODULES[slug]?.extraSources === true;
+/** Toegestane bronnen voor een module; default alleen de bibliotheek. */
+export function moduleSourceTypes(slug: string): GenericSourceType[] {
+  return GENERIC_MODULES[slug]?.sourceTypes ?? ["library"];
 }
-
-// ── Bronkeuze op het startformulier ──────────────────────────────────────
-
-export const SOURCE_TYPES = ["library", "url", "file"] as const;
-export type GenericSourceType = (typeof SOURCE_TYPES)[number];
 
 /** Onbekende of ontbrekende waarden vallen terug op de bibliotheek-select. */
 export function parseSourceType(raw: unknown): GenericSourceType {
