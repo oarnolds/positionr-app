@@ -90,6 +90,20 @@ export const MODULES: ModuleMeta[] = [
     minTier: "fundament",
   },
   {
+    slug: "linkedin-doelgroep",
+    name: "LinkedIn doelgroep-analyse",
+    description:
+      "Upload je LinkedIn volgers-export en zie hoeveel van je volgers in je doelgroep zitten en hoe groot je potentieel is.",
+    icon: Linkedin,
+    color: "from-sky-500 to-sky-700",
+    borderColor: "border-sky-200",
+    bgLight: "bg-sky-50",
+    iconColor: "text-sky-700",
+    status: "active",
+    href: "/modules/linkedin-doelgroep",
+    minTier: "fundament",
+  },
+  {
     slug: "markttrends-rapport",
     name: "Markttrends rapport",
     description:
