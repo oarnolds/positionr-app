@@ -108,6 +108,12 @@ export type GenericModuleConfig = {
   sectorLabel?: string;
   /** Placeholder van het sector-veld (default "bijv. IT-dienstverlening"). */
   sectorPlaceholder?: string;
+  /** Label van het beschrijving-veld (default "Korte beschrijving van je bedrijf"). */
+  descriptionLabel?: string;
+  /** Placeholder van het beschrijving-veld (default "Wat doen jullie, voor wie?"). */
+  descriptionPlaceholder?: string;
+  /** Optioneel genummerd stappenplan bovenaan de modulepagina. */
+  steps?: string[];
 };
 
 /**
@@ -136,6 +142,25 @@ export const GENERIC_MODULES: Record<string, GenericModuleConfig> = {
       "Upload je LinkedIn Analytics-export (.xlsx) — in LinkedIn: bedrijfspagina → Analytics → Volgers of Content → knop Exporteren. Vul hieronder bij Doelgroep je focus in (bijv. maak- & procesindustrie) voor een bereik-analyse binnen die groep.",
     sectorLabel: "Doelgroep of sector",
     sectorPlaceholder: "bijv. maak- & procesindustrie",
+  },
+  // LinkedIn doelgroep-analyse: draait op een geüploade volgers-export
+  // (Analytics → Volgers → Exporteren). Doelgroep = sector-veld,
+  // Sales Navigator-potentieel = beschrijving-veld.
+  "linkedin-doelgroep": {
+    sourceTypes: ["file"],
+    fileHint:
+      "Upload je LinkedIn volgers-export (.xls/.xlsx). Zie de stappen hierboven om die in LinkedIn te maken.",
+    sectorLabel: "Doelgroep (branches + functies)",
+    sectorPlaceholder:
+      "bijv. maak- & procesindustrie in NL; functies inkoop, operations, supply chain",
+    descriptionLabel: "LinkedIn-potentieel (optioneel)",
+    descriptionPlaceholder:
+      "bijv. Sales Navigator: 3.200 mensen in maakindustrie NL, functie inkoop/operations",
+    steps: [
+      "Ga in LinkedIn naar je bedrijfspagina en klik op Analytics → Volgers.",
+      "Klik rechtsboven op Exporteren en kies een periode.",
+      "Je krijgt een .xls-bestand met de volgersdemografie. Upload dat hieronder.",
+    ],
   },
   // Markttrends draait op het website-snapshot + sector; provider perplexity
   // haalt de actuele trends van het web.

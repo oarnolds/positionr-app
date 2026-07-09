@@ -22,6 +22,14 @@ test("moduleSourceTypes: toegestane bronnen per module", () => {
   expect(moduleSourceTypes("bestaat-niet")).toEqual(["library"]);
 });
 
+test("linkedin-doelgroep: file-only bron met herlabelde velden en stappen", () => {
+  expect(moduleSourceTypes("linkedin-doelgroep")).toEqual(["file"]);
+  const cfg = GENERIC_MODULES["linkedin-doelgroep"];
+  expect(cfg.sectorLabel).toMatch(/doelgroep/i);
+  expect(cfg.descriptionLabel).toMatch(/potentieel/i);
+  expect(Array.isArray(cfg.steps) && cfg.steps.length).toBeGreaterThan(0);
+});
+
 test("linkedin-analyse: urlPattern accepteert alleen LinkedIn-bedrijfspagina's", () => {
   const pattern = GENERIC_MODULES["linkedin-analyse"].urlPattern;
   expect(pattern?.test("https://www.linkedin.com/company/biqql/")).toBe(true);
