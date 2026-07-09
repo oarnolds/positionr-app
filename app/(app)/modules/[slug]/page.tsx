@@ -116,6 +116,19 @@ export default async function GenericModulePage({
         </div>
       </div>
 
+      {moduleConfig?.steps && moduleConfig.steps.length > 0 && (
+        <ol className="mt-6 space-y-2 rounded-2xl border border-gray-200 bg-white p-5 text-sm text-gray-700">
+          {moduleConfig.steps.map((step, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-700">
+                {i + 1}
+              </span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+
       {error && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           {error}
@@ -215,13 +228,15 @@ export default async function GenericModulePage({
 
         <label className="mt-4 block text-sm">
           <span className="font-semibold text-gray-700">
-            Korte beschrijving van je bedrijf{" "}
+            {moduleConfig?.descriptionLabel ?? "Korte beschrijving van je bedrijf"}{" "}
             <span className="font-normal text-gray-500">(optioneel)</span>
           </span>
           <textarea
             name="description"
             rows={2}
-            placeholder="Wat doen jullie, voor wie?"
+            placeholder={
+              moduleConfig?.descriptionPlaceholder ?? "Wat doen jullie, voor wie?"
+            }
             className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
           />
         </label>
