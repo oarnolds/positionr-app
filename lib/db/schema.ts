@@ -283,6 +283,58 @@ export const snapshotChunks = pgTable("snapshot_chunks", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ── Kennisbibliotheek (admin-beheerd, gedeeld) ──────────────────────
+
+export const knowledgeSourceKind = pgEnum("knowledge_source_kind", [
+  "pdf",
+  "epub",
+]);
+export const knowledgeSourceStatus = pgEnum("knowledge_source_status", [
+  "extracting",
+  "distilling",
+  "done",
+  "failed",
+]);
+export const knowledgeCardStatus = pgEnum("knowledge_card_status", [
+  "concept",
+  "goedgekeurd",
+]);
+
+export const knowledgeSources = pgTable("knowledge_sources", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  author: text("author"),
+  language: text("language"),
+  kind: knowledgeSourceKind("kind").notNull(),
+  storagePath: text("storage_path").notNull(),
+  status: knowledgeSourceStatus("status").default("extracting").notNull(),
+  chapters: jsonb("chapters").$type<string[]>().default([]).notNull(),
+  chaptersTotal: integer("chapters_total").default(0).notNull(),
+  chaptersDone: integer("chapters_done").default(0).notNull(),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const knowledgeCards = pgTable("knowledge_cards", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  sourceId: uuid("source_id")
+    .notNull()
+    .references(() => knowledgeSources.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  kern: text("kern").notNull(),
+  toepassing: text("toepassing").default("").notNull(),
+  tags: text("tags").array().default([]).notNull(),
+  sourceLabel: text("source_label").notNull(),
+  status: knowledgeCardStatus("status").default("concept").notNull(),
+  chapterIndex: integer("chapter_index").default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type KnowledgeSource = typeof knowledgeSources.$inferSelect;
+export type KnowledgeCard = typeof knowledgeCards.$inferSelect;
+
 // ── Types ──────────────────────────────────────────────────────────
 
 export type Profile = typeof profiles.$inferSelect;
