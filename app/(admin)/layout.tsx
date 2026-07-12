@@ -5,13 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db/client";
 import { profiles } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
-import { LogOut, FileText, Wand2, LayoutGrid, Users, ArrowLeft } from "lucide-react";
+import { LogOut, FileText, Wand2, LayoutGrid, Users, ArrowLeft, BookOpen } from "lucide-react";
 import { signOut } from "../(app)/actions";
 
 const ADMIN_NAV = [
   { href: "/admin", label: "Sessies", icon: FileText },
   { href: "/admin/prompts", label: "Prompts", icon: Wand2 },
   { href: "/admin/layouts", label: "Layouts", icon: LayoutGrid },
+  { href: "/admin/kennis", label: "Kennisbibliotheek", icon: BookOpen },
   { href: "/admin/gebruikers", label: "Gebruikers", icon: Users },
 ];
 
