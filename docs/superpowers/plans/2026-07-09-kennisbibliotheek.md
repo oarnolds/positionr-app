@@ -234,7 +234,6 @@ Expected: FAIL — module bestaat nog niet.
 
 ```ts
 import { z } from "zod";
-import { extractAndParseJson } from "@/lib/ai/claude";
 
 export const KnowledgeCardDraftSchema = z.object({
   title: z.string().trim().min(1),
@@ -246,6 +245,23 @@ export const KnowledgeCardDraftSchema = z.object({
 export type KnowledgeCardDraft = z.infer<typeof KnowledgeCardDraftSchema>;
 
 /**
+ * Haalt de JSON-array uit een (mogelijk in markdown-fences verpakte)
+ * LLM-tekst. Strip eerst alle ```-fences, pak dan alles tussen de buitenste
+ * [ en ]. Gooit als er geen array in staat. (Let op: de gedeelde helper
+ * `extractAndParseJson` in `@/lib/ai/claude` kan alleen top-level objecten,
+ * geen arrays — daarom hier een eigen array-aware parse.)
+ */
+function extractJsonArray(raw: string): unknown {
+  const cleaned = raw.replace(/```(?:json)?/gi, "").trim();
+  const start = cleaned.indexOf("[");
+  const end = cleaned.lastIndexOf("]");
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error("geen JSON-array gevonden");
+  }
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+/**
  * Parse de LLM-output naar geldige kaart-drafts. Verwacht een JSON-array
  * (eventueel in markdown-fences). Ongeldige elementen worden overgeslagen
  * zodat één rotte kaart de hele oogst niet verpest.
@@ -253,7 +269,7 @@ export type KnowledgeCardDraft = z.infer<typeof KnowledgeCardDraftSchema>;
 export function parseCardDrafts(raw: string): KnowledgeCardDraft[] {
   let parsed: unknown;
   try {
-    parsed = extractAndParseJson(raw);
+    parsed = extractJsonArray(raw);
   } catch {
     return [];
   }
