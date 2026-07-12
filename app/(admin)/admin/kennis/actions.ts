@@ -19,6 +19,21 @@ const MIME_TO_KIND: Record<string, "pdf" | "epub"> = {
   "application/epub+zip": "epub",
 };
 
+const KIND_TO_MIME: Record<"pdf" | "epub", string> = {
+  pdf: "application/pdf",
+  epub: "application/epub+zip",
+};
+
+/** Bepaalt het boektype uit mime-type óf bestandsextensie (browsers zetten
+ *  voor .epub soms een lege of octet-stream mime). */
+function detectKind(filename: string, mimeType: string): "pdf" | "epub" | null {
+  if (MIME_TO_KIND[mimeType]) return MIME_TO_KIND[mimeType];
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".pdf")) return "pdf";
+  if (lower.endsWith(".epub")) return "epub";
+  return null;
+}
+
 async function requireAdmin(): Promise<void> {
   const supabase = await createClient();
   const {
@@ -33,40 +48,61 @@ async function requireAdmin(): Promise<void> {
   if (p?.role !== "admin") redirect("/modules");
 }
 
-export async function uploadBookAction(formData: FormData): Promise<void> {
+/**
+ * Stap 1 van de upload: maak een signed upload-URL zodat de browser het boek
+ * RECHTSTREEKS naar Storage uploadt. Boeken zijn te groot (Vercel capt
+ * server-uploads op 4,5 MB), dus de bytes gaan nooit door de server-action.
+ * Geeft alleen een klein JSON-antwoord terug.
+ */
+export async function createBookUploadUrl(
+  filename: string,
+  mimeType: string,
+): Promise<
+  | { ok: true; path: string; token: string; kind: "pdf" | "epub"; contentType: string }
+  | { ok: false; error: string }
+> {
   await requireAdmin();
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    redirect("/admin/kennis?error=" + encodeURIComponent("Geen bestand gekozen"));
-  }
-  const kind = MIME_TO_KIND[(file as File).type];
-  if (!kind) {
-    redirect("/admin/kennis?error=" + encodeURIComponent("Alleen PDF of EPUB"));
-  }
-
-  const buffer = Buffer.from(await (file as File).arrayBuffer());
-  const storagePath = `${randomUUID()}.${kind}`;
+  const kind = detectKind(filename, mimeType);
+  if (!kind) return { ok: false, error: "Alleen PDF of EPUB" };
+  const path = `${randomUUID()}.${kind}`;
   const supabase = createServiceClient();
-  const up = await supabase.storage.from(BUCKET).upload(storagePath, buffer, {
-    contentType: (file as File).type,
-    upsert: false,
-  });
-  if (up.error) {
-    redirect("/admin/kennis?error=" + encodeURIComponent(up.error.message));
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUploadUrl(path);
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? "Kon upload-URL niet maken" };
   }
+  return { ok: true, path: data.path, token: data.token, kind, contentType: KIND_TO_MIME[kind] };
+}
 
+/**
+ * Stap 2: de browser heeft het boek geüpload; wij downloaden het server-side
+ * uit Storage, extraheren de hoofdstukken, maken de bron aan en starten de
+ * distillatie op de achtergrond. Redirect bij succes; geeft {error} terug
+ * zodat de uploader-component het kan tonen.
+ */
+export async function startBookExtraction(
+  path: string,
+  kind: "pdf" | "epub",
+  filename: string,
+): Promise<{ error: string } | void> {
+  await requireAdmin();
+  const supabase = createServiceClient();
   let sourceId: string;
   try {
+    const { data, error } = await supabase.storage.from(BUCKET).download(path);
+    if (error || !data) throw new Error(error?.message ?? "Bestand niet gevonden in opslag");
+    const buffer = Buffer.from(await data.arrayBuffer());
     const book = await extractBook(buffer, kind);
     if (book.chapters.length === 0) throw new Error("Geen tekst gevonden in het boek");
     const [row] = await db
       .insert(knowledgeSources)
       .values({
-        title: book.title ?? (file as File).name,
+        title: book.title ?? filename,
         author: book.author,
         language: book.language,
         kind,
-        storagePath,
+        storagePath: path,
         status: "distilling",
         chapters: book.chapters,
         chaptersTotal: book.chapters.length,
@@ -75,9 +111,8 @@ export async function uploadBookAction(formData: FormData): Promise<void> {
       .returning({ id: knowledgeSources.id });
     sourceId = row.id;
   } catch (err) {
-    await supabase.storage.from(BUCKET).remove([storagePath]).catch(() => undefined);
-    const msg = err instanceof Error ? err.message : "Extractie mislukt";
-    redirect("/admin/kennis?error=" + encodeURIComponent(msg));
+    await supabase.storage.from(BUCKET).remove([path]).catch(() => undefined);
+    return { error: err instanceof Error ? err.message : "Extractie mislukt" };
   }
 
   after(() => runDistillation(sourceId));

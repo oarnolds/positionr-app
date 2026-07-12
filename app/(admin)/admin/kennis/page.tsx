@@ -2,7 +2,7 @@ import Link from "next/link";
 import { desc } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { knowledgeSources } from "@/lib/db/schema";
-import { uploadBookAction } from "./actions";
+import { BookUploader } from "./book-uploader";
 
 export const maxDuration = 300;
 
@@ -31,28 +31,7 @@ export default async function KennisPage({
         </div>
       )}
 
-      <form
-        action={uploadBookAction}
-        encType="multipart/form-data"
-        className="mt-6 rounded-xl border bg-white p-4"
-      >
-        <input
-          name="file"
-          type="file"
-          accept="application/pdf,application/epub+zip,.pdf,.epub"
-          required
-          className="block w-full text-sm"
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          Max 50 MB. Auteur en taal worden automatisch herkend.
-        </p>
-        <button
-          type="submit"
-          className="mt-3 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white"
-        >
-          Boek distilleren
-        </button>
-      </form>
+      <BookUploader />
 
       <h2 className="mt-8 mb-2 text-lg font-bold">Aangeleverde boeken</h2>
       {sources.length === 0 ? (
