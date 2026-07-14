@@ -8,6 +8,28 @@ export type ReportBlocks = {
   bodyMarkdown: string;
 };
 
+export function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function parseSamenvatting(markdown: string): string | null {
+  const lines = markdown.split("\n");
+  const start = lines.findIndex((l) => /^#\s+Samenvatting\s*$/i.test(l));
+  if (start === -1) return null;
+  const out: string[] = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^#{1,6}\s/.test(lines[i])) break;
+    out.push(lines[i]);
+  }
+  const text = out.join("\n").trim();
+  return text || null;
+}
+
 const SCORE_RE = /(\d+[,.]\d+)\s*\/\s*10/;
 const STRENGTHS_RE = /^##\s+Sterke punten\s*$/i;
 const IMPROVEMENTS_RE = /^##\s+(?:Grootste\s+)?[Vv]erbeterpunten\s*$/;

@@ -120,3 +120,27 @@ describe("parseReport", () => {
     expect(r.bodyMarkdown).toBe("");
   });
 });
+
+import { parseSamenvatting, slugify } from "./parseReport";
+
+describe("parseSamenvatting", () => {
+  it("trekt de tekst onder '# Samenvatting' tot de volgende kop", () => {
+    const md = [
+      "# Inleiding", "", "Intro.", "",
+      "# Samenvatting", "", "Sterk is X.", "Zwak is Y.", "",
+      "# Scores in één oogopslag", "", "| a | b |",
+    ].join("\n");
+    expect(parseSamenvatting(md)).toBe("Sterk is X.\nZwak is Y.");
+  });
+
+  it("geeft null als er geen samenvatting is", () => {
+    expect(parseSamenvatting("# Inleiding\n\nTekst.")).toBeNull();
+  });
+});
+
+describe("slugify", () => {
+  it("maakt een stabiele slug", () => {
+    expect(slugify("Bewijsvoering")).toBe("bewijsvoering");
+    expect(slugify("CTA's (actieknoppen)")).toBe("cta-s-actieknoppen");
+  });
+});
