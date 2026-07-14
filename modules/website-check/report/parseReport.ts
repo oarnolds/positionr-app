@@ -8,6 +8,16 @@ export type ReportBlocks = {
   bodyMarkdown: string;
 };
 
+export type Onderdeel = {
+  nr: number;
+  slug: string;
+  titel: string;
+  score: number | null;
+  watWeZien: string;
+  waaromDitTelt: string;
+  watJeKuntDoen: string[];
+};
+
 export function slugify(input: string): string {
   return input
     .toLowerCase()
@@ -28,6 +38,66 @@ export function parseSamenvatting(markdown: string): string | null {
   }
   const text = out.join("\n").trim();
   return text || null;
+}
+
+const ONDERDEEL_RE =
+  /^###\s+(\d+)\.\s+(.+?)\s*[—–-]\s*(\d+(?:[.,]\d+)?)\s*\/\s*10\s*$/;
+
+export function parseOnderdelen(markdown: string): Onderdeel[] {
+  const lines = markdown.split("\n");
+  const out: Onderdeel[] = [];
+  let cur: Onderdeel | null = null;
+  let bucket: "watWeZien" | "waaromDitTelt" | "watJeKuntDoen" | null = null;
+  const push = () => {
+    if (cur) out.push(cur);
+  };
+
+  for (const line of lines) {
+    const head = line.match(ONDERDEEL_RE);
+    if (head) {
+      push();
+      cur = {
+        nr: Number(head[1]),
+        titel: head[2].trim(),
+        slug: slugify(head[2]),
+        score: Number(head[3].replace(",", ".")),
+        watWeZien: "",
+        waaromDitTelt: "",
+        watJeKuntDoen: [],
+      };
+      bucket = null;
+      continue;
+    }
+    if (!cur) continue;
+    // Onderdeel eindigt bij de volgende H1/H2 (bv. "# De vijf belangrijkste acties").
+    if (/^#{1,2}\s/.test(line)) {
+      push();
+      cur = null;
+      bucket = null;
+      continue;
+    }
+    const sub = line.match(/^####\s+(.*)$/);
+    if (sub) {
+      const label = sub[1].toLowerCase();
+      if (label.startsWith("wat we zien")) bucket = "watWeZien";
+      else if (label.startsWith("waarom")) bucket = "waaromDitTelt";
+      else if (label.startsWith("wat je kunt doen")) bucket = "watJeKuntDoen";
+      else bucket = null;
+      continue;
+    }
+    if (bucket === "watJeKuntDoen") {
+      const b = line.match(/^[*-]\s+(.*)$/);
+      if (b) cur.watJeKuntDoen.push(b[1].trim());
+    } else if (bucket === "watWeZien") {
+      const t = line.trim();
+      if (t) cur.watWeZien = cur.watWeZien ? `${cur.watWeZien} ${t}` : t;
+    } else if (bucket === "waaromDitTelt") {
+      const t = line.trim();
+      if (t) cur.waaromDitTelt = cur.waaromDitTelt ? `${cur.waaromDitTelt} ${t}` : t;
+    }
+  }
+  push();
+  return out;
 }
 
 const SCORE_RE = /(\d+[,.]\d+)\s*\/\s*10/;

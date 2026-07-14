@@ -144,3 +144,44 @@ describe("slugify", () => {
     expect(slugify("CTA's (actieknoppen)")).toBe("cta-s-actieknoppen");
   });
 });
+
+import { parseOnderdelen } from "./parseReport";
+
+describe("parseOnderdelen", () => {
+  const md = [
+    "# Beoordeling per onderdeel", "",
+    "### 1. Waardepropositie — 6,5 / 10", "",
+    "#### Wat we zien", "", "De site opent met een belofte.", "Vol vaktaal.", "",
+    "#### Waarom dit telt", "", "De bezoeker beslist snel.", "",
+    "#### Wat je kunt doen", "", "* Zet de winst voorop.", "* Leg vaktermen uit.", "",
+    "### 5. Bewijsvoering — 4,0 / 10", "",
+    "#### Wat we zien", "", "Eén aanbeveling.", "",
+    "#### Waarom dit telt", "", "Bewijs overtuigt.", "",
+    "#### Wat je kunt doen", "", "* Toon logo's.", "",
+    "# De vijf belangrijkste acties", "",
+  ].join("\n");
+
+  it("parset kop, score, slug en de drie subblokken", () => {
+    const r = parseOnderdelen(md);
+    expect(r).toHaveLength(2);
+    expect(r[0]).toMatchObject({
+      nr: 1,
+      titel: "Waardepropositie",
+      slug: "waardepropositie",
+      score: 6.5,
+      watWeZien: "De site opent met een belofte. Vol vaktaal.",
+      waaromDitTelt: "De bezoeker beslist snel.",
+      watJeKuntDoen: ["Zet de winst voorop.", "Leg vaktermen uit."],
+    });
+    expect(r[1]).toMatchObject({ nr: 5, slug: "bewijsvoering", score: 4 });
+  });
+
+  it("stopt een onderdeel bij de volgende H1 (acties-sectie lekt niet in)", () => {
+    const r = parseOnderdelen(md);
+    expect(r[1].watJeKuntDoen).toEqual(["Toon logo's."]);
+  });
+
+  it("geeft lege lijst bij format-drift (geen onderdeel-koppen)", () => {
+    expect(parseOnderdelen("# Iets\n\nGewone tekst.")).toEqual([]);
+  });
+});
