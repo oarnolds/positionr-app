@@ -41,7 +41,7 @@ export function ScoresOverview({ onderdelen }: { onderdelen: Onderdeel[] }) {
                   o.score != null ? TXT[band] : "text-gray-400"
                 }`}
               >
-                {o.score != null ? o.score.toString().replace(".", ",") : "—"}
+                {o.score != null ? o.score.toFixed(1).replace(".", ",") : "—"}
               </span>
             </div>
           );

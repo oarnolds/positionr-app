@@ -18,7 +18,7 @@ export function OnderdeelCard({ onderdeel }: { onderdeel: Onderdeel }) {
           }`}
         >
           {onderdeel.score != null
-            ? onderdeel.score.toString().replace(".", ",")
+            ? onderdeel.score.toFixed(1).replace(".", ",")
             : "—"}
         </span>
         <h3 className="text-[15px] font-bold text-gray-900">

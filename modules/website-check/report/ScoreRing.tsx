@@ -10,7 +10,7 @@ export function ScoreRing({ score }: { score: number | null }) {
     >
       <div className="flex h-[58px] w-[58px] flex-col items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white">
         <span className="text-xl font-extrabold leading-none">
-          {score != null ? score.toString().replace(".", ",") : "—"}
+          {score != null ? score.toFixed(1).replace(".", ",") : "—"}
         </span>
         <span className="text-[9px] opacity-80">/10</span>
       </div>
