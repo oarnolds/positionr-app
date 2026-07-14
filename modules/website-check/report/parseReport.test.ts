@@ -185,3 +185,29 @@ describe("parseOnderdelen", () => {
     expect(parseOnderdelen("# Iets\n\nGewone tekst.")).toEqual([]);
   });
 });
+
+import { parseActies } from "./parseReport";
+
+describe("parseActies", () => {
+  const md = [
+    "# De vijf belangrijkste acties", "",
+    "| Actie | Impact | Waarom dit helpt |",
+    "| --- | --- | --- |",
+    "| **Voeg klantcases toe** | **hoog** | Een verhaal overtuigt. |",
+    "| **Toon meer bewijs** | **middel** | Bewijs van anderen. |",
+    "",
+    "# Tot slot",
+  ].join("\n");
+
+  it("parset titel en impact uit de tabel", () => {
+    const r = parseActies(md);
+    expect(r).toEqual([
+      { titel: "Voeg klantcases toe", impact: "hoog" },
+      { titel: "Toon meer bewijs", impact: "middel" },
+    ]);
+  });
+
+  it("geeft lege lijst als er geen acties-tabel is", () => {
+    expect(parseActies("# Iets\n\nGeen tabel.")).toEqual([]);
+  });
+});

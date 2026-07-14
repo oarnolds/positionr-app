@@ -18,6 +18,11 @@ export type Onderdeel = {
   watJeKuntDoen: string[];
 };
 
+export type Actie = {
+  titel: string;
+  impact: "hoog" | "middel" | "laag" | null;
+};
+
 export function slugify(input: string): string {
   return input
     .toLowerCase()
@@ -97,6 +102,38 @@ export function parseOnderdelen(markdown: string): Onderdeel[] {
     }
   }
   push();
+  return out;
+}
+
+export function parseActies(markdown: string): Actie[] {
+  const lines = markdown.split("\n");
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i].toLowerCase();
+    if (/^\s*\|/.test(l) && l.includes("actie") && l.includes("impact")) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return [];
+
+  const out: Actie[] = [];
+  // Data begint na de header-rij + de scheidingsrij (| --- | --- |).
+  for (let i = headerIdx + 2; i < lines.length; i++) {
+    if (!/^\s*\|/.test(lines[i])) break;
+    const cells = lines[i].split("|").slice(1, -1).map((c) => c.trim());
+    if (cells.length < 2) continue;
+    const titel = cells[0].replace(/\*\*/g, "").trim();
+    const impactRaw = cells[1].replace(/\*\*/g, "").toLowerCase();
+    const impact: Actie["impact"] = impactRaw.includes("hoog")
+      ? "hoog"
+      : impactRaw.includes("middel")
+        ? "middel"
+        : impactRaw.includes("laag")
+          ? "laag"
+          : null;
+    if (titel) out.push({ titel, impact });
+  }
   return out;
 }
 
