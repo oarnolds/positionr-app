@@ -211,3 +211,34 @@ describe("parseActies", () => {
     expect(parseActies("# Iets\n\nGeen tabel.")).toEqual([]);
   });
 });
+
+describe("parseReport — nieuwe velden", () => {
+  const md = [
+    "Cover met Totaalscore: 4,9 / 10", "",
+    "# Samenvatting", "", "Kort en krachtig.", "",
+    "# Beoordeling per onderdeel", "",
+    "### 5. Bewijsvoering — 4,0 / 10", "",
+    "#### Wat we zien", "", "Eén aanbeveling.", "",
+    "#### Waarom dit telt", "", "Bewijs overtuigt.", "",
+    "#### Wat je kunt doen", "", "* Toon logo's.", "",
+    "# De vijf belangrijkste acties", "",
+    "| Actie | Impact | Waarom |",
+    "| --- | --- | --- |",
+    "| **Toon bewijs** | **hoog** | x |",
+  ].join("\n");
+
+  it("vult samenvatting, onderdelen en acties", () => {
+    const r = parseReport(md);
+    expect(r.samenvatting).toBe("Kort en krachtig.");
+    expect(r.onderdelen).toHaveLength(1);
+    expect(r.onderdelen[0].slug).toBe("bewijsvoering");
+    expect(r.acties).toEqual([{ titel: "Toon bewijs", impact: "hoog" }]);
+  });
+
+  it("lege input → onderdelen/acties leeg, samenvatting null", () => {
+    const r = parseReport("");
+    expect(r.onderdelen).toEqual([]);
+    expect(r.acties).toEqual([]);
+    expect(r.samenvatting).toBeNull();
+  });
+});

@@ -5,6 +5,9 @@ export type ReportBlocks = {
   } | null;
   strengths: string[] | null;
   improvements: string[] | null;
+  samenvatting: string | null;
+  onderdelen: Onderdeel[];
+  acties: Actie[];
   bodyMarkdown: string;
 };
 
@@ -164,8 +167,20 @@ function extractList(lines: string[], startIdx: number): { items: string[]; endI
 
 export function parseReport(markdown: string): ReportBlocks {
   if (!markdown) {
-    return { cover: null, strengths: null, improvements: null, bodyMarkdown: "" };
+    return {
+      cover: null,
+      strengths: null,
+      improvements: null,
+      samenvatting: null,
+      onderdelen: [],
+      acties: [],
+      bodyMarkdown: "",
+    };
   }
+  const samenvatting = parseSamenvatting(markdown);
+  const onderdelen = parseOnderdelen(markdown);
+  const acties = parseActies(markdown);
+
   const lines = markdown.split("\n");
   const firstH1 = lines.findIndex((l) => /^#\s+/.test(l));
 
@@ -181,6 +196,9 @@ export function parseReport(markdown: string): ReportBlocks {
       cover,
       strengths: null,
       improvements: null,
+      samenvatting,
+      onderdelen,
+      acties,
       bodyMarkdown: "",
     };
   }
@@ -221,6 +239,9 @@ export function parseReport(markdown: string): ReportBlocks {
       cover,
       strengths: null,
       improvements: null,
+      samenvatting,
+      onderdelen,
+      acties,
       bodyMarkdown: bodyLines.join("\n"),
     };
   }
@@ -239,6 +260,9 @@ export function parseReport(markdown: string): ReportBlocks {
     cover,
     strengths,
     improvements,
+    samenvatting,
+    onderdelen,
+    acties,
     bodyMarkdown: collapsed.join("\n").trim(),
   };
 }
