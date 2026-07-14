@@ -41,8 +41,14 @@ naar de PDF-export.
    gerenderd als **pull-quote** (stijl 2).
 7. **Plaatsing** = **naast** de gematchte sectie (2-koloms, links/rechts
    afwisselend); secties zonder match blijven volle breedte; mobiel stapelt.
-8. **Website-check** krijgt **structured output** (eigen JSON-schema) i.p.v. de
-   huidige markdown, met fallback voor bestaande markdown-sessies.
+8. **Website-check** houdt zijn bestaande **markdown-generatie** (admin-prompt +
+   format-template + Claude/Perplexity/both) en wordt **geparset** naar
+   structured secties voor de nieuwe renderer; onparsbare output valt terug op
+   de huidige markdown-render. *(Herzien 2026-07-14: aanvankelijk kozen we een
+   JSON-schema; de echte generatie is admin-prompt + format-template + markdown
+   met drie providers — een JSON-ombouw zou die werkende admin-workflow
+   verstoren en Perplexity-JSON-betrouwbaarheid oproepen. De format-template legt
+   de koppen deterministisch vast, dus parsen is hier betrouwbaar.)*
 9. **Scope eerste build (A)**: een module-agnostische engine + adapters voor de
    **generieke runner** (dekt alle prompt-gedreven modules) én **website-check**.
    ICP schuift door. **Gratis-check en deel-pagina's (`/r/…`) krijgen geen
@@ -139,9 +145,9 @@ voor zowel `knowledge_cards.themes` als de classify-output.
   slug van titel/eyebrow (uniek gemaakt met index); `tekst` = `inhoud` +
   platgeslagen `feiten`/`chips`. Bij de **markdown-fallback**-output
   (`{kind:"markdown"}`, geen secties) → lege lijst, dus geen matching.
-- **`adapters/website-check.ts`** — `onderdelen[]` → secties. `key` = onderdeel-
-  slug (bv. `bewijsvoering`); `tekst` = `watWeZien` + `waaromDitTelt` +
-  `watJeKuntDoen`.
+- **`adapters/website-check.ts`** — de geparsete `onderdelen[]` (uit
+  `parseReport` → `ParsedWebsiteCheck`) → secties. `key` = onderdeel-slug (bv.
+  `bewijsvoering`); `tekst` = `watWeZien` + `waaromDitTelt` + `watJeKuntDoen`.
 - **`classify.ts`** — bouwt de classify-prompt (taxonomie + secties) en
   parseert `{ sectionKey: string[] }`, gefilterd op geldige taxonomie-slugs.
 - **`prefilter.ts`** — pure functie: per sectie de goedgekeurde kaarten waarvan
@@ -157,40 +163,44 @@ Aangeroepen in de generatie-services (`modules/generic/service.ts` en
 `modules/website-check/service.ts`) ná de hoofdanalyse en vóór `status: done`,
 met de bijbehorende adapter. Result → `sessions.knowledge_blocks`.
 
-## Website-check output-herontwerp
+## Website-check output-herontwerp (parser-route)
 
-**Schema** (`modules/website-check/schema.ts`, nieuw of uitgebreid):
+De generatie blijft **ongewijzigd**: admin-prompt + format-template →
+**markdown**, via de bestaande provider-keuze (Claude/Perplexity/both). We
+**parsen** die markdown naar een structured model en renderen daaruit. Dat is
+betrouwbaar omdat de format-template de koppen deterministisch vastlegt
+(`### N. Titel — score / 10`, `#### Wat we zien`, `#### Waarom dit telt`,
+`#### Wat je kunt doen`).
+
+**Geparset model** (uitbreiding van `parseReport` → `ParsedWebsiteCheck`):
 ```ts
-WebsiteCheckReport = {
-  bedrijf: string;
-  totaalscore: number;              // 0–10, één decimaal
-  samenvatting: string;
-  sterktes: string[];
-  verbeterpunten: string[];
+ParsedWebsiteCheck = {
+  cover: { raw: string; score: string | null };   // bestaand
+  sterktes: string[]; verbeterpunten: string[];    // bestaand
   onderdelen: {
     nr: number;
-    slug: string;                   // stabiele sleutel voor matching
+    slug: string;                   // stabiele sleutel (bv. "bewijsvoering")
     titel: string;
-    score: number;                  // 0–10
+    score: number | null;           // 0–10
     watWeZien: string;
     waaromDitTelt: string;
     watJeKuntDoen: string[];
   }[];
-  acties: { titel: string; impact: "hoog" | "middel" | "laag" }[];
+  acties: { titel: string; impact: "hoog" | "middel" | "laag" | null }[];
+  bodyMarkdown: string;             // rest (inleiding/samenvatting/tot slot)
 }
 ```
-- **Prompt** (`modules/website-check/prompt.ts`) levert deze JSON; de bestaande
-  inhoudsregels (gewone taal, geen verzonnen cijfers, voorzichtige scores bij
-  niet-ingeladen pagina's) blijven.
+- **Parser** (`parseReport`): bestaande cover/score/sterktes/verbeterpunten
+  blijven; toegevoegd worden de 11 `onderdelen` (kop + 3 subblokken) en de
+  `acties`-tabel. `slug` = geslugde onderdeel-titel. Lukt het onderdelen-parsen
+  niet (format-drift) → `onderdelen: []`, `acties: []`.
 - **Renderer** (herontworpen `WebsiteCheckReport`-component): hero met
   **score-ring**, **"Scores in één oogopslag"** (gekleurde balken: rood <5,
-  amber 5–6,5, groen ≥6,5), **onderdeel-kaarten** (score-badge + subblokken
-  *Wat we zien / Waarom dit telt / Wat je kunt doen*), **top-acties** met
-  impact-badges. Design volgt `lib/modules/report-sections.tsx`.
-- **Fallback**: bestaande sessies met markdown-`output` blijven via de huidige
-  `parseReport`/markdown-render werken. De result-pagina kiest: parse als
-  structured lukt → nieuwe view; anders → legacy markdown-view. Nieuwe runs zijn
-  altijd structured.
+  amber 5–6,5, groen ≥6,5), **onderdeel-kaarten** (score-badge + subblokken),
+  **top-acties** met impact-badges. Design volgt `lib/modules/report-sections.tsx`.
+- **Fallback**: is `onderdelen` leeg (oude sessie of format-drift), dan rendert
+  het component de huidige `ReportBody`/markdown-weergave. Geen datamigratie
+  nodig — de `output` blijft markdown.
 
 ## Rendering van de kennisblokjes
 
@@ -232,10 +242,9 @@ WebsiteCheckReport = {
 | `lib/knowledge/matching/pick.ts` | Kaart-keuze + brug-zin (LLM) |
 | `lib/knowledge/matching/index.ts` | `buildKnowledgeBlocks` orkestratie |
 | `modules/generic/service.ts` | Matching-hook na analyse |
-| `modules/website-check/schema.ts` | Structured `WebsiteCheckReport` |
-| `modules/website-check/prompt.ts` | JSON-output prompt |
-| `modules/website-check/service.ts` | Structured output + matching-hook |
-| `modules/website-check/report/*` | Herontworpen renderer + structured/markdown-branch |
+| `modules/website-check/report/parseReport.ts` | Uitbreiden: 11 onderdelen + acties parsen → `ParsedWebsiteCheck` |
+| `modules/website-check/report/WebsiteCheckReport.tsx` | Herontworpen renderer + fallback naar markdown |
+| `modules/website-check/service.ts` | Matching-hook na analyse *(plan 2)* |
 | `components/KnowledgeBlock.tsx` | Pull-quote-component |
 | `lib/modules/report-pairing.tsx` | Paar-layout + afwisseling (gedeeld) |
 | `modules/generic/components/GenericReportView.tsx` | Blok-weving |
@@ -253,8 +262,9 @@ WebsiteCheckReport = {
 - **Snapshot/stabiliteit** — blok bevat kaartinhoud; blijft geldig na verwijderen
   van de bronkaart.
 - **Best-effort** — een fout in de matching laat de sessie niet falen.
-- **Website-check** — structured schema-parse; **legacy markdown-fallback**
-  blijft renderen.
+- **Website-check** — `parseReport` extraheert de 11 onderdelen (kop + score +
+  3 subblokken) en de acties uit de format-template-markdown; onparsbare of oude
+  output valt terug op de markdown-render.
 - **Rendering** — paar-layout + links/rechts-afwisseling; volle breedte zonder
   match; mobiel stapelt.
 
