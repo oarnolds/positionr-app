@@ -11,6 +11,7 @@ import {
   deleteCardAction,
   resumeDistillationAction,
 } from "../actions";
+import { DeleteSourceButton } from "../delete-source-button";
 
 export default async function KennisSourcePage({
   params,
@@ -42,11 +43,16 @@ export default async function KennisSourcePage({
       <Link href="/admin/kennis" className="inline-flex items-center gap-1 text-sm text-gray-600">
         <ArrowLeft className="h-4 w-4" /> Terug
       </Link>
-      <h1 className="mt-3 text-2xl font-bold">{source.title}</h1>
-      <p className="text-sm text-gray-600">
-        {source.author ?? "onbekende auteur"} · {source.chaptersDone}/{source.chaptersTotal}{" "}
-        hoofdstukken · {cards.length} kaarten
-      </p>
+      <div className="mt-3 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">{source.title}</h1>
+          <p className="text-sm text-gray-600">
+            {source.author ?? "onbekende auteur"} · {source.chaptersDone}/
+            {source.chaptersTotal} hoofdstukken · {cards.length} kaarten
+          </p>
+        </div>
+        <DeleteSourceButton sourceId={source.id} label="Verwijder boek" />
+      </div>
 
       {busy && (
         <div className="mt-4 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">

@@ -3,6 +3,7 @@ import { desc } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { knowledgeSources } from "@/lib/db/schema";
 import { BookUploader } from "./book-uploader";
+import { DeleteSourceButton } from "./delete-source-button";
 
 export const maxDuration = 300;
 
@@ -39,10 +40,10 @@ export default async function KennisPage({
       ) : (
         <ul className="space-y-2">
           {sources.map((s) => (
-            <li key={s.id}>
+            <li key={s.id} className="flex items-stretch gap-2">
               <Link
                 href={`/admin/kennis/${s.id}`}
-                className="flex items-center justify-between rounded-lg border bg-white px-4 py-3 hover:bg-slate-50"
+                className="flex flex-1 items-center justify-between rounded-lg border bg-white px-4 py-3 hover:bg-slate-50"
               >
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{s.title}</span>
@@ -55,6 +56,7 @@ export default async function KennisPage({
                   {s.status}
                 </span>
               </Link>
+              <DeleteSourceButton sourceId={s.id} />
             </li>
           ))}
         </ul>
