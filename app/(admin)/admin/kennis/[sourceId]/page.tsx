@@ -32,6 +32,9 @@ export default async function KennisSourcePage({
     .orderBy(asc(knowledgeCards.chapterIndex), asc(knowledgeCards.createdAt));
 
   const busy = source.status === "distilling" || source.status === "extracting";
+  // Consolidatie is fase 2: alle hoofdstukken gedistilleerd, status nog niet done.
+  const consolidating =
+    busy && source.chaptersTotal > 0 && source.chaptersDone >= source.chaptersTotal;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -48,7 +51,9 @@ export default async function KennisSourcePage({
       {busy && (
         <div className="mt-4 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
           <span>
-            Bezig met distilleren… ({source.chaptersDone}/{source.chaptersTotal})
+            {consolidating
+              ? "Consolideren tot de sterkste ~10-20 kaarten…"
+              : `Bezig met distilleren… (${source.chaptersDone}/${source.chaptersTotal})`}
           </span>
           <form action={resumeDistillationAction}>
             <input type="hidden" name="sourceId" value={source.id} />

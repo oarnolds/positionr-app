@@ -24,7 +24,7 @@ Geef UITSLUITEND een JSON-array terug (geen tekst eromheen). Elk element:
   "toepassing": "één praktische zin: zo pas je het toe",
   "tags": ["thema of situatie", "nog een"]
 }
-Geef 1 tot 4 kaarten, alleen de sterkste principes.
+Geef 0 tot 3 kaarten, alleen écht onderscheidende kernprincipes. Bevat dit hoofdstuk geen inhoudelijk principe (bijvoorbeeld voorwerk, inhoudsopgave, noten, register, dankwoord of colofon)? Geef dan een lege array [] terug.
 
 BRON: ${args.sourceLabel}
 

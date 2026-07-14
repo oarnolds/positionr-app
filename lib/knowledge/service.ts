@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { knowledgeCards, knowledgeSources } from "@/lib/db/schema";
 import { distillChapter } from "./distill";
+import { consolidateCards } from "./consolidate";
 import type { KnowledgeCardDraft } from "./schema";
 
 export type DistillDeps = {
@@ -29,6 +30,16 @@ export type DistillDeps = {
     id: string,
     patch: { chaptersDone: number; status: "distilling" | "done" | "failed" },
   ) => Promise<void>;
+  /** Laadt de huidige (kandidaat-)kaarten van een bron als drafts. */
+  loadCandidateCards: (sourceId: string) => Promise<KnowledgeCardDraft[]>;
+  /** Ontdubbelt/knijpt de kandidaten terug tot de sterkste set. */
+  consolidate: (cards: KnowledgeCardDraft[]) => Promise<KnowledgeCardDraft[]>;
+  /** Vervangt alle kaarten van een bron door de geconsolideerde set. */
+  replaceCards: (
+    sourceId: string,
+    sourceLabel: string,
+    cards: KnowledgeCardDraft[],
+  ) => Promise<void>;
   nowMs: () => number;
   budgetMs: number;
 };
@@ -38,10 +49,12 @@ function sourceLabelOf(s: { author: string | null; title: string }): string {
 }
 
 /**
- * Distilleert de nog niet-verwerkte hoofdstukken van een bron, hoofdstuk voor
- * hoofdstuk. Voortgang wordt per hoofdstuk weggeschreven zodat de admin het
- * live ziet en een resume (na budget-stop of een harde Vercel-kill) exact
- * hervat vanaf chaptersDone. Klaar → status 'done'.
+ * Distilleert een bron in twee fasen:
+ *   1. per hoofdstuk kandidaat-kaarten (resumebaar, budget-bewaakt);
+ *   2. zodra alle hoofdstukken klaar zijn: één consolidatie-slotronde die
+ *      ontdubbelt en terugknijpt tot de sterkste ~10-20 kaarten.
+ * De status blijft 'distilling' tot de consolidatie klaar is (dan 'done'),
+ * zodat een resume na een budget-stop of harde kill fase 2 alsnog uitvoert.
  */
 export async function runDistillation(
   sourceId: string,
@@ -55,6 +68,7 @@ export async function runDistillation(
   let done = source.chaptersDone;
 
   try {
+    // Fase 1 — per hoofdstuk.
     for (let i = source.chaptersDone; i < total; i++) {
       const cards = await deps.distillChapter({
         chapterText: source.chapters[i],
@@ -63,12 +77,19 @@ export async function runDistillation(
       });
       await deps.insertCards(sourceId, label, i, cards);
       done = i + 1;
-      await deps.updateSource(sourceId, {
-        chaptersDone: done,
-        status: done >= total ? "done" : "distilling",
-      });
+      // Nog niet 'done': consolidatie (fase 2) moet er eerst overheen.
+      await deps.updateSource(sourceId, { chaptersDone: done, status: "distilling" });
       if (done < total && deps.nowMs() - start > deps.budgetMs) return;
     }
+
+    // Budget op na fase 1? Consolideer in een volgende ronde (resume).
+    if (deps.nowMs() - start > deps.budgetMs) return;
+
+    // Fase 2 — consolidatie-slotronde.
+    const candidates = await deps.loadCandidateCards(sourceId);
+    const consolidated = await deps.consolidate(candidates);
+    await deps.replaceCards(sourceId, label, consolidated);
+    await deps.updateSource(sourceId, { chaptersDone: done, status: "done" });
   } catch (err) {
     await deps.updateSource(sourceId, { chaptersDone: done, status: "distilling" });
     throw err;
@@ -113,6 +134,34 @@ export const defaultDeps: DistillDeps = {
       .update(knowledgeSources)
       .set({ ...patch, updatedAt: new Date() })
       .where(eq(knowledgeSources.id, id));
+  },
+  loadCandidateCards: async (sourceId) => {
+    const rows = await db
+      .select()
+      .from(knowledgeCards)
+      .where(eq(knowledgeCards.sourceId, sourceId));
+    return rows.map((r) => ({
+      title: r.title,
+      kern: r.kern,
+      toepassing: r.toepassing,
+      tags: r.tags,
+    }));
+  },
+  consolidate: consolidateCards,
+  replaceCards: async (sourceId, sourceLabel, cards) => {
+    await db.delete(knowledgeCards).where(eq(knowledgeCards.sourceId, sourceId));
+    if (cards.length === 0) return;
+    await db.insert(knowledgeCards).values(
+      cards.map((c) => ({
+        sourceId,
+        title: c.title,
+        kern: c.kern,
+        toepassing: c.toepassing,
+        tags: c.tags,
+        sourceLabel,
+        chapterIndex: 0,
+      })),
+    );
   },
   nowMs: () => Date.now(),
   budgetMs: 240_000,
