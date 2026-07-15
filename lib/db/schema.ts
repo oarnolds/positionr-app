@@ -83,6 +83,7 @@ export const modules = pgTable("modules", {
   status: moduleStatus("status").default("soon").notNull(),
   defaultPrompt: text("default_prompt").notNull().default(""),
   provider: providerEnum("provider").default("claude").notNull(),
+  strictness: integer("strictness").notNull().default(3),
   minTier: tierEnum("min_tier").default("fundament").notNull(),
   parentSlug: text("parent_slug"), // null = top-level module; non-null = sub-prompt (bv. ICP-subs)
   formatExample: text("format_example"),
