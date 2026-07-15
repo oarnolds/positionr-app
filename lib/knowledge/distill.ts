@@ -16,6 +16,7 @@ Haal de kernprincipes, frameworks en signature-voorbeelden eruit en zet ze om na
 - Schrijf ALLE tekst in het Nederlands (B1-niveau), ook als het bronhoofdstuk anderstalig is. Vertaal de ideeën, kopieer geen zinnen letterlijk uit de bron.
 - Elke kaart is een principe in je eigen woorden, geen samenvatting van het hoofdstuk.
 - Verzin geen feiten; baseer je op het hoofdstuk.
+- Gebruik geen liggende streepjes (— of –); gebruik gewone leestekens zoals komma, punt of dubbele punt.
 
 Geef UITSLUITEND een JSON-array terug (geen tekst eromheen). Elk element:
 {

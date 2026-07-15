@@ -17,7 +17,7 @@ export function KnowledgeBlock({ block }: { block: KnowledgeBlockData }) {
       </p>
       <p className="mt-2.5 text-xs text-gray-600">
         <span className="font-bold">{block.card.title}</span>
-        {" — "}
+        {" · "}
         {block.card.sourceLabel}
       </p>
       {block.card.toepassing && (

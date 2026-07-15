@@ -45,7 +45,7 @@ export type DistillDeps = {
 };
 
 function sourceLabelOf(s: { author: string | null; title: string }): string {
-  return s.author ? `${s.author} — ${s.title}` : s.title;
+  return s.author ? `${s.author}, ${s.title}` : s.title;
 }
 
 /**

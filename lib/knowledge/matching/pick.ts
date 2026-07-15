@@ -1,4 +1,5 @@
 import { analyzeClaudeRaw } from "@/lib/ai/claude-raw";
+import { stripDashes } from "@/lib/knowledge/strip-dashes";
 import type { ApprovedCard, MatchableSection } from "./types";
 
 export const MAX_BLOCKS = 3;
@@ -21,7 +22,7 @@ export function buildPickPrompt(
     .join("\n\n");
   return `Je kiest "kennisblokjes" om bij secties van een marketingrapport te tonen. Per sectie HOOGSTENS één kaart, en in totaal HOOGSTENS ${MAX_BLOCKS} over het hele rapport. Kies alleen als een kaart écht raakt aan wat er in de sectie staat — liever niets dan een zwakke match.
 
-Voor elke gekozen kaart schrijf je één korte brug-zin (Nederlands, B1) die het principe aan díé sectie koppelt. Verzin geen feiten over het bronboek.
+Voor elke gekozen kaart schrijf je één korte brug-zin (Nederlands, B1) die het principe aan díé sectie koppelt. Verzin geen feiten over het bronboek. Gebruik geen liggende streepjes (— of –); gebruik gewone leestekens.
 
 ${blocks}
 
@@ -51,7 +52,11 @@ export function parsePicks(raw: string): Pick[] {
         typeof o.cardId === "string" &&
         typeof o.bridge === "string"
       ) {
-        out.push({ sectionKey: o.sectionKey, cardId: o.cardId, bridge: o.bridge });
+        out.push({
+          sectionKey: o.sectionKey,
+          cardId: o.cardId,
+          bridge: stripDashes(o.bridge),
+        });
       }
     }
   }

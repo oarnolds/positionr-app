@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { stripDashes } from "./strip-dashes";
 
 export const KnowledgeCardDraftSchema = z.object({
   title: z.string().trim().min(1),
@@ -40,7 +41,15 @@ export function parseCardDrafts(raw: string): KnowledgeCardDraft[] {
   const cards: KnowledgeCardDraft[] = [];
   for (const item of parsed) {
     const result = KnowledgeCardDraftSchema.safeParse(item);
-    if (result.success) cards.push(result.data);
+    if (result.success) {
+      const d = result.data;
+      cards.push({
+        title: stripDashes(d.title),
+        kern: stripDashes(d.kern),
+        toepassing: stripDashes(d.toepassing),
+        tags: d.tags.map(stripDashes),
+      });
+    }
   }
   return cards;
 }

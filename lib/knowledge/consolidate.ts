@@ -19,6 +19,7 @@ Consolideer ze tot de ${TARGET_MIN} à ${TARGET_MAX} STERKSTE, onderscheidende k
 - Gooi zwakke, triviale of louter herhalende kaarten weg.
 - Verzin geen nieuwe principes die niet in de kandidaten zitten.
 - Schrijf alle tekst in het Nederlands (B1-niveau).
+- Gebruik geen liggende streepjes (— of –); gebruik komma, punt of dubbele punt.
 
 Geef UITSLUITEND een JSON-array terug (geen tekst eromheen), met ${TARGET_MIN} tot ${TARGET_MAX} elementen. Elk element:
 {
