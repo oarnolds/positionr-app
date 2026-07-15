@@ -18,6 +18,9 @@ import { extractAndParseJson } from "@/lib/ai/claude";
 import { getModulePrompt } from "@/lib/modules/prompts";
 import { getFormatExample } from "@/lib/modules/format-examples";
 import type { ConfigProvider } from "@/lib/ai/pricing";
+import { buildKnowledgeBlocks } from "@/lib/knowledge/matching";
+import { genericSections } from "@/lib/knowledge/matching/adapters/generic";
+import type { KnowledgeBlock } from "@/lib/knowledge/matching/types";
 import { buildGenericPrompt } from "./prompt";
 import {
   GenericReport,
@@ -40,6 +43,7 @@ export type ServiceDeps = {
     provider: ConfigProvider,
   ) => (args: { prompt: string }) => Promise<ClaudeRawResult>;
   updateSession: (id: string, patch: Record<string, unknown>) => Promise<void>;
+  buildBlocks: (output: GenericOutput) => Promise<KnowledgeBlock[]>;
 };
 
 function defaultPickAnalyzer(
@@ -92,6 +96,7 @@ export const defaultDeps: ServiceDeps = {
       .set(patch)
       .where(and(eq(sessions.id, id), eq(sessions.status, "running")));
   },
+  buildBlocks: (output) => buildKnowledgeBlocks(genericSections(output)),
 };
 
 export async function createGenericSession(args: {
@@ -199,6 +204,7 @@ export async function runGenericAnalysis(
     const analyzer = deps.pickAnalyzer(provider);
     const result = await analyzer({ prompt });
     const output = toGenericOutput(result.markdown);
+    const knowledgeBlocks = await deps.buildBlocks(output);
 
     await deps.updateSession(args.sessionId, {
       status: "approved",
@@ -209,6 +215,7 @@ export async function runGenericAnalysis(
       llmOutputTokens: result.llmOutputTokens,
       llmCostCents: result.llmCostCents,
       completedAt: new Date(),
+      knowledgeBlocks,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

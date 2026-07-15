@@ -70,6 +70,7 @@ function makeDeps(
     fetchFormatExample: vi.fn().mockResolvedValue("1. Scorecard — blue"),
     pickAnalyzer: vi.fn().mockReturnValue(analyze),
     updateSession: vi.fn().mockResolvedValue(undefined),
+    buildBlocks: vi.fn().mockResolvedValue([]),
   };
   return { deps, analyze };
 }
