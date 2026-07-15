@@ -3,8 +3,33 @@ import {
   GENERIC_MODULES,
   isGenericModule,
   moduleSourceTypes,
+  parseGenericOutput,
   parseSourceType,
 } from "./schema";
+
+test("parseGenericOutput: strip em-dashes uit de rapporttekst", () => {
+  const raw = JSON.stringify({
+    kind: "report",
+    report: {
+      heroTekst: "Hallo — wereld",
+      secties: [
+        {
+          titel: "A — B",
+          accent: "blue",
+          layout: "volledig",
+          inhoud: "tekst — meer",
+        },
+      ],
+    },
+  });
+  const out = parseGenericOutput(raw);
+  expect(out?.kind).toBe("report");
+  if (out?.kind === "report") {
+    expect(out.report.heroTekst).toBe("Hallo, wereld");
+    expect(out.report.secties[0]?.titel).toBe("A, B");
+    expect(out.report.secties[0]?.inhoud).toBe("tekst, meer");
+  }
+});
 
 test("moduleSourceTypes: toegestane bronnen per module", () => {
   expect(moduleSourceTypes("klantcase-analyse")).toEqual([

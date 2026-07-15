@@ -1,6 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { parseReport } from "./parseReport";
 
+describe("parseReport — em-dash sanitizing", () => {
+  it("strip em-dashes uit prose maar behoudt de score uit de kop", () => {
+    const md = [
+      "### 5. Bewijsvoering — 4,0 / 10",
+      "",
+      "#### Wat we zien",
+      "",
+      "Eén bewijs — mager.",
+      "",
+      "#### Waarom dit telt",
+      "",
+      "Bewijs telt.",
+      "",
+      "#### Wat je kunt doen",
+      "",
+      "* Toon logo's — en cijfers.",
+    ].join("\n");
+    const r = parseReport(md);
+    expect(r.onderdelen[0].score).toBe(4);
+    expect(r.onderdelen[0].watWeZien).toBe("Eén bewijs, mager.");
+    expect(r.onderdelen[0].watJeKuntDoen[0]).toBe("Toon logo's, en cijfers.");
+    expect(JSON.stringify(r)).not.toContain("—");
+  });
+});
+
 describe("parseReport", () => {
   it("vult alle blokken bij volledige input", () => {
     const md = [

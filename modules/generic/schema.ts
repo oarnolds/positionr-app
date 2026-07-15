@@ -7,6 +7,7 @@
 // rare layout-waarde) degradeert naar een default in plaats van een failure.
 
 import { z } from "zod";
+import { stripDashes } from "@/lib/knowledge/strip-dashes";
 
 export const REPORT_ACCENT_VALUES = [
   "purple",
@@ -51,20 +52,42 @@ export type GenericOutput =
   | { kind: "report"; report: GenericReport }
   | { kind: "markdown"; markdown: string };
 
+/** Strip em-/en-dashes uit alle klantgerichte tekstvelden van een rapport. */
+function sanitizeGenericReport(r: GenericReport): GenericReport {
+  return {
+    heroTekst: stripDashes(r.heroTekst),
+    secties: r.secties.map((sec) => ({
+      ...sec,
+      titel: stripDashes(sec.titel),
+      eyebrow: sec.eyebrow != null ? stripDashes(sec.eyebrow) : sec.eyebrow,
+      inhoud: stripDashes(sec.inhoud),
+      feiten: sec.feiten?.map((f) => ({
+        label: stripDashes(f.label),
+        waarde: stripDashes(f.waarde),
+      })),
+      chips: sec.chips?.map(stripDashes),
+    })),
+    volgendeStappen: r.volgendeStappen?.map(stripDashes),
+  };
+}
+
 export function parseGenericOutput(raw: string | null): GenericOutput | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as GenericOutput;
     if (parsed.kind === "report") {
-      return { kind: "report", report: GenericReport.parse(parsed.report) };
+      return {
+        kind: "report",
+        report: sanitizeGenericReport(GenericReport.parse(parsed.report)),
+      };
     }
     if (parsed.kind === "markdown" && typeof parsed.markdown === "string") {
-      return parsed;
+      return { kind: "markdown", markdown: stripDashes(parsed.markdown) };
     }
     return null;
   } catch {
     // Oudere of handmatig gezette output: toon als markdown.
-    return { kind: "markdown", markdown: raw };
+    return { kind: "markdown", markdown: stripDashes(raw) };
   }
 }
 

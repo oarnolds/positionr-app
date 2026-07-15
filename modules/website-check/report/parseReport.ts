@@ -1,3 +1,5 @@
+import { stripDashes } from "@/lib/knowledge/strip-dashes";
+
 export type ReportBlocks = {
   cover: {
     raw: string;
@@ -165,7 +167,36 @@ function extractList(lines: string[], startIdx: number): { items: string[]; endI
   return { items, endIdx: i };
 }
 
+/**
+ * Strip em-/en-dashes uit alle klantgerichte prose-velden (niet uit de
+ * numerieke score of cover.score). De ONDERDEEL_RE-koppen ("Titel — score")
+ * zijn op dit punt al geparset, dus dit breekt de score-extractie niet.
+ */
+function sanitizeBlocks(b: ReportBlocks): ReportBlocks {
+  return {
+    cover: b.cover
+      ? { raw: stripDashes(b.cover.raw), score: b.cover.score }
+      : null,
+    strengths: b.strengths ? b.strengths.map(stripDashes) : null,
+    improvements: b.improvements ? b.improvements.map(stripDashes) : null,
+    samenvatting: b.samenvatting ? stripDashes(b.samenvatting) : null,
+    onderdelen: b.onderdelen.map((o) => ({
+      ...o,
+      titel: stripDashes(o.titel),
+      watWeZien: stripDashes(o.watWeZien),
+      waaromDitTelt: stripDashes(o.waaromDitTelt),
+      watJeKuntDoen: o.watJeKuntDoen.map(stripDashes),
+    })),
+    acties: b.acties.map((a) => ({ ...a, titel: stripDashes(a.titel) })),
+    bodyMarkdown: stripDashes(b.bodyMarkdown),
+  };
+}
+
 export function parseReport(markdown: string): ReportBlocks {
+  return sanitizeBlocks(parseReportRaw(markdown));
+}
+
+function parseReportRaw(markdown: string): ReportBlocks {
   if (!markdown) {
     return {
       cover: null,
