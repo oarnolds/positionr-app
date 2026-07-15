@@ -3,6 +3,7 @@ import {
   clampStrictness,
   strictnessInstruction,
   strictnessLabel,
+  strictnessScoreOffset,
   DEFAULT_STRICTNESS,
 } from "./strictness";
 
@@ -34,19 +35,34 @@ describe("strictnessLabel", () => {
   });
 });
 
-describe("strictnessInstruction", () => {
-  it("bevat de niveau-specifieke tekst", () => {
-    expect(strictnessInstruction(5)).toContain("zeer streng");
-    expect(strictnessInstruction(1)).toContain("welwillend");
+describe("strictnessScoreOffset", () => {
+  it("is 0 op neutraal (stand 3)", () => {
+    expect(strictnessScoreOffset(3)).toBe(0);
   });
-  it("plakt altijd de gedeelde grens erachter", () => {
+  it("verschuift 0,5 per stap, gecentreerd op 3", () => {
+    expect(strictnessScoreOffset(1)).toBe(1);
+    expect(strictnessScoreOffset(2)).toBe(0.5);
+    expect(strictnessScoreOffset(4)).toBe(-0.5);
+    expect(strictnessScoreOffset(5)).toBe(-1);
+  });
+  it("klemt buiten bereik", () => {
+    expect(strictnessScoreOffset(0)).toBe(1); // → stand 1
+    expect(strictnessScoreOffset(99)).toBe(-1); // → stand 5
+  });
+});
+
+describe("strictnessInstruction", () => {
+  it("stuurt de toon per stand", () => {
+    expect(strictnessInstruction(5)).toContain("streng en veeleisend");
+    expect(strictnessInstruction(1)).toContain("welwillend en bemoedigend");
+    expect(strictnessInstruction(3)).toContain("neutraal en evenwichtig");
+  });
+  it("zet de cijfers altijd op de vaste maatstaf", () => {
     for (const lvl of [1, 2, 3, 4, 5]) {
-      expect(strictnessInstruction(lvl)).toContain(
-        "ongeacht de gekozen strengheid",
-      );
+      expect(strictnessInstruction(lvl)).toContain("vaste, eerlijke maatstaf");
     }
   });
   it("klemt buiten bereik naar een geldig niveau", () => {
-    expect(strictnessInstruction(99)).toContain("zeer streng");
+    expect(strictnessInstruction(99)).toContain("streng en veeleisend");
   });
 });

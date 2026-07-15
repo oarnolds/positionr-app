@@ -1,4 +1,5 @@
 import { stripDashes } from "@/lib/knowledge/strip-dashes";
+import { strictnessScoreOffset } from "@/lib/modules/strictness";
 
 export type ReportBlocks = {
   cover: {
@@ -132,6 +133,30 @@ export function computeTotaalScore(onderdelen: Onderdeel[]): number | null {
   if (scores.length === 0) return null;
   const avg = scores.reduce((sum, s) => sum + s, 0) / scores.length;
   return Math.round(avg * 10) / 10;
+}
+
+/**
+ * Pas de strengheid-offset toe op de onderdeelcijfers in de ruwe markdown.
+ * Verschuift elk "### N. Titel — X / 10"-cijfer met de offset van de stand
+ * (stand 3 = geen wijziging), geklemd op [1, 10]. Het totaal wordt bij het
+ * renderen herberekend uit deze koppen en schuift zo automatisch mee. De
+ * cover/tabel/prose worden niet aangepast: die worden in de hoofdweergave niet
+ * getoond (alles komt uit de onderdeel-koppen).
+ */
+export function applyStrictnessOffset(markdown: string, strictness: number): string {
+  const offset = strictnessScoreOffset(strictness);
+  if (offset === 0 || !markdown) return markdown;
+  return markdown
+    .split("\n")
+    .map((line) => {
+      const head = line.match(ONDERDEEL_RE);
+      if (!head) return line;
+      const raw = Number(head[3].replace(",", "."));
+      const adjusted = Math.min(10, Math.max(1, raw + offset));
+      const formatted = adjusted.toFixed(1).replace(".", ",");
+      return line.replace(/(\d+(?:[.,]\d+)?)(\s*\/\s*10\s*)$/, `${formatted}$2`);
+    })
+    .join("\n");
 }
 
 export function parseActies(markdown: string): Actie[] {

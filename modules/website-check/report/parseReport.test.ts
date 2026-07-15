@@ -334,3 +334,57 @@ describe("parseReport — nieuwe velden", () => {
     expect(r.samenvatting).toBeNull();
   });
 });
+
+import { applyStrictnessOffset } from "./parseReport";
+
+describe("applyStrictnessOffset", () => {
+  const md = [
+    "### 1. Waardepropositie — 6,0 / 10",
+    "",
+    "#### Wat we zien",
+    "",
+    "Tekst met een 10 / 10 erin die niet mag verschuiven.",
+    "",
+    "### 2. Klantvoordelen — 4,5 / 10",
+    "",
+    "#### Wat we zien",
+    "",
+    "Tekst.",
+  ].join("\n");
+
+  it("laat stand 3 (offset 0) ongemoeid", () => {
+    expect(applyStrictnessOffset(md, 3)).toBe(md);
+  });
+
+  it("stand 5 verlaagt elk onderdeelcijfer met 1,0", () => {
+    const out = applyStrictnessOffset(md, 5);
+    expect(out).toContain("### 1. Waardepropositie — 5,0 / 10");
+    expect(out).toContain("### 2. Klantvoordelen — 3,5 / 10");
+  });
+
+  it("stand 1 verhoogt elk onderdeelcijfer met 1,0", () => {
+    const out = applyStrictnessOffset(md, 1);
+    expect(out).toContain("### 1. Waardepropositie — 7,0 / 10");
+    expect(out).toContain("### 2. Klantvoordelen — 5,5 / 10");
+  });
+
+  it("raakt geen '/ 10' in de lopende tekst, alleen de koppen", () => {
+    const out = applyStrictnessOffset(md, 5);
+    expect(out).toContain("Tekst met een 10 / 10 erin die niet mag verschuiven.");
+  });
+
+  it("klemt op [1, 10]", () => {
+    expect(applyStrictnessOffset("### 1. X — 9,5 / 10", 1)).toContain(
+      "### 1. X — 10,0 / 10",
+    );
+    expect(applyStrictnessOffset("### 2. Y — 1,5 / 10", 5)).toContain(
+      "### 2. Y — 1,0 / 10",
+    );
+  });
+
+  it("de herberekende totaalscore schuift mee met de offset", () => {
+    // Gemiddelde 6,0 en 4,5 = 5,25 → 5,3; bij stand 5 (−1): 5,0 en 3,5 = 4,25 → 4,3
+    expect(parseReport(md).totaalScore).toBe(5.3);
+    expect(parseReport(applyStrictnessOffset(md, 5)).totaalScore).toBe(4.3);
+  });
+});

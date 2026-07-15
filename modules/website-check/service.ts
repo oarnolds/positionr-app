@@ -10,6 +10,7 @@ import { buildKnowledgeBlocks } from "@/lib/knowledge/matching";
 import { websiteCheckSections } from "@/lib/knowledge/matching/adapters/website-check";
 import type { KnowledgeBlock } from "@/lib/knowledge/matching/types";
 import { scrapeWebsite } from "./scraper";
+import { applyStrictnessOffset } from "./report/parseReport";
 import { MODULE_SLUG } from "./index";
 import type { ConfigProvider } from "@/lib/ai/pricing";
 
@@ -134,7 +135,7 @@ export async function runAnalysis(
         companyName: args.companyName || "Onbekend",
         scrapedContent: scrapedContent || "(Kon website niet laden)",
       });
-      return `${header}\n\n---\nBEOORDELINGSSTRENGHEID (bepaalt hoe streng je cijfers toekent):\n\n${strictnessInstruction(strictness)}\n\n---\nFORMAT-TEMPLATE (volg deze structuur exact, vervang placeholders door inhoud op basis van de geschraapte data; behoud markdown-structuur, koppen en tabellen):\n\n${formatTemplate}\n\n---\nSchrijf nu de gevulde versie van bovenstaand format. Geef alleen de markdown terug, geen JSON, geen uitleg eromheen.`;
+      return `${header}\n\n---\nTOON EN BEOORDELINGSMAATSTAF:\n\n${strictnessInstruction(strictness)}\n\n---\nFORMAT-TEMPLATE (volg deze structuur exact, vervang placeholders door inhoud op basis van de geschraapte data; behoud markdown-structuur, koppen en tabellen):\n\n${formatTemplate}\n\n---\nSchrijf nu de gevulde versie van bovenstaand format. Geef alleen de markdown terug, geen JSON, geen uitleg eromheen.`;
     }
 
     let effectiveScraped = scraped ?? "";
@@ -169,11 +170,14 @@ export async function runAnalysis(
 
     const analyzer = deps.pickAnalyzer(provider);
     const result = await analyzer({ prompt });
-    const knowledgeBlocks = await deps.buildBlocks(result.markdown);
+    // Deterministische strengheid: verschuif de onderdeelcijfers in code
+    // (stand 3 = geen wijziging). De toon zit al in de prompt; het getal hier.
+    const adjustedMarkdown = applyStrictnessOffset(result.markdown, strictness);
+    const knowledgeBlocks = await deps.buildBlocks(adjustedMarkdown);
 
     await deps.updateSession(args.sessionId, {
       status: "approved",
-      output: result.markdown,
+      output: adjustedMarkdown,
       promptUsed: result.promptUsed,
       llmModel: result.llmModel,
       llmInputTokens: result.llmInputTokens,

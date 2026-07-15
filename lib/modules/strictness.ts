@@ -20,16 +20,34 @@ export const STRICTNESS_LABELS: Record<StrictnessLevel, string> = {
   5: "Zeer streng",
 };
 
-const LEVEL_INSTRUCTIONS: Record<StrictnessLevel, string> = {
-  1: "Beoordeel welwillend en bemoedigend. Waardeer nadrukkelijk wat er goed is en geef de website het voordeel van de twijfel. Geef alleen een cijfer onder de 4 als een onderdeel echt ontbreekt. Formuleer verbeterpunten als aanmoediging, niet als kritiek.",
-  2: "Beoordeel mild. Leg de nadruk op wat werkt en benoem gebreken zacht en constructief. Wees eerder gul dan streng met de cijfers.",
-  3: "Beoordeel evenwichtig. Benoem sterke en zwakke punten eerlijk, zonder te vleien en zonder af te kraken. Een gemiddelde website krijgt gemiddelde cijfers.",
-  4: "Beoordeel streng. Leg de lat hoog: een cijfer van 8 of hoger moet verdiend zijn met concreet, zichtbaar bewijs. Wees kritisch op vage beloftes, ontbrekend bewijs en onduidelijke taal. Een gemiddelde website krijgt eerder een matig cijfer.",
-  5: "Beoordeel zeer streng, als een veeleisende expert. Geef een 8 of hoger alleen bij uitmuntende, aantoonbaar bewezen uitvoering. Twijfel telt in het nadeel van het cijfer. Benoem elk gemis scherp, maar blijf respectvol en zakelijk.",
+// De TOON van de geschreven toelichting schuift mee met de stand; de cijfers
+// zelf blijven op één vaste maatstaf (NEUTRAL_SCORING). De numerieke strengheid
+// wordt deterministisch verrekend via strictnessScoreOffset — niet door het
+// model — zodat de stappen voorspelbaar ~0,5 op het totaalcijfer zijn.
+const LEVEL_TONE: Record<StrictnessLevel, string> = {
+  1: "welwillend en bemoedigend",
+  2: "mild en constructief",
+  3: "neutraal en evenwichtig",
+  4: "kritisch en zakelijk",
+  5: "streng en veeleisend",
 };
 
+// Cijferverschuiving per stand t.o.v. neutraal (stand 3 = 0). Wordt in code op
+// de onderdeelcijfers toegepast; het gemiddelde schuift zo mee. Elke stap
+// scheelt 0,5 op het totaalcijfer.
+const SCORE_OFFSETS: Record<StrictnessLevel, number> = {
+  1: 1,
+  2: 0.5,
+  3: 0,
+  4: -0.5,
+  5: -1,
+};
+
+const NEUTRAL_SCORING =
+  "Beoordeel de cijfers zelf op een vaste, eerlijke maatstaf, ongeacht de toon: een gemiddelde, degelijke website komt rond een 6 à 7 uit. Geef een 8 of hoger alleen bij uitmuntend, aantoonbaar bewezen werk, en een cijfer onder de 5 bij duidelijke gebreken.";
+
 const SHARED_GUARDRAIL =
-  "Deze twee regels gelden ongeacht de gekozen strengheid: (1) gerichte vaktaal of branchebeeld die de juiste koper aanspreekt en de verkeerde afschrikt is een plus, geen minpunt; (2) content die niet geladen kon worden (zoals de contactpagina of klantcases) krijgt een voorzichtige score, geen afstraffing. Strengheid scherpt alleen het oordeel over wat wél zichtbaar is.";
+  "Twee vaste regels bij het beoordelen: (1) gerichte vaktaal of branchebeeld die de juiste koper aanspreekt en de verkeerde afschrikt is een plus, geen minpunt; (2) content die niet geladen kon worden (zoals de contactpagina of klantcases) krijgt een voorzichtige score, geen afstraffing.";
 
 /** Rondt af naar heel getal en klemt in [1,5]. NaN/oneindig → default 3. */
 export function clampStrictness(value: number): StrictnessLevel {
@@ -44,8 +62,24 @@ export function strictnessLabel(value: number): string {
   return STRICTNESS_LABELS[clampStrictness(value)];
 }
 
-/** Niveau-instructie + gedeelde grens, klaar om in de prompt te prikken. */
+/**
+ * Cijferverschuiving (t.o.v. neutraal) die in code op de onderdeelcijfers wordt
+ * toegepast. Stand 3 = 0; elke stap = 0,5 op het totaalcijfer.
+ */
+export function strictnessScoreOffset(value: number): number {
+  return SCORE_OFFSETS[clampStrictness(value)];
+}
+
+/**
+ * Prompt-injectie: stuurt de TOON van de toelichting en zet de cijfers op één
+ * vaste maatstaf. De numerieke strengheid gaat via strictnessScoreOffset, dus
+ * het model hoeft de cijfers niet zelf te verschuiven.
+ */
 export function strictnessInstruction(value: number): string {
   const level = clampStrictness(value);
-  return `${LEVEL_INSTRUCTIONS[level]}\n\n${SHARED_GUARDRAIL}`;
+  return [
+    `Schrijf de toelichting bij elk onderdeel in een ${LEVEL_TONE[level]} toon.`,
+    NEUTRAL_SCORING,
+    SHARED_GUARDRAIL,
+  ].join("\n\n");
 }

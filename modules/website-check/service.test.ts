@@ -134,11 +134,11 @@ test("runAnalysis: injecteert de strengheid-kalibratie (default 3) in de prompt"
     deps,
   );
   const prompt = analyze.mock.calls[0][0].prompt as string;
-  expect(prompt).toContain("BEOORDELINGSSTRENGHEID");
-  expect(prompt).toContain("Beoordeel evenwichtig");
+  expect(prompt).toContain("TOON EN BEOORDELINGSMAATSTAF");
+  expect(prompt).toContain("neutraal en evenwichtig");
 });
 
-test("runAnalysis: hoge strengheid → strenge kalibratie in de prompt", async () => {
+test("runAnalysis: hoge strengheid → strenge toon in de prompt", async () => {
   const { deps, analyze } = makeDeps();
   deps.fetchPrompt = vi.fn().mockResolvedValue({
     prompt: "Analyseer {websiteUrl}. Inhoud:\n{scrapedContent}",
@@ -150,5 +150,31 @@ test("runAnalysis: hoge strengheid → strenge kalibratie in de prompt", async (
     deps,
   );
   const prompt = analyze.mock.calls[0][0].prompt as string;
-  expect(prompt).toContain("Beoordeel zeer streng");
+  expect(prompt).toContain("streng en veeleisend");
+});
+
+test("runAnalysis: past de strengheid-offset toe op de opgeslagen cijfers", async () => {
+  const { deps } = makeDeps();
+  // Analyzer geeft één onderdeel met cijfer 6,0 terug.
+  deps.pickAnalyzer = vi.fn().mockReturnValue(
+    vi.fn().mockResolvedValue({
+      markdown: "### 1. Waardepropositie — 6,0 / 10\n\n#### Wat we zien\n\nTekst.",
+      promptUsed: "...",
+      llmModel: "claude",
+      llmInputTokens: 1,
+      llmOutputTokens: 1,
+      llmCostCents: 0,
+    }),
+  );
+  deps.fetchPrompt = vi.fn().mockResolvedValue({
+    prompt: "Analyseer {websiteUrl}. Inhoud:\n{scrapedContent}",
+    provider: "claude" as const,
+    strictness: 5, // offset −1,0
+  });
+  await runAnalysis(
+    { sessionId: "s7", userId: USER_ID, websiteUrl: "https://x.nl", companyName: "X" },
+    deps,
+  );
+  const patch = (deps.updateSession as ReturnType<typeof vi.fn>).mock.calls[0][1];
+  expect(patch.output).toContain("### 1. Waardepropositie — 5,0 / 10");
 });
