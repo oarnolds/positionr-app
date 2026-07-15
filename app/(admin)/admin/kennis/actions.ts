@@ -11,6 +11,7 @@ import { db } from "@/lib/db/client";
 import { knowledgeCards, knowledgeSources, profiles } from "@/lib/db/schema";
 import { extractBook } from "@/lib/knowledge/extract";
 import { runDistillation } from "@/lib/knowledge/service";
+import { assignThemes } from "@/lib/knowledge/themes";
 
 const BUCKET = "knowledge-books";
 
@@ -137,6 +138,9 @@ export async function approveCardAction(formData: FormData): Promise<void> {
     .update(knowledgeCards)
     .set({ status: "goedgekeurd", updatedAt: new Date() })
     .where(eq(knowledgeCards.id, cardId));
+  // Thema's op de achtergrond toewijzen (LLM-suggestie) — mag de snelle
+  // goedkeuring niet blokkeren en faalt stil.
+  after(() => assignThemes(cardId));
   revalidatePath(`/admin/kennis/${sourceId}`);
 }
 
