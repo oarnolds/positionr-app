@@ -14,6 +14,8 @@ import { Section, Fact, Chip } from "@/lib/modules/report-sections";
 import { MarkdownBlock } from "@/lib/modules/MarkdownBlock";
 import type { GenericReport, ReportSectie } from "../schema";
 import type { ReportAccent } from "@/lib/modules/report-sections";
+import type { KnowledgeBlock } from "@/lib/knowledge/matching/types";
+import { SectionPair } from "@/lib/modules/SectionPair";
 
 // De LLM kiest accenten, geen iconen — iconen hangen deterministisch aan
 // het accent zodat de stijl consistent blijft met FinalIcpView.
@@ -60,33 +62,14 @@ function SectieCard({ sectie }: { sectie: ReportSectie }) {
   );
 }
 
-/**
- * Groepeer secties: opeenvolgende "half"-secties worden per twee in een
- * grid geplaatst; een oneven rest of "volledig"-sectie krijgt volle breedte.
- */
-function groupSections(secties: ReportSectie[]): ReportSectie[][] {
-  const groups: ReportSectie[][] = [];
-  let i = 0;
-  while (i < secties.length) {
-    const current = secties[i];
-    const next = secties[i + 1];
-    if (current.layout === "half" && next?.layout === "half") {
-      groups.push([current, next]);
-      i += 2;
-    } else {
-      groups.push([current]);
-      i += 1;
-    }
-  }
-  return groups;
-}
-
 export function GenericReportView({
   moduleName,
   report,
+  blocks = [],
 }: {
   moduleName: string;
   report: GenericReport;
+  blocks?: KnowledgeBlock[];
 }) {
   return (
     <div className="space-y-5">
@@ -98,16 +81,40 @@ export function GenericReportView({
         <p className="mt-1 text-base leading-relaxed">{report.heroTekst}</p>
       </div>
 
-      {groupSections(report.secties).map((group, gi) =>
-        group.length === 2 ? (
-          <div key={gi} className="grid gap-5 md:grid-cols-2">
-            <SectieCard sectie={group[0]} />
-            <SectieCard sectie={group[1]} />
-          </div>
-        ) : (
-          <SectieCard key={gi} sectie={group[0]} />
-        ),
-      )}
+      {(() => {
+        const blockByKey = new Map(blocks.map((b) => [b.sectionKey, b]));
+        const rows: React.ReactNode[] = [];
+        let i = 0;
+        while (i < report.secties.length) {
+          const key = `sectie-${i}`;
+          const block = blockByKey.get(key);
+          if (block) {
+            rows.push(
+              <SectionPair key={key} block={block}>
+                <SectieCard sectie={report.secties[i]} />
+              </SectionPair>,
+            );
+            i += 1;
+            continue;
+          }
+          const cur = report.secties[i];
+          const next = report.secties[i + 1];
+          const nextMatched = blockByKey.has(`sectie-${i + 1}`);
+          if (cur.layout === "half" && next?.layout === "half" && !nextMatched) {
+            rows.push(
+              <div key={key} className="grid gap-5 md:grid-cols-2">
+                <SectieCard sectie={cur} />
+                <SectieCard sectie={next} />
+              </div>,
+            );
+            i += 2;
+          } else {
+            rows.push(<SectieCard key={key} sectie={cur} />);
+            i += 1;
+          }
+        }
+        return rows;
+      })()}
 
       {report.volgendeStappen && report.volgendeStappen.length > 0 ? (
         <Section

@@ -225,7 +225,11 @@ export default async function GenericModuleResultPage({
       {header}
       <div className="mx-auto max-w-4xl px-6 py-8">
         {output?.kind === "report" ? (
-          <GenericReportView moduleName={moduleMeta.name} report={output.report} />
+          <GenericReportView
+            moduleName={moduleMeta.name}
+            report={output.report}
+            blocks={row.knowledgeBlocks ?? []}
+          />
         ) : (
           <MarkdownBlock markdown={output?.markdown ?? ""} variant="report" />
         )}
