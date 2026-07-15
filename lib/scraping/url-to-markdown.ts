@@ -130,6 +130,89 @@ export function isLegacyUrl(url: string): boolean {
   }
 }
 
+export type MenuLink = { label: string; href: string };
+
+// Kandidaat-selectors voor het PRIMAIRE menu, op prioriteit. Footer-navs en
+// breadcrumbs worden apart uitgefilterd (daar staan juist achtergrond-links).
+const MENU_SELECTORS = [
+  "header nav",
+  'nav[aria-label*="primair" i]',
+  'nav[aria-label*="hoofd" i]',
+  'nav[aria-label*="primary" i]',
+  'nav[aria-label*="main" i]',
+  "#primary-menu",
+  "#site-navigation",
+  ".main-navigation",
+  "header [role=navigation]",
+  "nav",
+];
+
+function menuLinksFrom(
+  $: cheerio.CheerioAPI,
+  $container: ReturnType<cheerio.CheerioAPI>,
+  baseUrl: string,
+): MenuLink[] {
+  let baseOrigin: string;
+  try {
+    baseOrigin = new URL(baseUrl).origin;
+  } catch {
+    return [];
+  }
+  const norm = (o: string) => o.replace(/^(https?:\/\/)www\./i, "$1");
+  const out: MenuLink[] = [];
+  const seen = new Set<string>();
+  $container
+    .find("a[href]")
+    .toArray()
+    .forEach((a) => {
+      const $a = $(a);
+      const href = ($a.attr("href") ?? "").trim();
+      const label = $a.text().replace(/\s+/g, " ").trim();
+      if (!label || !href || href.startsWith("#")) return;
+      if (/^(javascript:|mailto:|tel:)/i.test(href)) return;
+      let u: URL;
+      try {
+        u = new URL(href, `${baseOrigin}/`);
+      } catch {
+        return;
+      }
+      if (norm(u.origin) !== norm(baseOrigin)) return;
+      const path = u.pathname + (u.search || "");
+      const key = `${label.toLowerCase()}|${path}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({ label, href: path });
+    });
+  return out.slice(0, 40);
+}
+
+/**
+ * Isoleert het PRIMAIRE hoofdmenu uit de homepage-HTML (draaien vóór
+ * extractMainHtml de <nav> verwijdert). Slaat footer-navs en breadcrumbs
+ * bewust over. Levert een lege lijst als er geen betrouwbaar menu (≥2 links)
+ * te vinden is — dan gokken we liever niet.
+ */
+export function extractPrimaryMenu(
+  $: cheerio.CheerioAPI,
+  baseUrl: string,
+): MenuLink[] {
+  for (const sel of MENU_SELECTORS) {
+    let chosen: ReturnType<cheerio.CheerioAPI> | null = null;
+    for (const el of $(sel).toArray()) {
+      const $el = $(el);
+      if ($el.closest("footer").length) continue;
+      const meta = `${$el.attr("aria-label") ?? ""} ${$el.attr("class") ?? ""} ${$el.attr("id") ?? ""}`;
+      if (/breadcrumb/i.test(meta)) continue;
+      chosen = $el;
+      break;
+    }
+    if (!chosen) continue;
+    const links = menuLinksFrom($, chosen, baseUrl);
+    if (links.length >= 2) return links;
+  }
+  return [];
+}
+
 function createTurndown(): TurndownService {
   const td = new TurndownService({
     headingStyle: "atx",
@@ -334,19 +417,24 @@ function injectDescriptions(
 async function pageToMarkdown(
   url: string,
   turndown: TurndownService,
-  includeImages: boolean
+  includeImages: boolean,
+  menuBaseUrl: string | null = null
 ): Promise<{
   markdown: string;
   title: string;
   metaDescription: string;
   images: UrlImageInput[];
   placeholderByUrl: Map<string, string>;
+  menu: MenuLink[];
 } | null> {
   const html = await fetchHtmlWithRetry(url);
   const $ = cheerio.load(html);
   const title = $("title").first().text().trim();
   const metaDescription =
     $('meta[name="description"]').attr("content")?.trim() ?? "";
+
+  // Menu extraheren vóór extractMainHtml de <nav> weggooit (alleen homepage).
+  const menu = menuBaseUrl ? extractPrimaryMenu($, menuBaseUrl) : [];
 
   const mainHtml = extractMainHtml($);
   if (!mainHtml.trim()) return null;
@@ -377,6 +465,7 @@ async function pageToMarkdown(
     metaDescription,
     images,
     placeholderByUrl,
+    menu,
   };
 }
 
@@ -425,8 +514,10 @@ export async function urlToMarkdown(
   // Concurrency-limit voorkomt HTTP 429 rate-limiting bij sites met
   // W3 Total Cache / Cloudflare / vergelijkbare front-ends. Met 50 parallelle
   // requests werden bij nleyes.com ~70% van de pagina's geblokkeerd.
-  const settled = await mapWithConcurrency(urls, FETCH_CONCURRENCY, (u) =>
-    pageToMarkdown(u, turndown, includeImages),
+  // Homepage (index 0) krijgt menuBaseUrl mee zodat we het hoofdmenu extraheren.
+  const targets = urls.map((u, i) => ({ url: u, isHome: i === 0 }));
+  const settled = await mapWithConcurrency(targets, FETCH_CONCURRENCY, (t) =>
+    pageToMarkdown(t.url, turndown, includeImages, t.isHome ? baseUrl : null),
   );
 
   // Verzamel alle unique images uit alle pagina's voor één enkele vision-batch
@@ -491,12 +582,28 @@ export async function urlToMarkdown(
   const okPages = pages.filter((p) => p.status === "ok");
   const failedPages = pages.filter((p) => p.status !== "ok");
   const scrapeDate = new Date().toISOString().slice(0, 10);
+  const homeResult = settled[0];
+  const primaryMenu: MenuLink[] =
+    homeResult && homeResult.status === "fulfilled" && homeResult.value
+      ? homeResult.value.menu
+      : [];
   const frontmatterLines = [
     "---",
     `website_url: ${baseUrl}`,
     `scrape_datum: ${scrapeDate}`,
     `titel: ${firstTitle || "(onbekend)"}`,
+    ...(primaryMenu.length
+      ? [
+          "# hoofdmenu = de primaire navigatie van de homepage (wat een bezoeker in het menu ziet).",
+          "hoofdmenu:",
+          ...primaryMenu.map((m) => `  - ${m.label} -> ${m.href}`),
+        ]
+      : [
+          "# hoofdmenu: kon niet betrouwbaar uit de homepage-navigatie worden bepaald.",
+        ]),
     `aantal_paginas: ${okPages.length}`,
+    "# gevonden_paginas = ALLE opgehaalde pagina's (o.a. uit de sitemap); dit is NIET het",
+    "# hoofdmenu en bevat vaak pagina's die niet in de navigatie staan (detail-/detacherings-/tag-pagina's).",
     "gevonden_paginas:",
     ...okPages.map((p) => `  - ${p.url}`),
     ...(failedPages.length

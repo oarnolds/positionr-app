@@ -1,7 +1,62 @@
 import { test, expect, vi, afterEach } from "vitest";
-import { isLegacyUrl, normalizeBaseUrl, urlToMarkdown } from "./url-to-markdown";
+import * as cheerio from "cheerio";
+import {
+  extractPrimaryMenu,
+  isLegacyUrl,
+  normalizeBaseUrl,
+  urlToMarkdown,
+} from "./url-to-markdown";
 
 afterEach(() => vi.restoreAllMocks());
+
+test("extractPrimaryMenu: pakt het header-hoofdmenu, negeert footer en breadcrumb", () => {
+  const html = `
+    <header><a href="/"><img alt="logo"></a>
+      <nav aria-label="Hoofdmenu"><ul>
+        <li><a href="/oplossingen/">Oplossingen</a></li>
+        <li><a href="/over-nleyes/">Over NLeyes</a></li>
+        <li><a href="/contact-us/">Contact</a></li>
+      </ul></nav>
+    </header>
+    <nav aria-label="breadcrumb"><a href="/">Home</a><a href="/oplossingen/">Oplossingen</a></nav>
+    <footer><nav>
+      <a href="/professionals/">Professionals</a>
+      <a href="/privacy-policy/">Privacy</a>
+    </nav></footer>`;
+  const menu = extractPrimaryMenu(cheerio.load(html), "https://nleyes.com");
+  expect(menu.map((m) => m.href)).toEqual([
+    "/oplossingen/",
+    "/over-nleyes/",
+    "/contact-us/",
+  ]);
+  expect(menu.some((m) => m.href.includes("professionals"))).toBe(false);
+});
+
+test("extractPrimaryMenu: valt terug op #primary-menu zonder header-nav", () => {
+  const html = `<div><nav id="primary-menu"><a href="/a/">A</a><a href="/b/">B</a></nav></div>`;
+  expect(
+    extractPrimaryMenu(cheerio.load(html), "https://x.nl").map((m) => m.label),
+  ).toEqual(["A", "B"]);
+});
+
+test("extractPrimaryMenu: negeert externe links en anchors, dedupliceert", () => {
+  const html = `<header><nav>
+    <a href="/a/">A</a>
+    <a href="https://twitter.com/x">Twitter</a>
+    <a href="/b/">B</a>
+    <a href="/a/">A</a>
+    <a href="#top">Top</a>
+  </nav></header>`;
+  expect(extractPrimaryMenu(cheerio.load(html), "https://x.nl")).toEqual([
+    { label: "A", href: "/a/" },
+    { label: "B", href: "/b/" },
+  ]);
+});
+
+test("extractPrimaryMenu: lege lijst als alleen een footer-menu bestaat", () => {
+  const html = `<footer><nav><a href="/a/">A</a><a href="/b/">B</a></nav></footer>`;
+  expect(extractPrimaryMenu(cheerio.load(html), "https://x.nl")).toEqual([]);
+});
 
 test("isLegacyUrl: herkent oud/old/archief-markers in het pad", () => {
   expect(isLegacyUrl("https://x.nl/diensten-oud/")).toBe(true);
@@ -53,7 +108,7 @@ test("urlToMarkdown: kop + paragraaf → ATX-headings markdown", async () => {
     <html><head><title>Datapas</title>
       <meta name="description" content="Wij doen data" />
     </head><body>
-      <nav>menu</nav>
+      <nav>NAVSTRIP</nav>
       <main>
         <h1>Hallo</h1>
         <p>Wij maken het werk van datateams makkelijker.</p>
@@ -70,7 +125,7 @@ test("urlToMarkdown: kop + paragraaf → ATX-headings markdown", async () => {
   expect(r.metaDescription).toBe("Wij doen data");
   expect(r.markdown).toContain("# Hallo");
   expect(r.markdown).toContain("Wij maken het werk van datateams");
-  expect(r.markdown).not.toContain("menu");
+  expect(r.markdown).not.toContain("NAVSTRIP");
   expect(r.markdown).not.toContain("Copy");
   expect(r.pages).toHaveLength(1);
   expect(r.pages[0]?.status).toBe("ok");
