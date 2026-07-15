@@ -63,6 +63,7 @@ export default async function PromptEditorPage({
     .select({
       defaultPrompt: modules.defaultPrompt,
       provider: modules.provider,
+      strictness: modules.strictness,
     })
     .from(modules)
     .where(eq(modules.slug, slug))
@@ -115,6 +116,7 @@ export default async function PromptEditorPage({
           moduleStatus={meta.status}
           initialPrompt={row.defaultPrompt ?? ""}
           initialProvider={row.provider as "claude" | "perplexity"}
+          initialStrictness={row.strictness ?? 3}
           placeholders={placeholders}
         />
         <div className="border-t border-gray-200 px-8 py-4">

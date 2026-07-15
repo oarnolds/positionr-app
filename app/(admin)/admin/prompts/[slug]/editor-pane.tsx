@@ -11,7 +11,8 @@ import {
   RichPromptEditor,
   type RichPromptEditorHandle,
 } from "@/components/rich-prompt-editor";
-import { savePrompt, resetPrompt } from "./actions";
+import { savePrompt, resetPrompt, saveStrictness } from "./actions";
+import { strictnessLabel } from "@/lib/modules/strictness";
 import { cn } from "@/lib/utils";
 
 // "both" (synthese-modus) is bewust niet meer beschikbaar — leverde geen
@@ -33,12 +34,17 @@ const MODULES_USING_DB_PROMPT = new Set<string>([
   // icp-analyse-scan staat NIET in admin (interne hardcoded scan-prompt).
 ]);
 
+// Alleen scorende modules tonen de strengheidsknop; anders wekt de knop de
+// indruk dat hij ergens invloed op heeft terwijl de runtime hem negeert.
+const SCORING_MODULES = new Set<string>(["website-check"]);
+
 interface Props {
   slug: string;
   moduleName: string;
   moduleStatus: "active" | "soon" | "disabled";
   initialPrompt: string;
   initialProvider: Provider;
+  initialStrictness: number;
   placeholders: readonly Placeholder[];
 }
 
@@ -48,6 +54,7 @@ export function EditorPane({
   moduleStatus,
   initialPrompt,
   initialProvider,
+  initialStrictness,
   placeholders,
 }: Props) {
   const router = useRouter();
@@ -55,6 +62,8 @@ export function EditorPane({
 
   const [prompt, setPrompt] = useState(initialPrompt);
   const [provider, setProvider] = useState<Provider>(initialProvider);
+  const [strictness, setStrictness] = useState(initialStrictness);
+  const [strictnessSaving, setStrictnessSaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
 
@@ -62,7 +71,8 @@ export function EditorPane({
   useEffect(() => {
     setPrompt(initialPrompt);
     setProvider(initialProvider);
-  }, [initialPrompt, initialProvider, slug]);
+    setStrictness(initialStrictness);
+  }, [initialPrompt, initialProvider, initialStrictness, slug]);
 
   const isDirty = prompt !== initialPrompt || provider !== initialProvider;
 
@@ -96,6 +106,16 @@ export function EditorPane({
       router.refresh();
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function persistStrictness(value: number) {
+    setStrictness(value);
+    setStrictnessSaving(true);
+    try {
+      await saveStrictness({ slug, strictness: value });
+    } finally {
+      setStrictnessSaving(false);
     }
   }
 
@@ -147,6 +167,37 @@ export function EditorPane({
           <option value="perplexity">Perplexity</option>
         </select>
       </div>
+
+      {SCORING_MODULES.has(slug) && (
+        <div className="mt-6">
+          <label className="text-sm font-medium text-gray-700">
+            Beoordelingsstrengheid
+          </label>
+          <div className="mt-2 flex items-center gap-4">
+            <span className="text-xs text-gray-500">Mild</span>
+            <input
+              type="range"
+              min={1}
+              max={5}
+              step={1}
+              value={strictness}
+              onChange={(e) => void persistStrictness(Number(e.target.value))}
+              className="w-56"
+            />
+            <span className="text-xs text-gray-500">Zeer streng</span>
+            <span className="ml-2 text-sm font-semibold text-purple-700">
+              {strictness} — {strictnessLabel(strictness)}
+            </span>
+            {strictnessSaving && (
+              <span className="text-xs text-gray-400">opslaan…</span>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            Bepaalt hoe streng de AI cijfers toekent bij nieuwe analyses. 3 is
+            evenwichtig (huidig gedrag). De knop raakt bestaande rapporten niet.
+          </p>
+        </div>
+      )}
 
       {placeholders.length > 0 && (
         <div className="mt-6">
