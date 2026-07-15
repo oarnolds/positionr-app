@@ -134,3 +134,22 @@ export async function restoreVersion(input: {
 
   revalidatePath(`/admin/prompts/${slug}`);
 }
+
+const SaveStrictnessSchema = z.object({
+  slug: z.string().min(1),
+  strictness: z.number().int().min(1).max(5),
+});
+
+/** Sla alleen de strengheid op. Bewust los van savePrompt: een strengheid-
+ *  wijziging hoort niet in de prompt-version-history. */
+export async function saveStrictness(input: unknown): Promise<void> {
+  await requireAdmin();
+  const { slug, strictness } = SaveStrictnessSchema.parse(input);
+
+  await db
+    .update(modules)
+    .set({ strictness })
+    .where(eq(modules.slug, slug));
+
+  revalidatePath(`/admin/prompts/${slug}`);
+}
