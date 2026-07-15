@@ -67,10 +67,17 @@ In `sessions`, ná de `output`-regel (`output: text("output"),`), voeg toe:
   knowledgeBlocks: jsonb("knowledge_blocks").$type<KnowledgeBlockSnapshot[]>(),
 ```
 
-- [ ] **Step 2: Genereer de migratie**
+- [ ] **Step 2: Schrijf een focused SQL-migratie (handmatig — repo-conventie)**
 
-Run: `pnpm db:generate`
-Expected: nieuwe migratie in `drizzle/` met `ALTER TABLE "sessions" ADD COLUMN "knowledge_blocks" jsonb;` (nullable — geen default). Controleer dat er niks anders wijzigt.
+Dit project gebruikt `drizzle-kit generate`/`migrate` NIET (leeg journal; handgeschreven genummerde SQL, handmatig toegepast — zie `drizzle/0004_admin_prompts.sql` en CLAUDE.md). Draai GEEN `pnpm db:generate`.
+
+Maak `drizzle/00NN_sessions_knowledge_blocks.sql` (NN = hoogste bestaande nummer + 1) met:
+
+```sql
+-- Kennisblokjes — gesnapshotte matches op de sessie
+alter table "sessions"
+  add column "knowledge_blocks" jsonb;
+```
 
 - [ ] **Step 3: Typecheck**
 
@@ -79,7 +86,7 @@ Expected: geen nieuwe fouten (`Session`-type bevat nu `knowledgeBlocks`).
 
 - [ ] **Step 4: Pas toe op de database — DELIBERATE STEP**
 
-Additief/nullable, dus veilig; wel een echte DB-schrijfactie. Optie A: `pnpm db:migrate`. Optie B (Supabase MCP): `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS knowledge_blocks jsonb;`
+Additief/nullable, dus veilig; wel een echte DB-schrijfactie. Plak de SQL in de **Supabase SQL Editor**, of pas 'm toe via de **Supabase-connector** (`apply_migration`). NIET via `pnpm db:migrate` (leeg journal).
 
 - [ ] **Step 5: Commit**
 

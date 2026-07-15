@@ -148,13 +148,17 @@ In `lib/db/schema.ts`, in `knowledgeCards`, direct ná de `tags`-regel (`tags: t
   themes: text("themes").array().default([]).notNull(),
 ```
 
-- [ ] **Step 2: Genereer de migratie**
+- [ ] **Step 2: Schrijf een focused SQL-migratie (handmatig — repo-conventie)**
 
-Run: `pnpm db:generate`
-Expected: drizzle-kit schrijft een nieuwe migratie in `drizzle/` met o.a.:
-`ALTER TABLE "knowledge_cards" ADD COLUMN "themes" text[] DEFAULT '{}' NOT NULL;`
+Dit project gebruikt `drizzle-kit generate`/`migrate` NIET: `drizzle/meta/_journal.json` wordt bewust leeg gehouden en migraties zijn handgeschreven, genummerde SQL-bestanden die handmatig in Supabase worden toegepast (zie `drizzle/0004_admin_prompts.sql` en CLAUDE.md). Draai dus GEEN `pnpm db:generate` — die wil een volledige fresh-start baseline maken.
 
-Controleer dat de gegenereerde SQL alleen deze kolom toevoegt (geen onbedoelde drops). Als drizzle-kit interactief vraagt of het een rename/nieuwe kolom is: kies **nieuwe kolom** (`themes` is nieuw, geen rename van `tags`).
+Maak `drizzle/00NN_knowledge_cards_themes.sql` (NN = hoogste bestaande nummer + 1) met:
+
+```sql
+-- Kennisbibliotheek — themes-kolom op knowledge_cards
+alter table "knowledge_cards"
+  add column "themes" text[] default '{}' not null;
+```
 
 - [ ] **Step 3: Typecheck**
 
@@ -163,11 +167,7 @@ Expected: geen NIEUWE fouten in `lib/` (de afgeleide `KnowledgeCard`-type bevat 
 
 - [ ] **Step 4: Pas de migratie toe op de database — DELIBERATE STEP**
 
-Dit schrijft naar de echte Supabase-database. De kolom is **additief en non-breaking** (`DEFAULT '{}' NOT NULL`), dus veilig, maar het is een DB-schrijfactie: laat de orchestrator/mens dit bewust uitvoeren.
-
-Optie A (repo-flow): `pnpm db:migrate`
-Optie B (Supabase MCP): pas exact deze SQL toe:
-`ALTER TABLE knowledge_cards ADD COLUMN IF NOT EXISTS themes text[] NOT NULL DEFAULT '{}';`
+Dit schrijft naar de echte Supabase-database. De kolom is **additief en non-breaking**, dus veilig, maar het is een DB-schrijfactie: laat de orchestrator/mens dit bewust uitvoeren. Plak de SQL in de **Supabase SQL Editor**, of pas 'm toe via de **Supabase-connector** (`apply_migration`). NIET via `pnpm db:migrate` (het journal is leeg).
 
 - [ ] **Step 5: Commit**
 
