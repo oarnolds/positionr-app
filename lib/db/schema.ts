@@ -129,6 +129,14 @@ export const icpProducts = pgTable("icp_products", {
 // ── Sessions ────────────────────────────────────────────────────────
 // Eén tabel voor ALLE module-runs. input/output zijn JSONB.
 
+export type KnowledgeBlockSnapshot = {
+  sectionKey: string;
+  rank: number;
+  bridge: string;
+  cardId: string;
+  card: { title: string; kern: string; toepassing: string; sourceLabel: string };
+};
+
 export const sessions = pgTable("sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").notNull(), // → auth.users.id
@@ -142,6 +150,7 @@ export const sessions = pgTable("sessions", {
   // Input + output
   input: jsonb("input").notNull(),
   output: text("output"),
+  knowledgeBlocks: jsonb("knowledge_blocks").$type<KnowledgeBlockSnapshot[]>(),
 
   // Audit-spoor van de prompt
   promptOverride: text("prompt_override"), // admin-edit per sessie
