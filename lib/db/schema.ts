@@ -325,6 +325,7 @@ export const knowledgeCards = pgTable("knowledge_cards", {
   kern: text("kern").notNull(),
   toepassing: text("toepassing").default("").notNull(),
   tags: text("tags").array().default([]).notNull(),
+  themes: text("themes").array().default([]).notNull(),
   sourceLabel: text("source_label").notNull(),
   status: knowledgeCardStatus("status").default("concept").notNull(),
   chapterIndex: integer("chapter_index").default(0).notNull(),
