@@ -19,6 +19,7 @@ function makeDeps(): TestBundle {
     fetchPrompt: vi.fn().mockResolvedValue({
       prompt: "Analyseer {websiteUrl} van {companyName}. Inhoud:\n{scrapedContent}",
       provider: "claude" as const,
+      strictness: 3,
     }),
     fetchFormatExample: vi.fn().mockResolvedValue("# Voorbeeld\n\n[KLANTNAAM]"),
     pickAnalyzer: vi.fn().mockReturnValue(analyze),
@@ -102,6 +103,7 @@ test("runAnalysis: provider='both' → pickAnalyzer ontvangt 'both'", async () =
   deps.fetchPrompt = vi.fn().mockResolvedValue({
     prompt: "Analyseer {websiteUrl}. Inhoud:\n{scrapedContent}",
     provider: "both" as const,
+    strictness: 3,
   });
   await runAnalysis(
     { sessionId: "s4", userId: USER_ID, websiteUrl: "https://x.nl", companyName: "X" },

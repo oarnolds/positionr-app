@@ -11,6 +11,7 @@ describe("runFreeCheck", () => {
         fetchPrompt: async () => ({
           prompt: "Analyseer {websiteUrl} {scrapedContent} {companyName}",
           provider: "claude",
+          strictness: 3,
         }),
         fetchFormatExample: async () => "# Voorbeeld\n\n[KLANTNAAM]",
         analyze: async () => ({
@@ -41,7 +42,7 @@ describe("runFreeCheck", () => {
         scrape: async () => {
           throw new Error("scrape kapot");
         },
-        fetchPrompt: async () => ({ prompt: "", provider: "claude" }),
+        fetchPrompt: async () => ({ prompt: "", provider: "claude", strictness: 3 }),
         fetchFormatExample: async () => "# Voorbeeld",
         analyze: async () => {
           throw new Error("zou niet moeten gebeuren");
@@ -65,6 +66,7 @@ describe("runFreeCheck", () => {
         fetchPrompt: async () => ({
           prompt: "Analyseer {websiteUrl}",
           provider: "claude",
+          strictness: 3,
         }),
         fetchFormatExample: async () => null,
         analyze: async () => {

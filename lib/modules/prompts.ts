@@ -29,20 +29,34 @@ export function substitutePlaceholders(
  */
 export async function getModulePrompt(
   slug: string,
-): Promise<{ prompt: string; provider: ConfigProvider }> {
+): Promise<{ prompt: string; provider: ConfigProvider; strictness: number }> {
   const [row] = await db
-    .select({ defaultPrompt: modules.defaultPrompt, provider: modules.provider })
+    .select({
+      defaultPrompt: modules.defaultPrompt,
+      provider: modules.provider,
+      strictness: modules.strictness,
+    })
     .from(modules)
     .where(eq(modules.slug, slug))
     .limit(1);
 
   if (!row) throw new Error(`Module ${slug} niet in DB`);
 
+  const strictness = row.strictness ?? 3;
+
   if (!row.defaultPrompt || row.defaultPrompt.length === 0) {
     const fallback = FALLBACK_PROMPTS[slug];
     if (!fallback) throw new Error(`Geen fallback prompt voor module ${slug}`);
-    return { prompt: fallback, provider: row.provider as ConfigProvider };
+    return {
+      prompt: fallback,
+      provider: row.provider as ConfigProvider,
+      strictness,
+    };
   }
 
-  return { prompt: row.defaultPrompt, provider: row.provider as ConfigProvider };
+  return {
+    prompt: row.defaultPrompt,
+    provider: row.provider as ConfigProvider,
+    strictness,
+  };
 }

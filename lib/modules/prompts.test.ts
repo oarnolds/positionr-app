@@ -66,7 +66,11 @@ describe("getModulePrompt", () => {
   it("returnt prompt + provider uit DB als defaultPrompt gevuld is", async () => {
     setMockRows([{ defaultPrompt: "Hallo {x}", provider: "perplexity" }]);
     const result = await getModulePrompt("website-check");
-    expect(result).toEqual({ prompt: "Hallo {x}", provider: "perplexity" });
+    expect(result).toEqual({
+      prompt: "Hallo {x}",
+      provider: "perplexity",
+      strictness: 3,
+    });
   });
 
   it("valt terug op FALLBACK_PROMPTS-placeholder als defaultPrompt leeg is", async () => {
