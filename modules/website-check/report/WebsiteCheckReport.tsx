@@ -7,31 +7,39 @@ import { ScoreRing } from "./ScoreRing";
 import { ScoresOverview } from "./ScoresOverview";
 import { OnderdeelCard } from "./OnderdeelCard";
 import { ActiesCard } from "./ActiesCard";
+import type { KnowledgeBlock } from "@/lib/knowledge/matching/types";
+import { SectionPair } from "@/lib/modules/SectionPair";
 
-export function WebsiteCheckReport({ markdown }: { markdown: string }) {
-  const blocks = parseReport(markdown);
+export function WebsiteCheckReport({
+  markdown,
+  blocks = [],
+}: {
+  markdown: string;
+  blocks?: KnowledgeBlock[];
+}) {
+  const parsed = parseReport(markdown);
 
   // Fallback: geen parsebare onderdelen (oude sessie of format-drift) →
   // de bestaande document-render.
-  if (blocks.onderdelen.length === 0) {
+  if (parsed.onderdelen.length === 0) {
     return (
       <ReportShell>
-        {blocks.cover && (
-          <CoverBanner raw={blocks.cover.raw} score={blocks.cover.score} />
+        {parsed.cover && (
+          <CoverBanner raw={parsed.cover.raw} score={parsed.cover.score} />
         )}
-        {blocks.strengths && blocks.improvements && (
+        {parsed.strengths && parsed.improvements && (
           <StrengthsImprovements
-            strengths={blocks.strengths}
-            improvements={blocks.improvements}
+            strengths={parsed.strengths}
+            improvements={parsed.improvements}
           />
         )}
-        <ReportBody markdown={blocks.bodyMarkdown} />
+        <ReportBody markdown={parsed.bodyMarkdown} />
       </ReportShell>
     );
   }
 
-  const scoreNum = blocks.cover?.score
-    ? Number(blocks.cover.score.replace(",", "."))
+  const scoreNum = parsed.cover?.score
+    ? Number(parsed.cover.score.replace(",", "."))
     : null;
 
   return (
@@ -40,22 +48,22 @@ export function WebsiteCheckReport({ markdown }: { markdown: string }) {
         <ScoreRing score={scoreNum} />
         <div>
           <h1 className="text-lg font-extrabold">Website-analyse</h1>
-          {blocks.samenvatting && (
+          {parsed.samenvatting && (
             <p className="mt-1 text-sm leading-relaxed opacity-90">
-              {blocks.samenvatting}
+              {parsed.samenvatting}
             </p>
           )}
         </div>
       </div>
 
-      {blocks.strengths && blocks.improvements && (
+      {parsed.strengths && parsed.improvements && (
         <div className="grid gap-5 md:grid-cols-2">
           <section className="rounded-2xl border-l-4 border-emerald-500 bg-emerald-50/60 p-4">
             <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
               Sterke punten
             </p>
             <ul className="list-disc space-y-1 pl-5 text-sm text-emerald-950">
-              {blocks.strengths.map((s, i) => (
+              {parsed.strengths.map((s, i) => (
                 <li key={i}>{s}</li>
               ))}
             </ul>
@@ -65,7 +73,7 @@ export function WebsiteCheckReport({ markdown }: { markdown: string }) {
               Grootste verbeterpunten
             </p>
             <ul className="list-disc space-y-1 pl-5 text-sm text-amber-950">
-              {blocks.improvements.map((s, i) => (
+              {parsed.improvements.map((s, i) => (
                 <li key={i}>{s}</li>
               ))}
             </ul>
@@ -73,13 +81,23 @@ export function WebsiteCheckReport({ markdown }: { markdown: string }) {
         </div>
       )}
 
-      <ScoresOverview onderdelen={blocks.onderdelen} />
+      <ScoresOverview onderdelen={parsed.onderdelen} />
 
-      {blocks.onderdelen.map((o) => (
-        <OnderdeelCard key={o.slug} onderdeel={o} />
-      ))}
+      {(() => {
+        const blockByKey = new Map(blocks.map((b) => [b.sectionKey, b]));
+        return parsed.onderdelen.map((o) => {
+          const block = blockByKey.get(o.slug);
+          return block ? (
+            <SectionPair key={o.slug} block={block}>
+              <OnderdeelCard onderdeel={o} />
+            </SectionPair>
+          ) : (
+            <OnderdeelCard key={o.slug} onderdeel={o} />
+          );
+        });
+      })()}
 
-      {blocks.acties.length > 0 && <ActiesCard acties={blocks.acties} />}
+      {parsed.acties.length > 0 && <ActiesCard acties={parsed.acties} />}
     </div>
   );
 }

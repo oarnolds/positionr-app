@@ -167,7 +167,7 @@ export default async function WebsiteCheckResultPage({
   return (
     <>
       {header}
-      <WebsiteCheckResultView markdown={row.output ?? ""} />
+      <WebsiteCheckResultView markdown={row.output ?? ""} blocks={row.knowledgeBlocks ?? []} />
       <div className="mx-auto mt-2 mb-12 flex max-w-4xl items-center gap-3 px-6">
         <form action={regenerateAnalysis}>
           <input type="hidden" name="sourceSessionId" value={row.id} />
