@@ -237,6 +237,73 @@ describe("parseActies", () => {
   });
 });
 
+import { computeTotaalScore } from "./parseReport";
+
+describe("computeTotaalScore", () => {
+  const od = (score: number | null) => ({
+    nr: 1,
+    slug: "x",
+    titel: "X",
+    score,
+    watWeZien: "",
+    waaromDitTelt: "",
+    watJeKuntDoen: [],
+  });
+
+  it("middelt de onderdeelscores en rondt af op 1 decimaal", () => {
+    // 6,5 + 4,0 = 10,5 / 2 = 5,25 → 5,3
+    expect(computeTotaalScore([od(6.5), od(4)])).toBe(5.3);
+  });
+
+  it("reproduceert de 4,9 uit het format-voorbeeld (11 scores)", () => {
+    const scores = [6.5, 5.5, 6.0, 4.0, 4.0, 3.5, 6.0, 3.5, 5.5, 5.0, 4.0];
+    expect(computeTotaalScore(scores.map(od))).toBe(4.9);
+  });
+
+  it("negeert onderdelen zonder score (null)", () => {
+    // alleen 6,0 en 4,0 tellen → 5,0
+    expect(computeTotaalScore([od(6), od(null), od(4)])).toBe(5);
+  });
+
+  it("geeft null als er geen scoorbare onderdelen zijn", () => {
+    expect(computeTotaalScore([])).toBeNull();
+    expect(computeTotaalScore([od(null)])).toBeNull();
+  });
+});
+
+describe("parseReport — totaalScore uit code", () => {
+  it("berekent totaalScore uit de geparste onderdelen, niet uit de cover", () => {
+    const md = [
+      "Cover met Totaalscore: 9,9 / 10", // bewust fout getal in de cover
+      "",
+      "# Beoordeling per onderdeel",
+      "",
+      "### 1. Waardepropositie — 6,0 / 10",
+      "",
+      "#### Wat we zien",
+      "",
+      "Tekst.",
+      "",
+      "### 2. Klantvoordelen — 4,0 / 10",
+      "",
+      "#### Wat we zien",
+      "",
+      "Tekst.",
+      "",
+      "# De vijf belangrijkste acties",
+    ].join("\n");
+    const r = parseReport(md);
+    // gemiddelde 6,0 + 4,0 = 5,0 — negeert de 9,9 uit de cover
+    expect(r.totaalScore).toBe(5);
+  });
+
+  it("totaalScore is null als er geen onderdelen zijn (oude sessie)", () => {
+    const r = parseReport("Cover met Totaalscore: 7,4 / 10\n\n# Body\n\nTekst.");
+    expect(r.totaalScore).toBeNull();
+    expect(r.cover?.score).toBe("7,4");
+  });
+});
+
 describe("parseReport — nieuwe velden", () => {
   const md = [
     "Cover met Totaalscore: 4,9 / 10", "",

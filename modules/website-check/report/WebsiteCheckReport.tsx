@@ -38,9 +38,12 @@ export function WebsiteCheckReport({
     );
   }
 
-  const scoreNum = parsed.cover?.score
-    ? Number(parsed.cover.score.replace(",", "."))
-    : null;
+  // In code herberekende totaalscore (gemiddelde van de onderdeelscores) heeft
+  // voorrang op het getal dat het LLM in de cover schreef. Terugval op de
+  // cover-score voor oude sessies zonder parsebare onderdelen.
+  const scoreNum =
+    parsed.totaalScore ??
+    (parsed.cover?.score ? Number(parsed.cover.score.replace(",", ".")) : null);
 
   return (
     <div className="space-y-5">

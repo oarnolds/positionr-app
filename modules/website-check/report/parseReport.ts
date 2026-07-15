@@ -11,7 +11,17 @@ export type ReportBlocks = {
   onderdelen: Onderdeel[];
   acties: Actie[];
   bodyMarkdown: string;
+  /**
+   * Totaalscore, in code herberekend als het gemiddelde van de
+   * onderdeelscores (afgerond op 1 decimaal). Bewust NIET het getal dat het
+   * LLM in de cover schreef: dat is een modelberekening en foutgevoelig. Null
+   * bij oude sessies of format-drift zonder scoorbare onderdelen.
+   */
+  totaalScore: number | null;
 };
+
+/** Interne vorm vóór de totaalScore-herberekening in {@link parseReport}. */
+type RawBlocks = Omit<ReportBlocks, "totaalScore">;
 
 export type Onderdeel = {
   nr: number;
@@ -110,6 +120,20 @@ export function parseOnderdelen(markdown: string): Onderdeel[] {
   return out;
 }
 
+/**
+ * Herbereken de totaalscore uit de geparste onderdelen: gemiddelde van alle
+ * onderdelen mét een score, afgerond op 1 decimaal. Onderdelen zonder score
+ * (null) tellen niet mee. Geeft null als er niets te middelen valt.
+ */
+export function computeTotaalScore(onderdelen: Onderdeel[]): number | null {
+  const scores = onderdelen
+    .map((o) => o.score)
+    .filter((s): s is number => s != null);
+  if (scores.length === 0) return null;
+  const avg = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+  return Math.round(avg * 10) / 10;
+}
+
 export function parseActies(markdown: string): Actie[] {
   const lines = markdown.split("\n");
   let headerIdx = -1;
@@ -172,7 +196,7 @@ function extractList(lines: string[], startIdx: number): { items: string[]; endI
  * numerieke score of cover.score). De ONDERDEEL_RE-koppen ("Titel — score")
  * zijn op dit punt al geparset, dus dit breekt de score-extractie niet.
  */
-function sanitizeBlocks(b: ReportBlocks): ReportBlocks {
+function sanitizeBlocks(b: RawBlocks): RawBlocks {
   return {
     cover: b.cover
       ? { raw: stripDashes(b.cover.raw), score: b.cover.score }
@@ -193,10 +217,11 @@ function sanitizeBlocks(b: ReportBlocks): ReportBlocks {
 }
 
 export function parseReport(markdown: string): ReportBlocks {
-  return sanitizeBlocks(parseReportRaw(markdown));
+  const blocks = sanitizeBlocks(parseReportRaw(markdown));
+  return { ...blocks, totaalScore: computeTotaalScore(blocks.onderdelen) };
 }
 
-function parseReportRaw(markdown: string): ReportBlocks {
+function parseReportRaw(markdown: string): RawBlocks {
   if (!markdown) {
     return {
       cover: null,
