@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { desc } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
+import { AlertTriangle } from "lucide-react";
 import { db } from "@/lib/db/client";
-import { knowledgeSources } from "@/lib/db/schema";
+import { knowledgeCards, knowledgeSources } from "@/lib/db/schema";
 import { BookUploader } from "./book-uploader";
 import { DeleteSourceButton } from "./delete-source-button";
 
@@ -18,6 +19,18 @@ export default async function KennisPage({
     .from(knowledgeSources)
     .orderBy(desc(knowledgeSources.createdAt));
 
+  // Goedgekeurde kaarten zonder thema — de gap waar auto-toewijzing stil kan
+  // falen. themes is NOT NULL default '{}', dus leeg = array_length(...) is null.
+  const [{ untagged }] = await db
+    .select({ untagged: count() })
+    .from(knowledgeCards)
+    .where(
+      and(
+        eq(knowledgeCards.status, "goedgekeurd"),
+        sql`array_length(${knowledgeCards.themes}, 1) is null`,
+      ),
+    );
+
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-bold">Kennisbibliotheek</h1>
@@ -29,6 +42,23 @@ export default async function KennisPage({
       {error && (
         <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           {error}
+        </div>
+      )}
+
+      {untagged > 0 && (
+        <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            {untagged} goedgekeurde {untagged === 1 ? "kaart" : "kaarten"} zonder
+            thema.{" "}
+            <span className="text-amber-700">
+              Draai de backfill (
+              <code className="rounded bg-amber-100 px-1 py-0.5 text-xs">
+                pnpm exec tsx scripts/backfill-card-themes.ts
+              </code>
+              ) om ze te taggen.
+            </span>
+          </span>
         </div>
       )}
 
