@@ -3,12 +3,18 @@
  * thema-suggestie. Idempotent — kaarten die al themes hebben worden overgeslagen.
  * Draaien: `pnpm exec tsx scripts/backfill-card-themes.ts`
  */
-import { eq } from "drizzle-orm";
-import { db } from "@/lib/db/client";
-import { knowledgeCards } from "@/lib/db/schema";
-import { suggestThemes } from "@/lib/knowledge/themes";
+import { config } from "dotenv";
+
+// Env laden vóór alle andere modules: lib/db/client leest DATABASE_URL al bij
+// import, dus de rest wordt dynamisch geïmporteerd ná deze config()-call.
+config({ path: ".env.local" });
 
 async function main() {
+  const { eq } = await import("drizzle-orm");
+  const { db } = await import("@/lib/db/client");
+  const { knowledgeCards } = await import("@/lib/db/schema");
+  const { suggestThemes } = await import("@/lib/knowledge/themes");
+
   const cards = await db
     .select()
     .from(knowledgeCards)
