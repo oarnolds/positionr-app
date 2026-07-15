@@ -5,6 +5,9 @@ import { analyzeBothRaw } from "@/lib/ai/synthesize-raw";
 import { getModulePrompt, substitutePlaceholders } from "@/lib/modules/prompts";
 import { globalPlaceholders } from "@/lib/modules/global-placeholders";
 import { getFormatExample } from "@/lib/modules/format-examples";
+import { buildKnowledgeBlocks } from "@/lib/knowledge/matching";
+import { websiteCheckSections } from "@/lib/knowledge/matching/adapters/website-check";
+import type { KnowledgeBlock } from "@/lib/knowledge/matching/types";
 import { scrapeWebsite } from "./scraper";
 import { MODULE_SLUG } from "./index";
 import type { ConfigProvider } from "@/lib/ai/pricing";
@@ -28,6 +31,7 @@ export type ServiceDeps = {
     provider: ConfigProvider,
   ) => (args: { prompt: string }) => Promise<ClaudeRawResult>;
   updateSession: (id: string, patch: Record<string, unknown>) => Promise<void>;
+  buildBlocks: (markdown: string) => Promise<KnowledgeBlock[]>;
 };
 
 function defaultPickAnalyzer(
@@ -56,6 +60,7 @@ export const defaultDeps: ServiceDeps = {
       .set(patch)
       .where(and(eq(sessions.id, id), eq(sessions.status, "running")));
   },
+  buildBlocks: (markdown) => buildKnowledgeBlocks(websiteCheckSections(markdown)),
 };
 
 export async function createWebsiteCheckSession(input: {
@@ -163,6 +168,7 @@ export async function runAnalysis(
 
     const analyzer = deps.pickAnalyzer(provider);
     const result = await analyzer({ prompt });
+    const knowledgeBlocks = await deps.buildBlocks(result.markdown);
 
     await deps.updateSession(args.sessionId, {
       status: "approved",
@@ -173,6 +179,7 @@ export async function runAnalysis(
       llmOutputTokens: result.llmOutputTokens,
       llmCostCents: result.llmCostCents,
       completedAt: new Date(),
+      knowledgeBlocks,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

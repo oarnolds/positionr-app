@@ -23,6 +23,7 @@ function makeDeps(): TestBundle {
     fetchFormatExample: vi.fn().mockResolvedValue("# Voorbeeld\n\n[KLANTNAAM]"),
     pickAnalyzer: vi.fn().mockReturnValue(analyze),
     updateSession: vi.fn().mockResolvedValue(undefined),
+    buildBlocks: vi.fn().mockResolvedValue([]),
   };
   return { deps, analyze };
 }
