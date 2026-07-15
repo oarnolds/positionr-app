@@ -3,6 +3,7 @@ import { analyzeClaudeRaw, type ClaudeRawResult } from "@/lib/ai/claude-raw";
 import { analyzePerplexityRaw } from "@/lib/ai/perplexity-raw";
 import { analyzeBothRaw } from "@/lib/ai/synthesize-raw";
 import { getModulePrompt, substitutePlaceholders } from "@/lib/modules/prompts";
+import { strictnessInstruction } from "@/lib/modules/strictness";
 import { globalPlaceholders } from "@/lib/modules/global-placeholders";
 import { getFormatExample } from "@/lib/modules/format-examples";
 import { buildKnowledgeBlocks } from "@/lib/knowledge/matching";
@@ -110,7 +111,7 @@ export async function runAnalysis(
       bypassCache: args.bypassCache,
       maxChars: args.useExistingMarkdown ? 0 : undefined,
     });
-    const { prompt: template, provider } = await deps.fetchPrompt(MODULE_SLUG);
+    const { prompt: template, provider, strictness } = await deps.fetchPrompt(MODULE_SLUG);
     const formatTemplate = await deps.fetchFormatExample(MODULE_SLUG);
     if (!formatTemplate) {
       throw new Error("Geen format-template voor website-check gevonden in DB");
@@ -133,7 +134,7 @@ export async function runAnalysis(
         companyName: args.companyName || "Onbekend",
         scrapedContent: scrapedContent || "(Kon website niet laden)",
       });
-      return `${header}\n\n---\nFORMAT-TEMPLATE (volg deze structuur exact, vervang placeholders door inhoud op basis van de geschraapte data; behoud markdown-structuur, koppen en tabellen):\n\n${formatTemplate}\n\n---\nSchrijf nu de gevulde versie van bovenstaand format. Geef alleen de markdown terug, geen JSON, geen uitleg eromheen.`;
+      return `${header}\n\n---\nBEOORDELINGSSTRENGHEID (bepaalt hoe streng je cijfers toekent):\n\n${strictnessInstruction(strictness)}\n\n---\nFORMAT-TEMPLATE (volg deze structuur exact, vervang placeholders door inhoud op basis van de geschraapte data; behoud markdown-structuur, koppen en tabellen):\n\n${formatTemplate}\n\n---\nSchrijf nu de gevulde versie van bovenstaand format. Geef alleen de markdown terug, geen JSON, geen uitleg eromheen.`;
     }
 
     let effectiveScraped = scraped ?? "";

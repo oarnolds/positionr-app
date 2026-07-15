@@ -126,3 +126,29 @@ describe("runAnalysis: ontbrekend format-template", () => {
     }));
   });
 });
+
+test("runAnalysis: injecteert de strengheid-kalibratie (default 3) in de prompt", async () => {
+  const { deps, analyze } = makeDeps(); // fetchPrompt-mock heeft strictness: 3
+  await runAnalysis(
+    { sessionId: "s5", userId: USER_ID, websiteUrl: "https://x.nl", companyName: "X" },
+    deps,
+  );
+  const prompt = analyze.mock.calls[0][0].prompt as string;
+  expect(prompt).toContain("BEOORDELINGSSTRENGHEID");
+  expect(prompt).toContain("Beoordeel evenwichtig");
+});
+
+test("runAnalysis: hoge strengheid → strenge kalibratie in de prompt", async () => {
+  const { deps, analyze } = makeDeps();
+  deps.fetchPrompt = vi.fn().mockResolvedValue({
+    prompt: "Analyseer {websiteUrl}. Inhoud:\n{scrapedContent}",
+    provider: "claude" as const,
+    strictness: 5,
+  });
+  await runAnalysis(
+    { sessionId: "s6", userId: USER_ID, websiteUrl: "https://x.nl", companyName: "X" },
+    deps,
+  );
+  const prompt = analyze.mock.calls[0][0].prompt as string;
+  expect(prompt).toContain("Beoordeel zeer streng");
+});
