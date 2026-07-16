@@ -19,28 +19,44 @@ export const REPORT_ACCENT_VALUES = [
   "teal",
 ] as const;
 
+const asText = (x: unknown): string =>
+  x == null ? "" : typeof x === "string" ? x : String(x);
+
+// Normaliseer sleutel-aliassen (value→waarde, key→label) en coerce naar tekst,
+// zodat één gedrift feit het rapport nooit meer laat falen.
+const Feit = z.preprocess(
+  (v) => {
+    const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
+    return { label: asText(o.label ?? o.key), waarde: asText(o.waarde ?? o.value) };
+  },
+  z.object({ label: z.string(), waarde: z.string() }),
+);
+
 export const ReportSectie = z.object({
-  titel: z.string().default(""),
+  titel: z.string().catch(""),
   /** Korte uppercase-kop in plaats van titel (zoals "WAAROM KIEZEN KLANTEN VOOR ONS?"). */
-  eyebrow: z.string().optional(),
+  eyebrow: z.string().optional().catch(undefined),
   accent: z.enum(REPORT_ACCENT_VALUES).catch("blue"),
   /** "half" = twee-koloms grid op desktop; "volledig" = volle breedte. */
   layout: z.enum(["volledig", "half"]).catch("volledig"),
   /** Vrije markdown-inhoud binnen de kaart. */
   inhoud: z.string().catch(""),
-  /** Label/waarde-rijen (zoals het firmografisch profiel in ICP). */
+  /** Label/waarde-rijen (zoals het firmografisch profiel in ICP). Volledig lege
+   *  feiten worden gefilterd; drift met inhoud wordt gered. */
   feiten: z
-    .array(z.object({ label: z.string(), waarde: z.string() }))
+    .array(Feit)
+    .transform((a) => a.filter((f) => f.label !== "" || f.waarde !== ""))
+    .catch([])
     .optional(),
   /** Korte tags als pills (zoals trigger-events in ICP). */
-  chips: z.array(z.string()).optional(),
+  chips: z.array(z.string()).catch([]).optional(),
 });
 export type ReportSectie = z.infer<typeof ReportSectie>;
 
 export const GenericReport = z.object({
-  heroTekst: z.string().default(""),
+  heroTekst: z.string().catch(""),
   secties: z.array(ReportSectie).min(1),
-  volgendeStappen: z.array(z.string()).optional(),
+  volgendeStappen: z.array(z.string()).catch([]).optional(),
 });
 export type GenericReport = z.infer<typeof GenericReport>;
 

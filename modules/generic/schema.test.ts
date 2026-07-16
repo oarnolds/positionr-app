@@ -1,6 +1,7 @@
 import { test, expect } from "vitest";
 import {
   GENERIC_MODULES,
+  GenericReport,
   isGenericModule,
   moduleSourceTypes,
   parseGenericOutput,
@@ -79,4 +80,56 @@ test("parseSourceType: geldige waarden komen door, rest valt terug op library", 
   expect(parseSourceType(null)).toBe("library");
   expect(parseSourceType(undefined)).toBe("library");
   expect(parseSourceType("iets-anders")).toBe("library");
+});
+
+test("GenericReport: feit met 'value'-alias wordt gered naar 'waarde'", () => {
+  const r = GenericReport.parse({
+    secties: [{ titel: "S", feiten: [{ label: "Partner", value: "Tickstar (2023)" }] }],
+  });
+  expect(r.secties[0].feiten).toEqual([{ label: "Partner", waarde: "Tickstar (2023)" }]);
+});
+
+test("GenericReport: één gedrift feit sloopt het rapport niet meer", () => {
+  // Regressie op de markttrends-bug: het model gebruikte 'value' i.p.v. 'waarde'.
+  const parse = () =>
+    GenericReport.parse({
+      heroTekst: "H",
+      secties: [
+        {
+          titel: "S",
+          feiten: [
+            { label: "Goed", waarde: "ok" },
+            { label: "Gedrift", value: "gered" },
+          ],
+        },
+      ],
+    });
+  expect(parse).not.toThrow();
+  expect(parse().secties[0].feiten).toEqual([
+    { label: "Goed", waarde: "ok" },
+    { label: "Gedrift", waarde: "gered" },
+  ]);
+});
+
+test("GenericReport: niet-string feit-waarde wordt gecoerced naar tekst", () => {
+  const r = GenericReport.parse({
+    secties: [{ titel: "S", feiten: [{ label: "Aantal", waarde: 42 }] }],
+  });
+  expect(r.secties[0].feiten).toEqual([{ label: "Aantal", waarde: "42" }]);
+});
+
+test("GenericReport: volledig leeg feit wordt gefilterd", () => {
+  const r = GenericReport.parse({
+    secties: [{ titel: "S", feiten: [{}, { label: "X", waarde: "y" }] }],
+  });
+  expect(r.secties[0].feiten).toEqual([{ label: "X", waarde: "y" }]);
+});
+
+test("GenericReport: rotte chips/stappen degraderen naar leeg, rapport blijft", () => {
+  const r = GenericReport.parse({
+    secties: [{ titel: "S", chips: ["ok", 5] }],
+    volgendeStappen: ["stap", { niet: "string" }],
+  });
+  expect(r.secties[0].chips).toEqual([]);
+  expect(r.volgendeStappen).toEqual([]);
 });
