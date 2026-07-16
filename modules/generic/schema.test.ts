@@ -6,6 +6,7 @@ import {
   moduleSourceTypes,
   parseGenericOutput,
   parseSourceType,
+  tryParseGenericReport,
 } from "./schema";
 
 test("parseGenericOutput: strip em-dashes uit de rapporttekst", () => {
@@ -132,4 +133,41 @@ test("GenericReport: rotte chips/stappen degraderen naar leeg, rapport blijft", 
   });
   expect(r.secties[0].chips).toEqual([]);
   expect(r.volgendeStappen).toEqual([]);
+});
+
+test("tryParseGenericReport: geldige kaart-JSON → rapport (met en zonder fences)", () => {
+  const json = JSON.stringify({ secties: [{ titel: "S", inhoud: "x" }] });
+  expect(tryParseGenericReport(json)?.secties[0].titel).toBe("S");
+  expect(tryParseGenericReport("```json\n" + json + "\n```")?.secties[0].titel).toBe("S");
+});
+
+test("tryParseGenericReport: gewone prose → null", () => {
+  expect(tryParseGenericReport("# Kop\n\nGewone tekst zonder JSON.")).toBeNull();
+});
+
+test("tryParseGenericReport: leeg secties → null", () => {
+  expect(tryParseGenericReport(JSON.stringify({ secties: [] }))).toBeNull();
+});
+
+test("parseGenericOutput: markdown-envelope die eigenlijk kaart-JSON is → upgrade naar report", () => {
+  const reportJson = JSON.stringify({
+    heroTekst: "H",
+    secties: [{ titel: "S", feiten: [{ label: "P", value: "gered" }] }],
+  });
+  const envelope = JSON.stringify({ kind: "markdown", markdown: reportJson });
+  const out = parseGenericOutput(envelope);
+  expect(out?.kind).toBe("report");
+  if (out?.kind === "report") {
+    expect(out.report.secties[0].feiten).toEqual([{ label: "P", waarde: "gered" }]);
+  }
+});
+
+test("parseGenericOutput: echte prose-markdown blijft markdown", () => {
+  const envelope = JSON.stringify({ kind: "markdown", markdown: "# Titel\n\nGewone proza." });
+  expect(parseGenericOutput(envelope)?.kind).toBe("markdown");
+});
+
+test("parseGenericOutput: geldig report-envelope blijft report", () => {
+  const envelope = JSON.stringify({ kind: "report", report: { secties: [{ titel: "S" }] } });
+  expect(parseGenericOutput(envelope)?.kind).toBe("report");
 });

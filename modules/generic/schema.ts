@@ -87,6 +87,28 @@ function sanitizeGenericReport(r: GenericReport): GenericReport {
   };
 }
 
+/**
+ * Haal een JSON-object uit tekst en parse als GenericReport. Null als het geen
+ * (geldig genoeg) rapport is. Client-veilig: spiegelt de extractie van
+ * extractAndParseJson (fences strippen + eerste { t/m laatste }) zonder de
+ * AI-SDK te importeren. Gebruikt door de render-upgrade in parseGenericOutput.
+ */
+export function tryParseGenericReport(text: string): GenericReport | null {
+  try {
+    let cleaned = text
+      .trim()
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/i, "");
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start === -1 || end === -1 || end <= start) return null;
+    cleaned = cleaned.slice(start, end + 1);
+    return GenericReport.parse(JSON.parse(cleaned));
+  } catch {
+    return null;
+  }
+}
+
 export function parseGenericOutput(raw: string | null): GenericOutput | null {
   if (!raw) return null;
   try {
@@ -98,11 +120,22 @@ export function parseGenericOutput(raw: string | null): GenericOutput | null {
       };
     }
     if (parsed.kind === "markdown" && typeof parsed.markdown === "string") {
+      // Render-upgrade: een 'markdown'-envelope die eigenlijk geldige kaart-JSON
+      // bevat (bv. door de oude strenge parsing) alsnog als rapport tonen.
+      const upgraded = tryParseGenericReport(parsed.markdown);
+      if (upgraded) {
+        return { kind: "report", report: sanitizeGenericReport(upgraded) };
+      }
       return { kind: "markdown", markdown: stripDashes(parsed.markdown) };
     }
     return null;
   } catch {
-    // Oudere of handmatig gezette output: toon als markdown.
+    // Envelope is geen JSON (legacy/handmatig): probeer alsnog als rapport,
+    // anders toon als markdown.
+    const upgraded = tryParseGenericReport(raw);
+    if (upgraded) {
+      return { kind: "report", report: sanitizeGenericReport(upgraded) };
+    }
     return { kind: "markdown", markdown: stripDashes(raw) };
   }
 }
