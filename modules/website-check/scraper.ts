@@ -8,6 +8,13 @@ import {
 } from "@/lib/scraping/snapshot-service";
 
 const DEFAULT_MAX_CHARS = 6000;
+// Absolute bovengrens die ALTIJD geldt, ook bij maxChars=0 ("geen cap").
+// Claude 1M-token context: 1 token ≈ 3 chars Nederlands. Prompt-template +
+// format-example + strictness kosten ~30K tokens; markdown-budget dus ~950K
+// tokens ≈ 2.8M chars. We houden ruime marge op 2M chars.
+// fourtop.nl in unlimited-modus leverde een snapshot van >3M chars op wat
+// omgerekend 1.1M tokens werd → 400 "prompt is too long" van Claude.
+const HARD_UPPER_CHARS = 2_000_000;
 
 export type ScrapeWebsiteOptions = {
   /**
@@ -49,7 +56,14 @@ export async function scrapeWebsite(
 ): Promise<string> {
   const baseUrl = normalizeBaseUrl(rawUrl);
   const cap = options.maxChars === 0 ? Infinity : options.maxChars ?? DEFAULT_MAX_CHARS;
-  const slice = (md: string) => (Number.isFinite(cap) ? md.slice(0, cap as number) : md);
+  const effectiveCap = Math.min(Number.isFinite(cap) ? (cap as number) : Infinity, HARD_UPPER_CHARS);
+  const slice = (md: string) => {
+    if (md.length <= effectiveCap) return md;
+    console.warn(
+      `[website-check] markdown truncated from ${md.length} to ${effectiveCap} chars (HARD_UPPER_CHARS)`,
+    );
+    return md.slice(0, effectiveCap);
+  };
 
   if (options.userId && options.requireExistingSnapshot) {
     const snapshot = await findAnySnapshot(options.userId, "website", baseUrl);
