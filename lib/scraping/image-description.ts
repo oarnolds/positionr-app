@@ -141,16 +141,29 @@ export async function describeImageBuffers(
   const map: DescriptionMap = new Map();
   if (images.length === 0) return map;
 
+  const totalBatches = Math.ceil(images.length / BATCH_SIZE);
+  const visionStart = Date.now();
   for (let i = 0; i < images.length; i += BATCH_SIZE) {
     const batch = images.slice(i, i + BATCH_SIZE);
+    const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+    const batchStart = Date.now();
     try {
       const results = await describeBatch(batch);
       batch.forEach((img, j) => map.set(img.key, results[j]));
-    } catch {
+      console.log(
+        `[md-timing]   vision batch ${batchNum}/${totalBatches} (n=${batch.length}) done in ${Date.now() - batchStart}ms`,
+      );
+    } catch (err) {
       // Vision-call mislukt — laat deze batch leeg en ga door.
       batch.forEach((img) => map.set(img.key, null));
+      console.warn(
+        `[md-timing]   vision batch ${batchNum}/${totalBatches} FAILED in ${Date.now() - batchStart}ms: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
+  console.log(
+    `[md-timing] describeImageBuffers TOTAL vision ${Date.now() - visionStart}ms for ${images.length} images (${totalBatches} batches)`,
+  );
   return map;
 }
 
@@ -162,8 +175,18 @@ export async function describeImageUrls(
   images: UrlImageInput[]
 ): Promise<DescriptionMap> {
   const downloaded: ImageInput[] = [];
+  const dlStart = Date.now();
+  let slowDownloads = 0;
   for (const img of images) {
+    const t0 = Date.now();
     const data = await downloadImage(img.url);
+    const dt = Date.now() - t0;
+    if (dt > 3000) {
+      slowDownloads++;
+      console.log(
+        `[md-timing]   slow download ${dt}ms ${data ? "ok" : "FAIL"} ${img.url}`,
+      );
+    }
     if (!data) continue;
     downloaded.push({
       key: img.key,
@@ -172,5 +195,8 @@ export async function describeImageUrls(
       alt: img.alt,
     });
   }
+  console.log(
+    `[md-timing] image downloads done in ${Date.now() - dlStart}ms (attempted=${images.length}, ok=${downloaded.length}, skipped=${images.length - downloaded.length}, slow>3s=${slowDownloads})`,
+  );
   return describeImageBuffers(downloaded);
 }

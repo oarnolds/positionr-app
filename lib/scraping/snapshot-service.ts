@@ -142,9 +142,21 @@ export async function getOrCreateSnapshot(
     if (cached) return { snapshot: cached, fresh: false };
   }
 
+  const overallStart = Date.now();
+  const opts = input.scrapeOptions ?? {};
+  console.log(
+    `[md-timing] start kind=${input.kind} url=${sourceUrl} unlimited=${opts.unlimited === true} includeImages=${opts.includeImages !== false}`,
+  );
+
+  const scrapeStart = Date.now();
   const result = await urlToMarkdown(sourceUrl, input.scrapeOptions);
+  console.log(
+    `[md-timing] urlToMarkdown done in ${Date.now() - scrapeStart}ms (markdown=${result.markdown.length} chars, pages=${result.pages.length})`,
+  );
+
   const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
 
+  const upsertStart = Date.now();
   const snapshot = await upsertSnapshot({
     userId: input.userId,
     kind: input.kind,
@@ -155,15 +167,19 @@ export async function getOrCreateSnapshot(
     pages: result.pages,
     expiresAt,
   });
+  console.log(`[md-timing] upsert done in ${Date.now() - upsertStart}ms`);
 
   // Auto-indexeer voor RAG. Faalt zacht — als embeddings stuk zijn (bv. OpenAI
   // key ontbreekt) blijft de snapshot zelf gewoon werken voor andere modules.
+  const indexStart = Date.now();
   try {
     await indexSnapshot(snapshot);
+    console.log(`[md-timing] indexSnapshot done in ${Date.now() - indexStart}ms`);
   } catch (err) {
     console.warn("indexSnapshot mislukt (snapshot blijft bruikbaar):", err);
   }
 
+  console.log(`[md-timing] TOTAL getOrCreateSnapshot ${Date.now() - overallStart}ms`);
   return { snapshot, fresh: true };
 }
 

@@ -504,7 +504,13 @@ export async function urlToMarkdown(
   options: UrlToMarkdownOptions = {}
 ): Promise<UrlMarkdownResult> {
   const baseUrl = normalizeBaseUrl(rawUrl);
+
+  const resolveStart = Date.now();
   const { urls, skippedLegacyUrls } = await resolveTargetUrls(baseUrl, options);
+  console.log(
+    `[md-timing] resolveTargetUrls done in ${Date.now() - resolveStart}ms (urls=${urls.length}, skippedLegacy=${skippedLegacyUrls.length})`,
+  );
+
   const turndown = createTurndown();
   const includeImages = options.includeImages !== false;
   // Caps optioneel uitschakelen voor "alle pagina's"-modus.
@@ -516,8 +522,15 @@ export async function urlToMarkdown(
   // requests werden bij nleyes.com ~70% van de pagina's geblokkeerd.
   // Homepage (index 0) krijgt menuBaseUrl mee zodat we het hoofdmenu extraheren.
   const targets = urls.map((u, i) => ({ url: u, isHome: i === 0 }));
+  const fetchStart = Date.now();
   const settled = await mapWithConcurrency(targets, FETCH_CONCURRENCY, (t) =>
     pageToMarkdown(t.url, turndown, includeImages, t.isHome ? baseUrl : null),
+  );
+  const okCount = settled.filter((r) => r.status === "fulfilled" && r.value).length;
+  const failCount = settled.filter((r) => r.status === "rejected").length;
+  const emptyCount = settled.filter((r) => r.status === "fulfilled" && !r.value).length;
+  console.log(
+    `[md-timing] page fetches done in ${Date.now() - fetchStart}ms (ok=${okCount}, failed=${failCount}, empty=${emptyCount}, concurrency=${FETCH_CONCURRENCY})`,
   );
 
   // Verzamel alle unique images uit alle pagina's voor één enkele vision-batch
@@ -529,9 +542,16 @@ export async function urlToMarkdown(
       if (!allImagesByUrl.has(img.url)) allImagesByUrl.set(img.url, img);
     }
   }
+  console.log(
+    `[md-timing] collected ${allImagesByUrl.size} unique images across pages (includeImages=${includeImages})`,
+  );
+  const describeStart = Date.now();
   const descriptions = includeImages
     ? await describeImageUrls(Array.from(allImagesByUrl.values()))
     : (new Map() as DescriptionMap);
+  console.log(
+    `[md-timing] describeImageUrls done in ${Date.now() - describeStart}ms (descriptions=${descriptions.size})`,
+  );
 
   const pages: PageResult[] = [];
   const sections: string[] = [];
