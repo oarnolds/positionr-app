@@ -4,6 +4,14 @@ import { PRICING } from "@/lib/ai/pricing";
 const FETCH_TIMEOUT_MS = 6_000;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // Claude vision-limit per image
 const BATCH_SIZE = 8;
+// Parallelle Vision-batches: Anthropic rate-limits genereus per minute, en met 4
+// parallel + BATCH_SIZE=8 zitten we op ~32 images "in flight" — ruim onder de
+// per-second image-limits die de meeste tier-3 accounts hebben. Meer parallel
+// levert diminishing returns op omdat Claude Vision zelf de bottleneck wordt.
+const VISION_CONCURRENCY = 4;
+// Parallelle image-downloads: bulk downloads van externe URLs; 10 concurrent
+// laat de site-server ademen (geen self-DDOS) en snijdt de wall-clock dramatisch.
+const DOWNLOAD_CONCURRENCY = 10;
 
 const SUPPORTED_MIME = new Set([
   "image/jpeg",
@@ -131,9 +139,36 @@ async function describeBatch(
 }
 
 /**
+ * Werker-pool die maximaal `limit` items parallel verwerkt. Behoudt input-order
+ * in results. Verschil met Promise.all: throughput blijft constant hoog omdat
+ * snelle items direct doorschuiven naar het volgende item i.p.v. te wachten op
+ * de traagste van hun batch.
+ */
+async function poolMap<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  async function worker() {
+    while (true) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      results[i] = await fn(items[i], i);
+    }
+  }
+  const workers = Array.from({ length: Math.min(limit, items.length) }, () =>
+    worker(),
+  );
+  await Promise.all(workers);
+  return results;
+}
+
+/**
  * Beschrijft een set images via Claude vision. Verwerkt in batches van
- * BATCH_SIZE; faalt zacht (lege description) bij fouten zodat de scrape
- * doorgaat.
+ * BATCH_SIZE, VISION_CONCURRENCY batches parallel; faalt zacht (lege
+ * description) bij fouten zodat de scrape doorgaat.
  */
 export async function describeImageBuffers(
   images: ImageInput[]
@@ -141,28 +176,30 @@ export async function describeImageBuffers(
   const map: DescriptionMap = new Map();
   if (images.length === 0) return map;
 
-  const totalBatches = Math.ceil(images.length / BATCH_SIZE);
-  const visionStart = Date.now();
+  const batches: ImageInput[][] = [];
   for (let i = 0; i < images.length; i += BATCH_SIZE) {
-    const batch = images.slice(i, i + BATCH_SIZE);
-    const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+    batches.push(images.slice(i, i + BATCH_SIZE));
+  }
+  const visionStart = Date.now();
+  await poolMap(batches, VISION_CONCURRENCY, async (batch, idx) => {
+    const batchNum = idx + 1;
     const batchStart = Date.now();
     try {
       const results = await describeBatch(batch);
       batch.forEach((img, j) => map.set(img.key, results[j]));
       console.log(
-        `[md-timing]   vision batch ${batchNum}/${totalBatches} (n=${batch.length}) done in ${Date.now() - batchStart}ms`,
+        `[md-timing]   vision batch ${batchNum}/${batches.length} (n=${batch.length}) done in ${Date.now() - batchStart}ms`,
       );
     } catch (err) {
       // Vision-call mislukt — laat deze batch leeg en ga door.
       batch.forEach((img) => map.set(img.key, null));
       console.warn(
-        `[md-timing]   vision batch ${batchNum}/${totalBatches} FAILED in ${Date.now() - batchStart}ms: ${err instanceof Error ? err.message : String(err)}`,
+        `[md-timing]   vision batch ${batchNum}/${batches.length} FAILED in ${Date.now() - batchStart}ms: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
-  }
+  });
   console.log(
-    `[md-timing] describeImageBuffers TOTAL vision ${Date.now() - visionStart}ms for ${images.length} images (${totalBatches} batches)`,
+    `[md-timing] describeImageBuffers TOTAL vision ${Date.now() - visionStart}ms for ${images.length} images (${batches.length} batches, concurrency=${VISION_CONCURRENCY})`,
   );
   return map;
 }
@@ -170,14 +207,14 @@ export async function describeImageBuffers(
 /**
  * Variant die zelf images downloadt aan de hand van URL. Skipt images die
  * niet te downloaden zijn (timeout, te groot, niet-ondersteund mime-type).
+ * Downloads gebeuren parallel (DOWNLOAD_CONCURRENCY).
  */
 export async function describeImageUrls(
   images: UrlImageInput[]
 ): Promise<DescriptionMap> {
-  const downloaded: ImageInput[] = [];
   const dlStart = Date.now();
   let slowDownloads = 0;
-  for (const img of images) {
+  const results = await poolMap(images, DOWNLOAD_CONCURRENCY, async (img) => {
     const t0 = Date.now();
     const data = await downloadImage(img.url);
     const dt = Date.now() - t0;
@@ -187,16 +224,17 @@ export async function describeImageUrls(
         `[md-timing]   slow download ${dt}ms ${data ? "ok" : "FAIL"} ${img.url}`,
       );
     }
-    if (!data) continue;
-    downloaded.push({
+    if (!data) return null;
+    return {
       key: img.key,
       buffer: data.buffer,
       mimeType: data.mimeType,
       alt: img.alt,
-    });
-  }
+    } as ImageInput;
+  });
+  const downloaded = results.filter((r): r is ImageInput => r !== null);
   console.log(
-    `[md-timing] image downloads done in ${Date.now() - dlStart}ms (attempted=${images.length}, ok=${downloaded.length}, skipped=${images.length - downloaded.length}, slow>3s=${slowDownloads})`,
+    `[md-timing] image downloads done in ${Date.now() - dlStart}ms (attempted=${images.length}, ok=${downloaded.length}, skipped=${images.length - downloaded.length}, slow>3s=${slowDownloads}, concurrency=${DOWNLOAD_CONCURRENCY})`,
   );
   return describeImageBuffers(downloaded);
 }

@@ -17,6 +17,12 @@ const MAX_CHARS_TOTAL = 1_000_000;
 const USER_AGENT = "PositionrBot/1.0 (+https://app.positionr.nl)";
 const MAX_IMAGES_PER_PAGE = 25;
 const DEFAULT_MAX_PAGES = 200;
+// Hard cap op unieke images over de HELE scrape, óók in unlimited-modus.
+// Boven ~150 leveren extra images vrijwel geen analyse-signaal op (veel
+// dubbele logo's, decoratieve elementen); wél ~8s Vision-tijd per 8 images.
+// Bij fourtop.nl leverde de scrape 488 unieke images op = 61 Vision-batches
+// = veel meer dan het 180s serverless-budget zonder deze cap.
+const MAX_UNIQUE_IMAGES_TOTAL = 150;
 
 const DEFAULT_PATHS = [
   "",
@@ -535,15 +541,23 @@ export async function urlToMarkdown(
 
   // Verzamel alle unique images uit alle pagina's voor één enkele vision-batch
   // (dedup over pagina's heen — hetzelfde logo komt op meerdere pagina's voor).
+  // Stopt zodra MAX_UNIQUE_IMAGES_TOTAL bereikt is; images uit latere pagina's
+  // worden weggelaten (early pages meestal representatiever dan tag-/detail-pagina's).
   const allImagesByUrl = new Map<string, UrlImageInput>();
-  for (const r of settled) {
+  let imagesTruncated = false;
+  outer: for (const r of settled) {
     if (r.status !== "fulfilled" || !r.value) continue;
     for (const img of r.value.images) {
-      if (!allImagesByUrl.has(img.url)) allImagesByUrl.set(img.url, img);
+      if (allImagesByUrl.has(img.url)) continue;
+      if (allImagesByUrl.size >= MAX_UNIQUE_IMAGES_TOTAL) {
+        imagesTruncated = true;
+        break outer;
+      }
+      allImagesByUrl.set(img.url, img);
     }
   }
   console.log(
-    `[md-timing] collected ${allImagesByUrl.size} unique images across pages (includeImages=${includeImages})`,
+    `[md-timing] collected ${allImagesByUrl.size} unique images across pages (includeImages=${includeImages}, cap=${MAX_UNIQUE_IMAGES_TOTAL}${imagesTruncated ? ", TRUNCATED" : ""})`,
   );
   const describeStart = Date.now();
   const descriptions = includeImages
