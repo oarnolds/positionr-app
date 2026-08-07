@@ -876,6 +876,29 @@ async function pageToMarkdown(
   if (!mainHtml.trim()) return null;
 
   const main$ = cheerio.load(mainHtml, null, false);
+
+  // Strip placeholder-contact-links + lege anchor-artifacts uit de body vóór
+  // turndown. Anders belanden ze in de markdown als "[](mailto:hey@company.com)"
+  // (turndown-output voor leeg-anchor met href) en gaat de LLM ze alsnog als
+  // echte contact-info oppikken, ondanks dat ze in frontmatter's alleen_in_source
+  // gemarkeerd zijn. Frontmatter blijft intact — extractContactInfo draaide eerder.
+  main$('a[href^="mailto:" i], a[href^="tel:" i]').each((_, el) => {
+    const $a = main$(el);
+    const href = $a.attr("href") ?? "";
+    const isEmpty = !$a.text().trim() && $a.children().length === 0;
+    if (isEmpty) {
+      $a.remove();
+      return;
+    }
+    if (/^mailto:/i.test(href)) {
+      const email = href.replace(/^mailto:/i, "").split("?")[0].trim();
+      if (email && isPlaceholderEmail(email)) $a.remove();
+    } else if (/^tel:/i.test(href)) {
+      const tel = href.replace(/^tel:/i, "").trim();
+      if (tel && isPlaceholderTel(tel)) $a.remove();
+    }
+  });
+
   let images: UrlImageInput[] = [];
   let placeholderByUrl = new Map<string, string>();
 

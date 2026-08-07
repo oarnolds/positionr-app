@@ -260,6 +260,49 @@ test("extractContactInfo: placeholder-domeinen gaan ALTIJD naar sourceOnly, ook 
   expect(info.sourceOnly.telephones).toEqual(["+1234567890"]);
 });
 
+test("urlToMarkdown: placeholder-mailto + lege anchor-links worden uit body-content gestript", async () => {
+  const html = `<html><body><main>
+    <h1>Fourtop</h1>
+    <p>Echt: <a href="mailto:info@fourtop.nl">info@fourtop.nl</a></p>
+    <h3><a href="https://boemcybersecurity.nl/">Meer over BOEM</a><a href="mailto:hey@company.com"></a></h3>
+    <p>Placeholder mét tekst: <a href="mailto:test@example.com">Mail ons</a></p>
+    <p>Fake tel: <a href="tel:1234567890">Bel</a></p>
+  </main></body></html>`;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      new Response(html, {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      })
+    )
+  );
+  const result = await urlToMarkdown("https://x.nl", {
+    includeImages: false,
+    useSitemap: false,
+    paths: [""],
+  });
+  // Splits body van frontmatter — frontmatter MAG de placeholders bevatten
+  // (onder alleen_in_source), body NIET.
+  const parts = result.markdown.split(/^---$/m);
+  // parts[0] = "" (voor eerste ---), parts[1] = frontmatter, parts[2+] = body
+  const frontmatter = parts[1] ?? "";
+  const body = parts.slice(2).join("---");
+
+  // Echt adres blijft in body
+  expect(body).toContain("info@fourtop.nl");
+  // Placeholder + fake tel + lege anchor: nergens meer in body
+  expect(body).not.toContain("hey@company.com");
+  expect(body).not.toContain("test@example.com");
+  expect(body).not.toContain("1234567890");
+  // Frontmatter houdt placeholders in alleen_in_source (voor de LLM als hint)
+  expect(frontmatter).toContain("hey@company.com");
+  expect(frontmatter).toContain("alleen_in_source");
+  // Legitieme link naast lege anchor blijft intact
+  expect(body).toContain("Meer over BOEM");
+  expect(body).toContain("boemcybersecurity.nl");
+});
+
 test("mergeContactInfo: dedupliceert visible EN sourceOnly buckets afzonderlijk", () => {
   const a = {
     name: "Eerste",
