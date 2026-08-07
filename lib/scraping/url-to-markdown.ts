@@ -136,6 +136,31 @@ export function isLegacyUrl(url: string): boolean {
   }
 }
 
+/**
+ * Herkent sub-pagina's van een blog/nieuws-sectie aan hun URL-pad:
+ *   /blog/ergens  → true (sub-pagina, SKIP)
+ *   /blog          → false (index-pagina, KEEP)
+ *
+ * De MD-snapshot is bedoeld voor een algemene indruk van de bedrijfsopzet
+ * en actualiteit. Individuele blogposts verdunnen de analysebron (en tellen
+ * fors op in Vision-kosten + Claude-tokenbudget) zonder veel signaal toe te
+ * voegen. Index-pagina's zelf blijven staan: die laten zien of het bedrijf
+ * überhaupt actief publiceert en waar het over gaat.
+ *
+ * Case-studies, kennisbank-artikelen en publicaties (cases/klantcases/kennis)
+ * worden BEWUST NIET geskipt — die zijn juist waardevol voor B2B-positionering.
+ */
+export function isBlogSubpage(url: string): boolean {
+  try {
+    const path = new URL(url).pathname;
+    return /^\/(blog|nieuws|news|artikelen|articles|posts|post|insights|updates)\/[^/]/i.test(
+      path,
+    );
+  } catch {
+    return false;
+  }
+}
+
 export type MenuLink = { label: string; href: string };
 
 // Kandidaat-selectors voor het PRIMAIRE menu, op prioriteit. Footer-navs en
@@ -478,12 +503,22 @@ async function pageToMarkdown(
 async function resolveTargetUrls(
   baseUrl: string,
   options: UrlToMarkdownOptions
-): Promise<{ urls: string[]; skippedLegacyUrls: string[] }> {
+): Promise<{
+  urls: string[];
+  skippedLegacyUrls: string[];
+  skippedBlogUrls: string[];
+}> {
   // Expliciet opgegeven doelen (single page of vaste paden) respecteren we
-  // altijd, ook als de URL er "oud" uitziet — dat is bewuste gebruikersintentie.
-  if (options.singlePage) return { urls: [baseUrl], skippedLegacyUrls: [] };
+  // altijd, ook als de URL er "oud" of "blog-sub" uitziet — dat is bewuste
+  // gebruikersintentie.
+  if (options.singlePage)
+    return { urls: [baseUrl], skippedLegacyUrls: [], skippedBlogUrls: [] };
   if (options.paths) {
-    return { urls: options.paths.map((p) => baseUrl + p), skippedLegacyUrls: [] };
+    return {
+      urls: options.paths.map((p) => baseUrl + p),
+      skippedLegacyUrls: [],
+      skippedBlogUrls: [],
+    };
   }
 
   const maxPages = options.unlimited
@@ -495,13 +530,19 @@ async function resolveTargetUrls(
       const homepage = baseUrl;
       const all = Array.from(new Set<string>([homepage, ...sitemapUrls]));
       const skippedLegacyUrls = all.filter(isLegacyUrl);
-      const urls = all.filter((u) => !isLegacyUrl(u)).slice(0, maxPages);
-      return { urls, skippedLegacyUrls };
+      const skippedBlogUrls = all.filter(
+        (u) => !isLegacyUrl(u) && isBlogSubpage(u),
+      );
+      const urls = all
+        .filter((u) => !isLegacyUrl(u) && !isBlogSubpage(u))
+        .slice(0, maxPages);
+      return { urls, skippedLegacyUrls, skippedBlogUrls };
     }
   }
   return {
     urls: DEFAULT_PATHS.map((p) => baseUrl + p).slice(0, maxPages),
     skippedLegacyUrls: [],
+    skippedBlogUrls: [],
   };
 }
 
@@ -512,9 +553,12 @@ export async function urlToMarkdown(
   const baseUrl = normalizeBaseUrl(rawUrl);
 
   const resolveStart = Date.now();
-  const { urls, skippedLegacyUrls } = await resolveTargetUrls(baseUrl, options);
+  const { urls, skippedLegacyUrls, skippedBlogUrls } = await resolveTargetUrls(
+    baseUrl,
+    options,
+  );
   console.log(
-    `[md-timing] resolveTargetUrls done in ${Date.now() - resolveStart}ms (urls=${urls.length}, skippedLegacy=${skippedLegacyUrls.length})`,
+    `[md-timing] resolveTargetUrls done in ${Date.now() - resolveStart}ms (urls=${urls.length}, skippedLegacy=${skippedLegacyUrls.length}, skippedBlog=${skippedBlogUrls.length})`,
   );
 
   const turndown = createTurndown();
@@ -663,6 +707,20 @@ export async function urlToMarkdown(
           "# technisch verbeterpunt: verouderde pagina's schaden de vindbaarheid.",
           "verouderde_paginas_gevonden:",
           ...skippedLegacyUrls.map((u) => `  - ${u}`),
+        ]
+      : []),
+    ...(skippedBlogUrls.length
+      ? [
+          "# Onderstaande URL's zijn blog-/nieuws-/artikel-sub-pagina's en zijn",
+          "# bewust NIET mee-gescraped. De index-pagina zelf (bv. /blog) is wél",
+          "# meegenomen zodat je weet dát het bedrijf publiceert. Individuele posts",
+          "# verdunnen de analysebron zonder veel positionering-signaal.",
+          `# Aantal genegeerde blog-sub-pagina's: ${skippedBlogUrls.length}`,
+          "blog_subpaginas_genegeerd:",
+          ...skippedBlogUrls.slice(0, 20).map((u) => `  - ${u}`),
+          ...(skippedBlogUrls.length > 20
+            ? [`  # ... en nog ${skippedBlogUrls.length - 20} meer`]
+            : []),
         ]
       : []),
     "---",

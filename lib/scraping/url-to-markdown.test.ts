@@ -2,6 +2,7 @@ import { test, expect, vi, afterEach } from "vitest";
 import * as cheerio from "cheerio";
 import {
   extractPrimaryMenu,
+  isBlogSubpage,
   isLegacyUrl,
   normalizeBaseUrl,
   urlToMarkdown,
@@ -56,6 +57,36 @@ test("extractPrimaryMenu: negeert externe links en anchors, dedupliceert", () =>
 test("extractPrimaryMenu: lege lijst als alleen een footer-menu bestaat", () => {
   const html = `<footer><nav><a href="/a/">A</a><a href="/b/">B</a></nav></footer>`;
   expect(extractPrimaryMenu(cheerio.load(html), "https://x.nl")).toEqual([]);
+});
+
+test("isBlogSubpage: herkent blog/nieuws/artikel sub-pagina's, laat index-pagina staan", () => {
+  // SKIP: sub-pagina's (heeft content na het blog-segment)
+  expect(isBlogSubpage("https://x.nl/blog/mijn-post")).toBe(true);
+  expect(isBlogSubpage("https://x.nl/blog/2024/how-to")).toBe(true);
+  expect(isBlogSubpage("https://x.nl/nieuws/laatste-update")).toBe(true);
+  expect(isBlogSubpage("https://x.nl/news/latest")).toBe(true);
+  expect(isBlogSubpage("https://x.nl/artikelen/analyse-2024")).toBe(true);
+  expect(isBlogSubpage("https://x.nl/articles/some-article")).toBe(true);
+  expect(isBlogSubpage("https://x.nl/posts/post-title")).toBe(true);
+  expect(isBlogSubpage("https://x.nl/post/single-post")).toBe(true);
+  expect(isBlogSubpage("https://x.nl/insights/mijn-inzicht")).toBe(true);
+  expect(isBlogSubpage("https://x.nl/updates/nieuwe-feature")).toBe(true);
+  expect(isBlogSubpage("https://x.nl/BLOG/uppercase-should-match")).toBe(true);
+  // KEEP: index-pagina's zelf (voor actualiteit-check)
+  expect(isBlogSubpage("https://x.nl/blog")).toBe(false);
+  expect(isBlogSubpage("https://x.nl/blog/")).toBe(false);
+  expect(isBlogSubpage("https://x.nl/nieuws")).toBe(false);
+  expect(isBlogSubpage("https://x.nl/artikelen/")).toBe(false);
+  // KEEP: geen false positives op woorden die 'blog'/'nieuws' bevatten
+  expect(isBlogSubpage("https://x.nl/products/blog-integrations")).toBe(false);
+  expect(isBlogSubpage("https://x.nl/blogger-tools")).toBe(false);
+  expect(isBlogSubpage("https://x.nl/blogs/something")).toBe(false); // plural niet in lijst
+  // KEEP: cases + kennis blijven staan (waardevol voor B2B-analyse)
+  expect(isBlogSubpage("https://x.nl/cases/klant-a")).toBe(false);
+  expect(isBlogSubpage("https://x.nl/klantcases/project")).toBe(false);
+  expect(isBlogSubpage("https://x.nl/kennis/artikel")).toBe(false);
+  // Onzin-input degradeert netjes
+  expect(isBlogSubpage("niet-eens-een-url")).toBe(false);
 });
 
 test("isLegacyUrl: herkent oud/old/archief-markers in het pad", () => {
