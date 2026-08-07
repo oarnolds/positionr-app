@@ -9,12 +9,13 @@ import {
 
 const DEFAULT_MAX_CHARS = 6000;
 // Absolute bovengrens die ALTIJD geldt, ook bij maxChars=0 ("geen cap").
-// Claude 1M-token context: 1 token ≈ 3 chars Nederlands. Prompt-template +
-// format-example + strictness kosten ~30K tokens; markdown-budget dus ~950K
-// tokens ≈ 2.8M chars. We houden ruime marge op 2M chars.
-// fourtop.nl in unlimited-modus leverde een snapshot van >3M chars op wat
-// omgerekend 1.1M tokens werd → 400 "prompt is too long" van Claude.
-const HARD_UPPER_CHARS = 2_000_000;
+// Claude 1M-token context. Voor scraped Nederlandse content met veel URLs,
+// headers en structuur is de tokenizer EFFICIËNT tegen 't Latijnse alfabet:
+// ~2 chars/token (i.p.v. de ruimere 3-4 chars/token bij vloeiende prozatekst).
+// Dus 2M chars = ~1M tokens = OVER limit; 1.5M chars = ~750K tokens + ~30K
+// prompt-overhead + ruime marge. Empirisch bevestigd toen fourtop.nl bij een
+// 2M-cap 1.045M tokens produceerde → 400 "prompt is too long" van Claude.
+const HARD_UPPER_CHARS = 1_500_000;
 
 export type ScrapeWebsiteOptions = {
   /**
