@@ -1,9 +1,12 @@
 import { test, expect, vi, afterEach } from "vitest";
 import * as cheerio from "cheerio";
 import {
+  extractContactInfo,
+  extractHeaderCtas,
   extractPrimaryMenu,
   isBlogSubpage,
   isLegacyUrl,
+  mergeContactInfo,
   normalizeBaseUrl,
   urlToMarkdown,
 } from "./url-to-markdown";
@@ -57,6 +60,162 @@ test("extractPrimaryMenu: negeert externe links en anchors, dedupliceert", () =>
 test("extractPrimaryMenu: lege lijst als alleen een footer-menu bestaat", () => {
   const html = `<footer><nav><a href="/a/">A</a><a href="/b/">B</a></nav></footer>`;
   expect(extractPrimaryMenu(cheerio.load(html), "https://x.nl")).toEqual([]);
+});
+
+test("extractHeaderCtas: pakt button-styled links uit header (buiten nav)", () => {
+  // Fourtop-achtig patroon: CTA-buttons als <a class="btn ..."> in header
+  const html = `
+    <header>
+      <nav>
+        <a href="/diensten">Diensten</a>
+        <a href="/over-ons">Over ons</a>
+      </nav>
+      <a href="/contact" class="btn btn--fill btn--pill">Contact</a>
+      <a href="/afspraak" class="btn btn--accent">Afspraak</a>
+      <a href="/demo" role="button">Demo</a>
+    </header>
+    <footer>
+      <a href="/andere-cta" class="btn">Voettekst-CTA</a>
+    </footer>`;
+  const ctas = extractHeaderCtas(cheerio.load(html), "https://x.nl");
+  expect(ctas.map((c) => c.href)).toEqual(["/contact", "/afspraak", "/demo"]);
+  // Voettekst-CTA in <footer> mag NIET meekomen
+  expect(ctas.some((c) => c.href === "/andere-cta")).toBe(false);
+});
+
+test("extractHeaderCtas: dedupe op href (bv. desktop + mobile duplicaten)", () => {
+  const html = `
+    <header>
+      <a href="/contact" class="btn btn--static">Contact</a>
+      <a href="/contact" class="btn btn--sticky">Contact</a>
+      <a href="/contact" class="btn btn--mobile">Contact</a>
+    </header>`;
+  const ctas = extractHeaderCtas(cheerio.load(html), "https://x.nl");
+  expect(ctas).toHaveLength(1);
+  expect(ctas[0].href).toBe("/contact");
+});
+
+test("extractHeaderCtas: cross-origin en tel:/mailto: worden overgeslagen", () => {
+  const html = `
+    <header>
+      <a href="/goed" class="btn">Goed</a>
+      <a href="tel:0612345678" class="btn">Bel</a>
+      <a href="mailto:info@x.nl" class="btn">Mail</a>
+      <a href="https://andersite.nl/ergens" class="btn">Extern</a>
+    </header>`;
+  const ctas = extractHeaderCtas(cheerio.load(html), "https://x.nl");
+  expect(ctas.map((c) => c.href)).toEqual(["/goed"]);
+});
+
+test("extractContactInfo: haalt tel:/mailto:/address uit HTML", () => {
+  const html = `
+    <html><body>
+      <header>
+        <a href="mailto:info@x.nl">info@x.nl</a>
+        <a href="tel:+31201234567">020 123 4567</a>
+      </header>
+      <footer>
+        <address>Kerkstraat 1, 1234 AB Amsterdam</address>
+        <a href="mailto:servicedesk@x.nl">Servicedesk</a>
+      </footer>
+    </body></html>`;
+  const info = extractContactInfo(cheerio.load(html));
+  expect(info.emails.sort()).toEqual(["info@x.nl", "servicedesk@x.nl"]);
+  expect(info.telephones).toEqual(["+31201234567"]);
+  expect(info.addresses).toEqual(["Kerkstraat 1, 1234 AB Amsterdam"]);
+});
+
+test("extractContactInfo: parseert JSON-LD LocalBusiness", () => {
+  const html = `
+    <html><head>
+      <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": "Voorbeeld B.V.",
+        "telephone": "+31 20 555 0000",
+        "email": "hallo@voorbeeld.nl",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Herengracht 100",
+          "postalCode": "1015 BS",
+          "addressLocality": "Amsterdam",
+          "addressCountry": "NL"
+        },
+        "openingHours": ["Mo-Fr 09:00-17:00", "Sa 10:00-14:00"],
+        "sameAs": ["https://linkedin.com/company/voorbeeld", "https://twitter.com/voorbeeld"]
+      }
+      </script>
+    </head><body></body></html>`;
+  const info = extractContactInfo(cheerio.load(html));
+  expect(info.name).toBe("Voorbeeld B.V.");
+  expect(info.telephones).toContain("+31 20 555 0000");
+  expect(info.emails).toContain("hallo@voorbeeld.nl");
+  expect(info.addresses[0]).toContain("Herengracht 100");
+  expect(info.addresses[0]).toContain("1015 BS Amsterdam");
+  expect(info.openingHours).toEqual(["Mo-Fr 09:00-17:00", "Sa 10:00-14:00"]);
+  expect(info.socialLinks).toEqual([
+    "https://linkedin.com/company/voorbeeld",
+    "https://twitter.com/voorbeeld",
+  ]);
+});
+
+test("extractContactInfo: JSON-LD binnen @graph structuur", () => {
+  const html = `
+    <html><head>
+      <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          { "@type": "WebSite", "name": "x.nl" },
+          { "@type": "Organization", "name": "X BV", "telephone": "+31 6 1234 5678" }
+        ]
+      }
+      </script>
+    </head><body></body></html>`;
+  const info = extractContactInfo(cheerio.load(html));
+  expect(info.name).toBe("X BV");
+  expect(info.telephones).toContain("+31 6 1234 5678");
+});
+
+test("extractContactInfo: kapotte JSON-LD faalt zacht (geen throw)", () => {
+  const html = `
+    <html><head>
+      <script type="application/ld+json">{ dit is geen json </script>
+      <script type="application/ld+json">{ "@type": "Organization", "name": "Wel Ok" }</script>
+    </head><body>
+      <a href="mailto:x@y.nl">x@y.nl</a>
+    </body></html>`;
+  const info = extractContactInfo(cheerio.load(html));
+  // Ondanks één kapot blok moet het andere + de mailto: gewoon opgepikt worden
+  expect(info.name).toBe("Wel Ok");
+  expect(info.emails).toContain("x@y.nl");
+});
+
+test("mergeContactInfo: dedupe over pagina's, eerste niet-leeg wint voor scalars", () => {
+  const a = {
+    name: "Eerste",
+    emails: ["a@x.nl", "b@x.nl"],
+    telephones: ["020-1234567"],
+    addresses: ["Straat 1"],
+    openingHours: [],
+    socialLinks: [],
+  };
+  const b = {
+    name: "Tweede", // scalar - eerste wint
+    emails: ["b@x.nl", "c@x.nl"], // dedupe
+    telephones: [],
+    addresses: ["Straat 2"],
+    openingHours: ["Mo-Fr 9-17"],
+    socialLinks: ["https://linkedin.com/x"],
+  };
+  const merged = mergeContactInfo([a, b]);
+  expect(merged.name).toBe("Eerste");
+  expect(merged.emails.sort()).toEqual(["a@x.nl", "b@x.nl", "c@x.nl"]);
+  expect(merged.telephones).toEqual(["020-1234567"]);
+  expect(merged.addresses).toEqual(["Straat 1", "Straat 2"]);
+  expect(merged.openingHours).toEqual(["Mo-Fr 9-17"]);
+  expect(merged.socialLinks).toEqual(["https://linkedin.com/x"]);
 });
 
 test("isBlogSubpage: herkent blog/nieuws/artikel sub-pagina's, laat index-pagina staan", () => {

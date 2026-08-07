@@ -244,6 +244,224 @@ export function extractPrimaryMenu(
   return [];
 }
 
+// Selector voor CTA-buttons die B2B-sites vaak IN header zetten maar BUITEN <nav>
+// (Contact / Afspraak / Demo / Offerte). Extraheren gebeurt vóór extractMainHtml
+// de <header> weggooit. Dedupe op href.
+const HEADER_CTA_SELECTOR = [
+  'header a[class*="btn" i]',
+  'header a[class*="button" i]',
+  'header a[class*="cta" i]',
+  'header a[role="button"]',
+].join(",");
+
+/**
+ * Extraheert CTA-knoppen uit de <header> die géén onderdeel zijn van de reguliere
+ * <nav>-lijst. Deze staan bij veel B2B-sites (bv. fourtop.nl) als button-styled
+ * links naast het menu, wat extractPrimaryMenu overslaat omdat die alleen binnen
+ * <nav> zoekt. Dedupe op href — desktop/sticky/mobile variants leveren vaak
+ * duplicaten op.
+ */
+export function extractHeaderCtas(
+  $: cheerio.CheerioAPI,
+  baseUrl: string,
+): MenuLink[] {
+  let baseOrigin: string;
+  try {
+    baseOrigin = new URL(baseUrl).origin;
+  } catch {
+    return [];
+  }
+  const norm = (o: string) => o.replace(/^(https?:\/\/)www\./i, "$1");
+  const out: MenuLink[] = [];
+  const seenHrefs = new Set<string>();
+  $(HEADER_CTA_SELECTOR)
+    .toArray()
+    .forEach((a) => {
+      const $a = $(a);
+      // Skip als 'ie in footer/nav zit (nav-links pakken we via extractPrimaryMenu)
+      if ($a.closest("footer, nav").length) return;
+      const href = ($a.attr("href") ?? "").trim();
+      const label = $a.text().replace(/\s+/g, " ").trim();
+      if (!label || !href || href.startsWith("#")) return;
+      if (/^(javascript:|mailto:|tel:)/i.test(href)) return;
+      let u: URL;
+      try {
+        u = new URL(href, `${baseOrigin}/`);
+      } catch {
+        return;
+      }
+      if (norm(u.origin) !== norm(baseOrigin)) return;
+      const path = u.pathname + (u.search || "");
+      if (seenHrefs.has(path)) return;
+      seenHrefs.add(path);
+      out.push({ label, href: path });
+    });
+  return out;
+}
+
+// ── Contact-informatie extractie ────────────────────────────────────
+// Verzamelt alle tel:/mailto: links, <address> tags, en JSON-LD LocalBusiness/
+// Organization data vóór header/footer weg wordt gestript. Aggregatie per
+// pagina, over alle pagina's samengevoegd in urlToMarkdown.
+
+export type ContactInfo = {
+  /** Bedrijfsnaam uit JSON-LD (indien aanwezig). */
+  name?: string;
+  emails: string[];
+  telephones: string[];
+  addresses: string[];
+  openingHours: string[];
+  /** Social-links uit JSON-LD sameAs. */
+  socialLinks: string[];
+};
+
+function emptyContactInfo(): ContactInfo {
+  return {
+    emails: [],
+    telephones: [],
+    addresses: [],
+    openingHours: [],
+    socialLinks: [],
+  };
+}
+
+function formatSchemaAddress(a: unknown): string | undefined {
+  if (!a) return undefined;
+  if (typeof a === "string") return a.trim() || undefined;
+  if (typeof a !== "object") return undefined;
+  const o = a as Record<string, unknown>;
+  const line1 = typeof o.streetAddress === "string" ? o.streetAddress : undefined;
+  const postal = typeof o.postalCode === "string" ? o.postalCode : undefined;
+  const city = typeof o.addressLocality === "string" ? o.addressLocality : undefined;
+  const region = typeof o.addressRegion === "string" ? o.addressRegion : undefined;
+  const country = typeof o.addressCountry === "string" ? o.addressCountry : undefined;
+  const parts = [
+    line1,
+    postal || city ? [postal, city].filter(Boolean).join(" ") : undefined,
+    region,
+    country,
+  ].filter(Boolean) as string[];
+  return parts.length ? parts.join(", ") : undefined;
+}
+
+/** Verwerkt één JSON-LD entiteit (of geneste in @graph) en voegt info toe. */
+function ingestSchemaEntity(entity: unknown, info: ContactInfo): void {
+  if (!entity || typeof entity !== "object") return;
+  const e = entity as Record<string, unknown>;
+  // Sommige sites zetten @graph met alle entiteiten daarin
+  if (Array.isArray(e["@graph"])) {
+    for (const sub of e["@graph"]) ingestSchemaEntity(sub, info);
+    return;
+  }
+  const typeRaw = e["@type"];
+  const types = Array.isArray(typeRaw)
+    ? typeRaw.map((t) => String(t))
+    : typeRaw
+      ? [String(typeRaw)]
+      : [];
+  const isBusinessLike = types.some((t) =>
+    /^(LocalBusiness|Organization|Store|Restaurant|ProfessionalService|Corporation)/i.test(t),
+  );
+  if (!isBusinessLike) return;
+
+  if (!info.name && typeof e.name === "string") info.name = e.name.trim();
+  if (typeof e.telephone === "string" && !info.telephones.includes(e.telephone))
+    info.telephones.push(e.telephone);
+  if (typeof e.email === "string" && !info.emails.includes(e.email))
+    info.emails.push(e.email);
+  const addr = formatSchemaAddress(e.address);
+  if (addr && !info.addresses.includes(addr)) info.addresses.push(addr);
+  if (Array.isArray(e.openingHours)) {
+    for (const h of e.openingHours) {
+      if (typeof h === "string" && !info.openingHours.includes(h))
+        info.openingHours.push(h);
+    }
+  } else if (typeof e.openingHours === "string") {
+    if (!info.openingHours.includes(e.openingHours))
+      info.openingHours.push(e.openingHours);
+  }
+  if (Array.isArray(e.sameAs)) {
+    for (const u of e.sameAs) {
+      if (typeof u === "string" && !info.socialLinks.includes(u))
+        info.socialLinks.push(u);
+    }
+  }
+}
+
+/**
+ * Extraheert contact-info uit ÉÉN pagina's HTML. Combineert vier bronnen:
+ *   1. <a href="mailto:...">   → emails
+ *   2. <a href="tel:...">      → telefoonnummers
+ *   3. <address>...</address>  → postadres
+ *   4. <script type="application/ld+json"> LocalBusiness/Organization
+ *
+ * Moet gedraaid worden VOOR extractMainHtml, want die strip <header>, <footer>,
+ * <script> en <address> vaak weg. Faalt zacht: kapotte JSON-LD → skip dat blok,
+ * ontbrekende bronnen → lege arrays.
+ */
+export function extractContactInfo($: cheerio.CheerioAPI): ContactInfo {
+  const info = emptyContactInfo();
+
+  // 1 + 2: tel:/mailto: links (dedupe op waarde, niet op DOM-locatie)
+  $('a[href^="mailto:" i]').each((_, el) => {
+    const href = $(el).attr("href") ?? "";
+    const email = href.replace(/^mailto:/i, "").split("?")[0].trim();
+    if (email && !info.emails.includes(email)) info.emails.push(email);
+  });
+  $('a[href^="tel:" i]').each((_, el) => {
+    const href = $(el).attr("href") ?? "";
+    const tel = href.replace(/^tel:/i, "").trim();
+    if (tel && !info.telephones.includes(tel)) info.telephones.push(tel);
+  });
+
+  // 3: <address> tags (kan meerdere zijn, bv. hoofdkantoor + servicedesk)
+  $("address").each((_, el) => {
+    const text = $(el).text().replace(/\s+/g, " ").trim();
+    if (text && !info.addresses.includes(text)) info.addresses.push(text);
+  });
+
+  // 4: JSON-LD (LocalBusiness / Organization / @graph varianten)
+  $('script[type="application/ld+json"]').each((_, el) => {
+    const raw = $(el).contents().text().trim();
+    if (!raw) return;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return; // kapot blok → skip, andere bronnen blijven werken
+    }
+    if (Array.isArray(parsed)) {
+      for (const entity of parsed) ingestSchemaEntity(entity, info);
+    } else {
+      ingestSchemaEntity(parsed, info);
+    }
+  });
+
+  return info;
+}
+
+/**
+ * Merge contact-info van meerdere pagina's tot één beeld:
+ * - arrays worden gededupliceerd samengevoegd (eerste-voorkomen behoudt volgorde)
+ * - scalar `name`: eerste niet-lege waarde wint (typisch de homepage-organisatie).
+ */
+export function mergeContactInfo(items: ContactInfo[]): ContactInfo {
+  const merged = emptyContactInfo();
+  for (const item of items) {
+    if (!merged.name && item.name) merged.name = item.name;
+    for (const e of item.emails) if (!merged.emails.includes(e)) merged.emails.push(e);
+    for (const t of item.telephones)
+      if (!merged.telephones.includes(t)) merged.telephones.push(t);
+    for (const a of item.addresses)
+      if (!merged.addresses.includes(a)) merged.addresses.push(a);
+    for (const h of item.openingHours)
+      if (!merged.openingHours.includes(h)) merged.openingHours.push(h);
+    for (const s of item.socialLinks)
+      if (!merged.socialLinks.includes(s)) merged.socialLinks.push(s);
+  }
+  return merged;
+}
+
 function createTurndown(): TurndownService {
   const td = new TurndownService({
     headingStyle: "atx",
@@ -457,6 +675,8 @@ async function pageToMarkdown(
   images: UrlImageInput[];
   placeholderByUrl: Map<string, string>;
   menu: MenuLink[];
+  menuCtas: MenuLink[];
+  contactInfo: ContactInfo;
 } | null> {
   const html = await fetchHtmlWithRetry(url);
   const $ = cheerio.load(html);
@@ -464,8 +684,13 @@ async function pageToMarkdown(
   const metaDescription =
     $('meta[name="description"]').attr("content")?.trim() ?? "";
 
-  // Menu extraheren vóór extractMainHtml de <nav> weggooit (alleen homepage).
+  // Menu + CTA's extraheren vóór extractMainHtml de <header>/<nav> weggooit
+  // (alleen homepage — sub-pagina's hebben typisch hetzelfde menu).
   const menu = menuBaseUrl ? extractPrimaryMenu($, menuBaseUrl) : [];
+  const menuCtas = menuBaseUrl ? extractHeaderCtas($, menuBaseUrl) : [];
+  // Contact-info wordt WEL op elke pagina geëxtraheerd (contact-pagina zelf
+  // heeft meer info dan homepage; footer verschilt soms per pagina).
+  const contactInfo = extractContactInfo($);
 
   const mainHtml = extractMainHtml($);
   if (!mainHtml.trim()) return null;
@@ -497,6 +722,8 @@ async function pageToMarkdown(
     images,
     placeholderByUrl,
     menu,
+    menuCtas,
+    contactInfo,
   };
 }
 
@@ -672,6 +899,25 @@ export async function urlToMarkdown(
     homeResult && homeResult.status === "fulfilled" && homeResult.value
       ? homeResult.value.menu
       : [];
+  const headerCtas: MenuLink[] =
+    homeResult && homeResult.status === "fulfilled" && homeResult.value
+      ? homeResult.value.menuCtas
+      : [];
+  // Contact-info aggregatie over ALLE pagina's — contact/afspraak-pagina heeft
+  // vaak rijkere info dan de homepage. mergeContactInfo dedupliceert.
+  const mergedContactInfo = mergeContactInfo(
+    settled
+      .filter((r) => r.status === "fulfilled" && r.value)
+      .map((r) => (r as PromiseFulfilledResult<NonNullable<Awaited<ReturnType<typeof pageToMarkdown>>>>).value.contactInfo),
+  );
+  const hasContactInfo =
+    mergedContactInfo.name ||
+    mergedContactInfo.emails.length ||
+    mergedContactInfo.telephones.length ||
+    mergedContactInfo.addresses.length ||
+    mergedContactInfo.openingHours.length ||
+    mergedContactInfo.socialLinks.length;
+
   const frontmatterLines = [
     "---",
     `website_url: ${baseUrl}`,
@@ -686,6 +932,53 @@ export async function urlToMarkdown(
       : [
           "# hoofdmenu: kon niet betrouwbaar uit de homepage-navigatie worden bepaald.",
         ]),
+    ...(headerCtas.length
+      ? [
+          "# menu_cta = call-to-action-knoppen in de header (buiten het reguliere <nav>).",
+          "# Dit zijn de primaire acties die het bedrijf de bezoeker aanbiedt.",
+          "menu_cta:",
+          ...headerCtas.map((c) => `  - ${c.label} -> ${c.href}`),
+        ]
+      : []),
+    ...(hasContactInfo
+      ? [
+          "# contact_gegevens = geaggregeerde contact-info uit tel:/mailto:/<address>/JSON-LD",
+          "# over alle gescraped pagina's. Bedoeld als betrouwbare basis voor advies over",
+          "# de contact-flow (compleetheid, prominente vindbaarheid, drempel).",
+          "contact_gegevens:",
+          ...(mergedContactInfo.name ? [`  naam: ${mergedContactInfo.name}`] : []),
+          ...(mergedContactInfo.emails.length
+            ? [
+                "  emails:",
+                ...mergedContactInfo.emails.map((e) => `    - ${e}`),
+              ]
+            : []),
+          ...(mergedContactInfo.telephones.length
+            ? [
+                "  telefoons:",
+                ...mergedContactInfo.telephones.map((t) => `    - ${t}`),
+              ]
+            : []),
+          ...(mergedContactInfo.addresses.length
+            ? [
+                "  adressen:",
+                ...mergedContactInfo.addresses.map((a) => `    - ${a}`),
+              ]
+            : []),
+          ...(mergedContactInfo.openingHours.length
+            ? [
+                "  openingstijden:",
+                ...mergedContactInfo.openingHours.map((h) => `    - ${h}`),
+              ]
+            : []),
+          ...(mergedContactInfo.socialLinks.length
+            ? [
+                "  social:",
+                ...mergedContactInfo.socialLinks.map((s) => `    - ${s}`),
+              ]
+            : []),
+        ]
+      : []),
     `aantal_paginas: ${okPages.length}`,
     "# gevonden_paginas = ALLE opgehaalde pagina's (o.a. uit de sitemap); dit is NIET het",
     "# hoofdmenu en bevat vaak pagina's die niet in de navigatie staan (detail-/detacherings-/tag-pagina's).",
