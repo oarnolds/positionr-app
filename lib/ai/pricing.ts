@@ -44,3 +44,47 @@ export function calculateCostCents(
     (outputTokens / 1_000_000) * p.outputPerMTokUsd;
   return Math.round(usd * 100);
 }
+
+// ---------------------------------------------------------------------------
+// Per-model pricing (voor de /modules/markdown/vergelijk tool)
+//
+// PRICING hierboven is per *provider* ("claude", "perplexity") — handig voor
+// de bestaande synthese-flow, maar niet bruikbaar zodra we specifiek per
+// Claude-model (Haiku vs. Sonnet vs. Opus vs. Fable) de kosten willen
+// vergelijken. Vandaar deze losse MODEL_PRICING map, gekeyed op het exacte
+// model-ID string zoals we die aan de Claude API meegeven.
+//
+// Bronnen (peildatum 2026-08-07):
+// - Haiku 4.5, Sonnet 4.6, Opus 5: https://platform.claude.com/docs/en/about-claude/pricing
+// - Fable 5: geverifieerd op dezelfde pricing-pagina — $10 / MTok input,
+//   $50 / MTok output (bevestigd, geen schatting).
+// ---------------------------------------------------------------------------
+
+export const MODEL_PRICING: Record<
+  string,
+  { inputPerMTokUsd: number; outputPerMTokUsd: number }
+> = {
+  "claude-haiku-4-5-20251001": { inputPerMTokUsd: 1, outputPerMTokUsd: 5 },
+  "claude-sonnet-4-6": { inputPerMTokUsd: 3, outputPerMTokUsd: 15 },
+  "claude-opus-5": { inputPerMTokUsd: 5, outputPerMTokUsd: 25 },
+  // Fable 5: bevestigd via platform.claude.com/docs/en/about-claude/pricing
+  "claude-fable-5": { inputPerMTokUsd: 10, outputPerMTokUsd: 50 },
+};
+
+/**
+ * Bereken kosten in dollarcent voor een specifiek Claude-model (afgerond op
+ * gehele cent). Onbekend model-ID → fallback op de Sonnet-tarieven uit
+ * PRICING.claude, zodat een typo of nieuw modelnaam niet crasht maar wel
+ * een redelijke schatting geeft.
+ */
+export function calculateModelCostCents(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+): number {
+  const p = MODEL_PRICING[model] ?? PRICING.claude;
+  const usd =
+    (inputTokens / 1_000_000) * p.inputPerMTokUsd +
+    (outputTokens / 1_000_000) * p.outputPerMTokUsd;
+  return Math.round(usd * 100);
+}
