@@ -232,6 +232,15 @@ export function MarkdownLibraryCard({
           </ul>
         </div>
       ) : null}
+
+      <div className="mt-4 text-right">
+        <Link
+          href="/modules/markdown/vergelijk"
+          className="inline-flex items-center gap-1 text-xs text-purple-700 hover:underline"
+        >
+          Vergelijk modellen (experimenteel) →
+        </Link>
+      </div>
     </section>
   );
 }
