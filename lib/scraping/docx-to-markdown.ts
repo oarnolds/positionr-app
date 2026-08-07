@@ -74,7 +74,7 @@ export async function docxToMarkdown(
   if (includeImages && placeholderByKey.size > 0) {
     let descriptions: DescriptionMap = new Map();
     try {
-      descriptions = await describeImageBuffers(images);
+      descriptions = (await describeImageBuffers(images)).descriptions;
     } catch {
       // Vision-batch helemaal mislukt — laat descriptions leeg.
     }

@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { PRICING } from "@/lib/ai/pricing";
+import { PRICING, calculateModelCostCents } from "@/lib/ai/pricing";
 
 const FETCH_TIMEOUT_MS = 6_000;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // Claude vision-limit per image
@@ -64,6 +64,29 @@ export type UrlImageInput = {
 /** Mappt een description naar elke key. SKIP/lege regels zijn `null`. */
 export type DescriptionMap = Map<string, string | null>;
 
+/** Token-usage van één Vision-call (input+output), voor kost-tracking. */
+export type BatchUsage = { inputTokens: number; outputTokens: number };
+
+/** Somt usage van meerdere batches op tot één totaal. */
+export function aggregateUsage(usages: BatchUsage[]): BatchUsage {
+  return usages.reduce(
+    (acc, u) => ({
+      inputTokens: acc.inputTokens + u.inputTokens,
+      outputTokens: acc.outputTokens + u.outputTokens,
+    }),
+    { inputTokens: 0, outputTokens: 0 },
+  );
+}
+
+/** Resultaat van describeImageBuffers/describeImageUrls: descriptions + kost-tracking. */
+export type DescribeResult = {
+  descriptions: DescriptionMap;
+  usage: BatchUsage;
+  costCents: number;
+  batchesOk: number;
+  batchesFailed: number;
+};
+
 async function downloadImage(
   url: string
 ): Promise<{ buffer: Buffer; mimeType: string } | null> {
@@ -108,8 +131,9 @@ function parseNumberedLines(text: string, count: number): Array<string | null> {
 }
 
 async function describeBatch(
-  batch: ImageInput[]
-): Promise<Array<string | null>> {
+  batch: ImageInput[],
+  model: string,
+): Promise<{ descriptions: Array<string | null>; usage: BatchUsage }> {
   const content: Anthropic.Messages.ContentBlockParam[] = [];
   batch.forEach((img, i) => {
     content.push({
@@ -128,14 +152,20 @@ async function describeBatch(
   content.push({ type: "text", text: SYSTEM_INSTRUCTION });
 
   const response = await getClient().messages.create({
-    model: PRICING.claude.model,
+    model,
     max_tokens: 1500,
     messages: [{ role: "user", content }],
   });
 
   const block = response.content[0];
   const text = block?.type === "text" ? block.text : "";
-  return parseNumberedLines(text, batch.length);
+  return {
+    descriptions: parseNumberedLines(text, batch.length),
+    usage: {
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    },
+  };
 }
 
 /**
@@ -169,49 +199,66 @@ async function poolMap<T, R>(
  * Beschrijft een set images via Claude vision. Verwerkt in batches van
  * BATCH_SIZE, VISION_CONCURRENCY batches parallel; faalt zacht (lege
  * description) bij fouten zodat de scrape doorgaat.
+ *
+ * `options.model` laat de caller een ander Claude-model kiezen (voor de
+ * /modules/markdown/vergelijk kost-vergelijking); default = PRICING.claude.model.
  */
 export async function describeImageBuffers(
-  images: ImageInput[]
-): Promise<DescriptionMap> {
+  images: ImageInput[],
+  options: { model?: string } = {},
+): Promise<DescribeResult> {
+  const model = options.model ?? PRICING.claude.model;
   const map: DescriptionMap = new Map();
-  if (images.length === 0) return map;
+  if (images.length === 0) {
+    return { descriptions: map, usage: { inputTokens: 0, outputTokens: 0 }, costCents: 0, batchesOk: 0, batchesFailed: 0 };
+  }
 
   const batches: ImageInput[][] = [];
   for (let i = 0; i < images.length; i += BATCH_SIZE) {
     batches.push(images.slice(i, i + BATCH_SIZE));
   }
+  const batchUsages: BatchUsage[] = [];
+  let batchesOk = 0;
+  let batchesFailed = 0;
   const visionStart = Date.now();
   await poolMap(batches, VISION_CONCURRENCY, async (batch, idx) => {
     const batchNum = idx + 1;
     const batchStart = Date.now();
     try {
-      const results = await describeBatch(batch);
-      batch.forEach((img, j) => map.set(img.key, results[j]));
+      const { descriptions, usage } = await describeBatch(batch, model);
+      batchUsages.push(usage);
+      batch.forEach((img, j) => map.set(img.key, descriptions[j]));
+      batchesOk++;
       console.log(
-        `[md-timing]   vision batch ${batchNum}/${batches.length} (n=${batch.length}) done in ${Date.now() - batchStart}ms`,
+        `[md-timing]   vision batch ${batchNum}/${batches.length} (n=${batch.length}) model=${model} done in ${Date.now() - batchStart}ms`,
       );
     } catch (err) {
       // Vision-call mislukt — laat deze batch leeg en ga door.
       batch.forEach((img) => map.set(img.key, null));
+      batchesFailed++;
       console.warn(
-        `[md-timing]   vision batch ${batchNum}/${batches.length} FAILED in ${Date.now() - batchStart}ms: ${err instanceof Error ? err.message : String(err)}`,
+        `[md-timing]   vision batch ${batchNum}/${batches.length} model=${model} FAILED in ${Date.now() - batchStart}ms: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   });
+  const usage = aggregateUsage(batchUsages);
+  const costCents = calculateModelCostCents(model, usage.inputTokens, usage.outputTokens);
   console.log(
-    `[md-timing] describeImageBuffers TOTAL vision ${Date.now() - visionStart}ms for ${images.length} images (${batches.length} batches, concurrency=${VISION_CONCURRENCY})`,
+    `[md-timing] describeImageBuffers TOTAL vision ${Date.now() - visionStart}ms for ${images.length} images (${batches.length} batches, model=${model}, concurrency=${VISION_CONCURRENCY}, costCents=${costCents})`,
   );
-  return map;
+  return { descriptions: map, usage, costCents, batchesOk, batchesFailed };
 }
 
 /**
  * Variant die zelf images downloadt aan de hand van URL. Skipt images die
  * niet te downloaden zijn (timeout, te groot, niet-ondersteund mime-type).
- * Downloads gebeuren parallel (DOWNLOAD_CONCURRENCY).
+ * Downloads gebeuren parallel (DOWNLOAD_CONCURRENCY). `options.model` wordt
+ * doorgegeven aan describeImageBuffers.
  */
 export async function describeImageUrls(
-  images: UrlImageInput[]
-): Promise<DescriptionMap> {
+  images: UrlImageInput[],
+  options: { model?: string } = {},
+): Promise<DescribeResult> {
   const dlStart = Date.now();
   let slowDownloads = 0;
   const results = await poolMap(images, DOWNLOAD_CONCURRENCY, async (img) => {
@@ -236,5 +283,5 @@ export async function describeImageUrls(
   console.log(
     `[md-timing] image downloads done in ${Date.now() - dlStart}ms (attempted=${images.length}, ok=${downloaded.length}, skipped=${images.length - downloaded.length}, slow>3s=${slowDownloads}, concurrency=${DOWNLOAD_CONCURRENCY})`,
   );
-  return describeImageBuffers(downloaded);
+  return describeImageBuffers(downloaded, options);
 }

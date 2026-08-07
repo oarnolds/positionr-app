@@ -560,11 +560,18 @@ export async function urlToMarkdown(
     `[md-timing] collected ${allImagesByUrl.size} unique images across pages (includeImages=${includeImages}, cap=${MAX_UNIQUE_IMAGES_TOTAL}${imagesTruncated ? ", TRUNCATED" : ""})`,
   );
   const describeStart = Date.now();
-  const descriptions = includeImages
+  const describeResult = includeImages
     ? await describeImageUrls(Array.from(allImagesByUrl.values()))
-    : (new Map() as DescriptionMap);
+    : {
+        descriptions: new Map() as DescriptionMap,
+        usage: { inputTokens: 0, outputTokens: 0 },
+        costCents: 0,
+        batchesOk: 0,
+        batchesFailed: 0,
+      };
+  const descriptions = describeResult.descriptions;
   console.log(
-    `[md-timing] describeImageUrls done in ${Date.now() - describeStart}ms (descriptions=${descriptions.size})`,
+    `[md-timing] describeImageUrls done in ${Date.now() - describeStart}ms (descriptions=${descriptions.size}, batchesOk=${describeResult.batchesOk}, batchesFailed=${describeResult.batchesFailed}, costCents=${describeResult.costCents})`,
   );
 
   const pages: PageResult[] = [];
