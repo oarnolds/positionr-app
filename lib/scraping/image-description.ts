@@ -250,15 +250,13 @@ export async function describeImageBuffers(
 }
 
 /**
- * Variant die zelf images downloadt aan de hand van URL. Skipt images die
- * niet te downloaden zijn (timeout, te groot, niet-ondersteund mime-type).
- * Downloads gebeuren parallel (DOWNLOAD_CONCURRENCY). `options.model` wordt
- * doorgegeven aan describeImageBuffers.
+ * Download-only variant van describeImageUrls: geeft alleen de gedownloade
+ * buffers terug, zonder ze te beschrijven. Gebruikt door tools die dezelfde
+ * images door meerdere modellen willen halen (in-memory hergebruik).
  */
-export async function describeImageUrls(
+export async function downloadImages(
   images: UrlImageInput[],
-  options: { model?: string } = {},
-): Promise<DescribeResult> {
+): Promise<ImageInput[]> {
   const dlStart = Date.now();
   let slowDownloads = 0;
   const results = await poolMap(images, DOWNLOAD_CONCURRENCY, async (img) => {
@@ -281,7 +279,21 @@ export async function describeImageUrls(
   });
   const downloaded = results.filter((r): r is ImageInput => r !== null);
   console.log(
-    `[md-timing] image downloads done in ${Date.now() - dlStart}ms (attempted=${images.length}, ok=${downloaded.length}, skipped=${images.length - downloaded.length}, slow>3s=${slowDownloads}, concurrency=${DOWNLOAD_CONCURRENCY})`,
+    `[md-timing] downloadImages done in ${Date.now() - dlStart}ms (attempted=${images.length}, ok=${downloaded.length}, skipped=${images.length - downloaded.length}, slow>3s=${slowDownloads}, concurrency=${DOWNLOAD_CONCURRENCY})`,
   );
+  return downloaded;
+}
+
+/**
+ * Variant die zelf images downloadt aan de hand van URL. Skipt images die
+ * niet te downloaden zijn (timeout, te groot, niet-ondersteund mime-type).
+ * Downloads gebeuren parallel (DOWNLOAD_CONCURRENCY). `options.model` wordt
+ * doorgegeven aan describeImageBuffers.
+ */
+export async function describeImageUrls(
+  images: UrlImageInput[],
+  options: { model?: string } = {},
+): Promise<DescribeResult> {
+  const downloaded = await downloadImages(images);
   return describeImageBuffers(downloaded, options);
 }

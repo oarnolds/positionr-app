@@ -683,3 +683,41 @@ export async function urlToMarkdown(
     pages,
   };
 }
+
+/**
+ * Lichtgewicht variant van urlToMarkdown: fetcht pages, verzamelt unique
+ * images (met dezelfde cap MAX_UNIQUE_IMAGES_TOTAL en dedup-volgorde), maar
+ * doet géén image-descriptions of markdown-assembly. Bedoeld voor tools die
+ * alleen de image-set willen (bv. de model-vergelijk-pagina).
+ */
+export async function collectUniqueImages(
+  rawUrl: string,
+  options: UrlToMarkdownOptions = {},
+): Promise<{ baseUrl: string; images: UrlImageInput[]; truncated: boolean }> {
+  const baseUrl = normalizeBaseUrl(rawUrl);
+  const { urls } = await resolveTargetUrls(baseUrl, options);
+  const turndown = createTurndown();
+  const targets = urls.map((u, i) => ({ url: u, isHome: i === 0 }));
+  const settled = await mapWithConcurrency(targets, FETCH_CONCURRENCY, (t) =>
+    pageToMarkdown(t.url, turndown, true, t.isHome ? baseUrl : null),
+  );
+
+  const allImagesByUrl = new Map<string, UrlImageInput>();
+  let truncated = false;
+  outer: for (const r of settled) {
+    if (r.status !== "fulfilled" || !r.value) continue;
+    for (const img of r.value.images) {
+      if (allImagesByUrl.has(img.url)) continue;
+      if (allImagesByUrl.size >= MAX_UNIQUE_IMAGES_TOTAL) {
+        truncated = true;
+        break outer;
+      }
+      allImagesByUrl.set(img.url, img);
+    }
+  }
+  return {
+    baseUrl,
+    images: Array.from(allImagesByUrl.values()),
+    truncated,
+  };
+}
