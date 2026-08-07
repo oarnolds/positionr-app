@@ -18,12 +18,9 @@ export const PRICING: Record<
   { inputPerMTokUsd: number; outputPerMTokUsd: number; model: string }
 > = {
   claude: {
-    // TIJDELIJKE TEST: draait op Opus 5 om rapport-kwaliteit te vergelijken
-    // met Sonnet 4.6. Direct na de test terug naar Sonnet — Opus is 67%
-    // duurder per analyse ($2.75 vs $1.65). Zie commit-message voor context.
-    inputPerMTokUsd: 5,
-    outputPerMTokUsd: 25,
-    model: "claude-opus-5",
+    inputPerMTokUsd: 3,
+    outputPerMTokUsd: 15,
+    model: "claude-sonnet-4-6",
   },
   perplexity: {
     inputPerMTokUsd: 3,
