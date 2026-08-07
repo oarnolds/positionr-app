@@ -107,7 +107,7 @@ test("extractHeaderCtas: cross-origin en tel:/mailto: worden overgeslagen", () =
   expect(ctas.map((c) => c.href)).toEqual(["/goed"]);
 });
 
-test("extractContactInfo: haalt tel:/mailto:/address uit HTML", () => {
+test("extractContactInfo: haalt zichtbare tel:/mailto:/address uit HTML", () => {
   const html = `
     <html><body>
       <header>
@@ -120,12 +120,13 @@ test("extractContactInfo: haalt tel:/mailto:/address uit HTML", () => {
       </footer>
     </body></html>`;
   const info = extractContactInfo(cheerio.load(html));
-  expect(info.emails.sort()).toEqual(["info@x.nl", "servicedesk@x.nl"]);
-  expect(info.telephones).toEqual(["+31201234567"]);
-  expect(info.addresses).toEqual(["Kerkstraat 1, 1234 AB Amsterdam"]);
+  expect(info.visible.emails.sort()).toEqual(["info@x.nl", "servicedesk@x.nl"]);
+  expect(info.visible.telephones).toEqual(["+31201234567"]);
+  expect(info.visible.addresses).toEqual(["Kerkstraat 1, 1234 AB Amsterdam"]);
+  expect(info.sourceOnly.emails).toEqual([]);
 });
 
-test("extractContactInfo: parseert JSON-LD LocalBusiness", () => {
+test("extractContactInfo: parseert JSON-LD LocalBusiness (naar visible: site-owner-authoritative)", () => {
   const html = `
     <html><head>
       <script type="application/ld+json">
@@ -149,12 +150,12 @@ test("extractContactInfo: parseert JSON-LD LocalBusiness", () => {
     </head><body></body></html>`;
   const info = extractContactInfo(cheerio.load(html));
   expect(info.name).toBe("Voorbeeld B.V.");
-  expect(info.telephones).toContain("+31 20 555 0000");
-  expect(info.emails).toContain("hallo@voorbeeld.nl");
-  expect(info.addresses[0]).toContain("Herengracht 100");
-  expect(info.addresses[0]).toContain("1015 BS Amsterdam");
-  expect(info.openingHours).toEqual(["Mo-Fr 09:00-17:00", "Sa 10:00-14:00"]);
-  expect(info.socialLinks).toEqual([
+  expect(info.visible.telephones).toContain("+31 20 555 0000");
+  expect(info.visible.emails).toContain("hallo@voorbeeld.nl");
+  expect(info.visible.addresses[0]).toContain("Herengracht 100");
+  expect(info.visible.addresses[0]).toContain("1015 BS Amsterdam");
+  expect(info.visible.openingHours).toEqual(["Mo-Fr 09:00-17:00", "Sa 10:00-14:00"]);
+  expect(info.visible.socialLinks).toEqual([
     "https://linkedin.com/company/voorbeeld",
     "https://twitter.com/voorbeeld",
   ]);
@@ -175,7 +176,7 @@ test("extractContactInfo: JSON-LD binnen @graph structuur", () => {
     </head><body></body></html>`;
   const info = extractContactInfo(cheerio.load(html));
   expect(info.name).toBe("X BV");
-  expect(info.telephones).toContain("+31 6 1234 5678");
+  expect(info.visible.telephones).toContain("+31 6 1234 5678");
 });
 
 test("extractContactInfo: kapotte JSON-LD faalt zacht (geen throw)", () => {
@@ -187,35 +188,121 @@ test("extractContactInfo: kapotte JSON-LD faalt zacht (geen throw)", () => {
       <a href="mailto:x@y.nl">x@y.nl</a>
     </body></html>`;
   const info = extractContactInfo(cheerio.load(html));
-  // Ondanks één kapot blok moet het andere + de mailto: gewoon opgepikt worden
   expect(info.name).toBe("Wel Ok");
-  expect(info.emails).toContain("x@y.nl");
+  expect(info.visible.emails).toContain("x@y.nl");
 });
 
-test("mergeContactInfo: dedupe over pagina's, eerste niet-leeg wint voor scalars", () => {
+test("extractContactInfo: emails in <template> gaan naar sourceOnly", () => {
+  const html = `
+    <html><body>
+      <a href="mailto:echt@x.nl">Echt</a>
+      <template>
+        <a href="mailto:template@x.nl">Placeholder</a>
+      </template>
+      <script>
+        // dummy in JS-string
+        const email = "in-script@x.nl";
+      </script>
+      <noscript>
+        <a href="mailto:noscript@x.nl">Voor no-JS</a>
+      </noscript>
+    </body></html>`;
+  const info = extractContactInfo(cheerio.load(html));
+  expect(info.visible.emails).toEqual(["echt@x.nl"]);
+  expect(info.sourceOnly.emails.sort()).toEqual(
+    ["noscript@x.nl", "template@x.nl"].sort(),
+  );
+  // Script-tag inhoud (non-JSON-LD) wordt niet als link herkend door cheerio,
+  // dus geen extra sourceOnly-entry uit de JS-string.
+});
+
+test("extractContactInfo: hidden attribute + display:none + CSS-hidden classes → sourceOnly", () => {
+  const html = `
+    <html><body>
+      <a href="mailto:echt@x.nl">Echt</a>
+      <div hidden><a href="mailto:hidden-attr@x.nl">X</a></div>
+      <div style="display: none"><a href="mailto:display-none@x.nl">X</a></div>
+      <div style="visibility:hidden"><a href="mailto:vis-hidden@x.nl">X</a></div>
+      <div class="sr-only"><a href="mailto:sr@x.nl">X</a></div>
+      <div class="d-none"><a href="mailto:dnone@x.nl">X</a></div>
+      <div class="visually-hidden"><a href="mailto:vh@x.nl">X</a></div>
+    </body></html>`;
+  const info = extractContactInfo(cheerio.load(html));
+  expect(info.visible.emails).toEqual(["echt@x.nl"]);
+  expect(info.sourceOnly.emails.sort()).toEqual(
+    [
+      "dnone@x.nl",
+      "display-none@x.nl",
+      "hidden-attr@x.nl",
+      "sr@x.nl",
+      "vh@x.nl",
+      "vis-hidden@x.nl",
+    ].sort(),
+  );
+});
+
+test("extractContactInfo: placeholder-domeinen gaan ALTIJD naar sourceOnly, ook als visible", () => {
+  const html = `
+    <html><body>
+      <a href="mailto:info@fourtop.nl">Echt</a>
+      <a href="mailto:hey@company.com">Placeholder-visible</a>
+      <a href="mailto:test@example.com">Placeholder-visible</a>
+      <a href="mailto:hi@yourdomain.com">Placeholder-visible</a>
+      <a href="tel:+1234567890">Fake tel visible</a>
+      <a href="tel:+31201234567">Echt tel visible</a>
+    </body></html>`;
+  const info = extractContactInfo(cheerio.load(html));
+  expect(info.visible.emails).toEqual(["info@fourtop.nl"]);
+  expect(info.sourceOnly.emails.sort()).toEqual(
+    ["hey@company.com", "hi@yourdomain.com", "test@example.com"].sort(),
+  );
+  expect(info.visible.telephones).toEqual(["+31201234567"]);
+  expect(info.sourceOnly.telephones).toEqual(["+1234567890"]);
+});
+
+test("mergeContactInfo: dedupliceert visible EN sourceOnly buckets afzonderlijk", () => {
   const a = {
     name: "Eerste",
-    emails: ["a@x.nl", "b@x.nl"],
-    telephones: ["020-1234567"],
-    addresses: ["Straat 1"],
-    openingHours: [],
-    socialLinks: [],
+    visible: {
+      emails: ["a@x.nl", "b@x.nl"],
+      telephones: ["020-1234567"],
+      addresses: ["Straat 1"],
+      openingHours: [],
+      socialLinks: [],
+    },
+    sourceOnly: {
+      emails: ["hey@company.com"],
+      telephones: [],
+      addresses: [],
+      openingHours: [],
+      socialLinks: [],
+    },
   };
   const b = {
-    name: "Tweede", // scalar - eerste wint
-    emails: ["b@x.nl", "c@x.nl"], // dedupe
-    telephones: [],
-    addresses: ["Straat 2"],
-    openingHours: ["Mo-Fr 9-17"],
-    socialLinks: ["https://linkedin.com/x"],
+    name: "Tweede",
+    visible: {
+      emails: ["b@x.nl", "c@x.nl"],
+      telephones: [],
+      addresses: ["Straat 2"],
+      openingHours: ["Mo-Fr 9-17"],
+      socialLinks: ["https://linkedin.com/x"],
+    },
+    sourceOnly: {
+      emails: ["hey@company.com", "info@example.com"], // dedup + nieuwe
+      telephones: [],
+      addresses: [],
+      openingHours: [],
+      socialLinks: [],
+    },
   };
   const merged = mergeContactInfo([a, b]);
   expect(merged.name).toBe("Eerste");
-  expect(merged.emails.sort()).toEqual(["a@x.nl", "b@x.nl", "c@x.nl"]);
-  expect(merged.telephones).toEqual(["020-1234567"]);
-  expect(merged.addresses).toEqual(["Straat 1", "Straat 2"]);
-  expect(merged.openingHours).toEqual(["Mo-Fr 9-17"]);
-  expect(merged.socialLinks).toEqual(["https://linkedin.com/x"]);
+  expect(merged.visible.emails.sort()).toEqual(["a@x.nl", "b@x.nl", "c@x.nl"]);
+  expect(merged.visible.addresses).toEqual(["Straat 1", "Straat 2"]);
+  expect(merged.visible.openingHours).toEqual(["Mo-Fr 9-17"]);
+  expect(merged.sourceOnly.emails.sort()).toEqual(
+    ["hey@company.com", "info@example.com"].sort(),
+  );
 });
 
 test("isBlogSubpage: herkent blog/nieuws/artikel sub-pagina's, laat index-pagina staan", () => {

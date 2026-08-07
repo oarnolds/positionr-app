@@ -303,10 +303,18 @@ export function extractHeaderCtas(
 // Verzamelt alle tel:/mailto: links, <address> tags, en JSON-LD LocalBusiness/
 // Organization data vóór header/footer weg wordt gestript. Aggregatie per
 // pagina, over alle pagina's samengevoegd in urlToMarkdown.
+//
+// KRITIEK ONDERSCHEID: visible vs sourceOnly.
+// - visible: gevonden in normale, gerenderde DOM (incl. JSON-LD, dat is
+//   site-owner-authoritative machine-readable data). Analyse MAG hierover
+//   claimen "staat op de website".
+// - sourceOnly: gevonden in <template>/hidden containers OF op placeholder-
+//   domeinen. Analyse mag hierover melden "we vonden dit in de bron, mogelijk
+//   template-leak" maar mag NIET beweren dat het op de webpagina staat.
+// Voorkomt false positives waarbij BOEM's `hey@company.com`-template als
+// echt zichtbaar contact-adres in de analyse belandt.
 
-export type ContactInfo = {
-  /** Bedrijfsnaam uit JSON-LD (indien aanwezig). */
-  name?: string;
+export type ContactBucket = {
   emails: string[];
   telephones: string[];
   addresses: string[];
@@ -315,7 +323,17 @@ export type ContactInfo = {
   socialLinks: string[];
 };
 
-function emptyContactInfo(): ContactInfo {
+export type ContactInfo = {
+  /** Bedrijfsnaam uit JSON-LD (indien aanwezig). */
+  name?: string;
+  /** Contact-info uit de gerenderde DOM — betrouwbaar, mag geciteerd. */
+  visible: ContactBucket;
+  /** In HTML-source gevonden maar in hidden container / template / met
+   *  placeholder-domein. Niet beweren dat dit op de pagina staat. */
+  sourceOnly: ContactBucket;
+};
+
+function emptyBucket(): ContactBucket {
   return {
     emails: [],
     telephones: [],
@@ -323,6 +341,102 @@ function emptyContactInfo(): ContactInfo {
     openingHours: [],
     socialLinks: [],
   };
+}
+
+function emptyContactInfo(): ContactInfo {
+  return { visible: emptyBucket(), sourceOnly: emptyBucket() };
+}
+
+// Bekende placeholder-/dummy-domeinen. Emails hier gaan altijd naar sourceOnly,
+// ook als ze in de zichtbare DOM staan — dat is bijna altijd een template die
+// niet correct is ingevuld door de site-eigenaar (of demo-content).
+const PLACEHOLDER_EMAIL_DOMAINS = new Set([
+  "example.com",
+  "example.org",
+  "example.net",
+  "company.com",
+  "yourcompany.com",
+  "yourdomain.com",
+  "domain.com",
+  "mydomain.com",
+  "yoursite.com",
+  "mysite.com",
+  "test.com",
+  "dummy.com",
+  "sample.com",
+  "placeholder.com",
+  "email.com",
+]);
+
+// Bekende placeholder-telefoonnummers (klassieke test-nummers). Alleen
+// eenvoudige patronen — niet elke +1-nummer is placeholder, dus behouden we
+// alleen de meest overduidelijke.
+const PLACEHOLDER_TEL_PATTERNS: RegExp[] = [
+  /^\+?1234567890$/,
+  /^\+?0000000000$/,
+  /^\+?1111111111$/,
+  /^\+?5555555555$/,
+  /^\+?123-?456-?7890$/,
+];
+
+function isPlaceholderEmail(email: string): boolean {
+  const domain = email.split("@")[1]?.toLowerCase().trim();
+  if (!domain) return false;
+  return PLACEHOLDER_EMAIL_DOMAINS.has(domain);
+}
+
+function isPlaceholderTel(tel: string): boolean {
+  const clean = tel.replace(/[\s()]/g, "");
+  return PLACEHOLDER_TEL_PATTERNS.some((re) => re.test(clean));
+}
+
+// Common CSS-hidden classes over frameworks heen: Bootstrap (d-none, invisible),
+// Tailwind (hidden), WordPress (screen-reader-text), Bootstrap/A11y (sr-only,
+// visually-hidden). Regex is bewust WORD-BOUNDED zodat "sidebar-visible" niet
+// per ongeluk matcht op "-visible".
+const HIDDEN_CLASS_RE =
+  /(^|\s)(hidden|sr-only|visually-hidden|d-none|is-hidden|screen-reader-text|invisible)(\s|$)/i;
+
+const HIDDEN_ANCESTOR_TAGS = new Set([
+  "template",
+  "script",
+  "style",
+  "noscript",
+]);
+
+/**
+ * Traverseert ancestors handmatig (cheerio's `.parents(selector)` heeft
+ * quirks met <template>) om te bepalen of dit element in een hidden container
+ * zit. Checkt: tagname, `hidden` attr, inline `display:none`/`visibility:hidden`,
+ * en common CSS-hidden classes.
+ *
+ * JSON-LD <script> is uitgesloten: deze functie wordt alleen aangeroepen
+ * voor mailto/tel/address elementen, niet voor JSON-LD extractie.
+ */
+function isInHiddenContainer(
+  $: cheerio.CheerioAPI,
+  el: unknown,
+): boolean {
+  let cur: ReturnType<cheerio.CheerioAPI> = $(el as never);
+  while (cur.length > 0) {
+    const node = cur[0];
+    const tagName =
+      node && "tagName" in node
+        ? String((node as { tagName?: string }).tagName ?? "").toLowerCase()
+        : "";
+    if (HIDDEN_ANCESTOR_TAGS.has(tagName)) return true;
+    // `hidden` attribuut (HTML5 native)
+    if (cur.attr("hidden") !== undefined) return true;
+    const style = (cur.attr("style") ?? "").toLowerCase();
+    if (/display\s*:\s*none/.test(style)) return true;
+    if (/visibility\s*:\s*hidden/.test(style)) return true;
+    const cls = cur.attr("class") ?? "";
+    if (cls && HIDDEN_CLASS_RE.test(cls)) return true;
+    const parent = cur.parent();
+    if (parent.length === 0 || parent[0] === cur[0]) break;
+    cur = parent;
+  }
+  return false;
 }
 
 function formatSchemaAddress(a: unknown): string | undefined {
@@ -344,11 +458,11 @@ function formatSchemaAddress(a: unknown): string | undefined {
   return parts.length ? parts.join(", ") : undefined;
 }
 
-/** Verwerkt één JSON-LD entiteit (of geneste in @graph) en voegt info toe. */
+/** Ingest JSON-LD entity data — gaat ALTIJD naar visible-bucket (JSON-LD is
+ *  site-owner-authoritative, machine-readable data die zoekmachines gebruiken). */
 function ingestSchemaEntity(entity: unknown, info: ContactInfo): void {
   if (!entity || typeof entity !== "object") return;
   const e = entity as Record<string, unknown>;
-  // Sommige sites zetten @graph met alle entiteiten daarin
   if (Array.isArray(e["@graph"])) {
     for (const sub of e["@graph"]) ingestSchemaEntity(sub, info);
     return;
@@ -364,63 +478,109 @@ function ingestSchemaEntity(entity: unknown, info: ContactInfo): void {
   );
   if (!isBusinessLike) return;
 
+  const v = info.visible;
   if (!info.name && typeof e.name === "string") info.name = e.name.trim();
-  if (typeof e.telephone === "string" && !info.telephones.includes(e.telephone))
-    info.telephones.push(e.telephone);
-  if (typeof e.email === "string" && !info.emails.includes(e.email))
-    info.emails.push(e.email);
+  if (typeof e.telephone === "string" && !v.telephones.includes(e.telephone))
+    v.telephones.push(e.telephone);
+  if (typeof e.email === "string" && !v.emails.includes(e.email))
+    v.emails.push(e.email);
   const addr = formatSchemaAddress(e.address);
-  if (addr && !info.addresses.includes(addr)) info.addresses.push(addr);
+  if (addr && !v.addresses.includes(addr)) v.addresses.push(addr);
   if (Array.isArray(e.openingHours)) {
     for (const h of e.openingHours) {
-      if (typeof h === "string" && !info.openingHours.includes(h))
-        info.openingHours.push(h);
+      if (typeof h === "string" && !v.openingHours.includes(h))
+        v.openingHours.push(h);
     }
   } else if (typeof e.openingHours === "string") {
-    if (!info.openingHours.includes(e.openingHours))
-      info.openingHours.push(e.openingHours);
+    if (!v.openingHours.includes(e.openingHours))
+      v.openingHours.push(e.openingHours);
   }
   if (Array.isArray(e.sameAs)) {
     for (const u of e.sameAs) {
-      if (typeof u === "string" && !info.socialLinks.includes(u))
-        info.socialLinks.push(u);
+      if (typeof u === "string" && !v.socialLinks.includes(u))
+        v.socialLinks.push(u);
     }
   }
 }
 
+/** Dedupe-append helper. */
+function pushUnique(arr: string[], v: string): void {
+  if (v && !arr.includes(v)) arr.push(v);
+}
+
 /**
- * Extraheert contact-info uit ÉÉN pagina's HTML. Combineert vier bronnen:
- *   1. <a href="mailto:...">   → emails
- *   2. <a href="tel:...">      → telefoonnummers
- *   3. <address>...</address>  → postadres
- *   4. <script type="application/ld+json"> LocalBusiness/Organization
+ * Extraheert contact-info uit ÉÉN pagina's HTML. Splitst per bevinding in:
+ *  - visible: normale zichtbare DOM + JSON-LD (site-owner-authoritative)
+ *  - sourceOnly: hidden containers, templates, of placeholder-domeinen
  *
- * Moet gedraaid worden VOOR extractMainHtml, want die strip <header>, <footer>,
- * <script> en <address> vaak weg. Faalt zacht: kapotte JSON-LD → skip dat blok,
- * ontbrekende bronnen → lege arrays.
+ * Combineert vier bronnen: mailto:/tel: links, <address> tags en JSON-LD
+ * LocalBusiness/Organization. Moet gedraaid worden VOOR extractMainHtml,
+ * want die strip <header>, <footer>, <script> en <address> vaak weg.
+ * Faalt zacht: kapotte JSON-LD → skip dat blok.
  */
 export function extractContactInfo($: cheerio.CheerioAPI): ContactInfo {
   const info = emptyContactInfo();
 
-  // 1 + 2: tel:/mailto: links (dedupe op waarde, niet op DOM-locatie)
+  // Pre-pass: <template> en <noscript> content isolatie. cheerio's parser
+  // plaatst deze content in speciale contexten (DocumentFragment resp. text-
+  // node afhankelijk van parser), waardoor onze parent-traversal ze niet als
+  // "in hidden container" herkent. We extraheren de raw content en parsen 'm
+  // apart, alles daaruit → sourceOnly. Vervolgens strippen we de containers
+  // uit de hoofdboom zodat ze niet meer meedoen.
+  $("template, noscript").each((_, container) => {
+    const raw = $(container).html() ?? "";
+    if (!raw.trim()) return;
+    const $c = cheerio.load(raw, null, false);
+    $c('a[href^="mailto:" i]').each((_, el) => {
+      const email = ($c(el).attr("href") ?? "")
+        .replace(/^mailto:/i, "")
+        .split("?")[0]
+        .trim();
+      if (email) pushUnique(info.sourceOnly.emails, email);
+    });
+    $c('a[href^="tel:" i]').each((_, el) => {
+      const tel = ($c(el).attr("href") ?? "").replace(/^tel:/i, "").trim();
+      if (tel) pushUnique(info.sourceOnly.telephones, tel);
+    });
+    $c("address").each((_, el) => {
+      const text = $c(el).text().replace(/\s+/g, " ").trim();
+      if (text) pushUnique(info.sourceOnly.addresses, text);
+    });
+  });
+  $("template, noscript").remove();
+
   $('a[href^="mailto:" i]').each((_, el) => {
     const href = $(el).attr("href") ?? "";
     const email = href.replace(/^mailto:/i, "").split("?")[0].trim();
-    if (email && !info.emails.includes(email)) info.emails.push(email);
+    if (!email) return;
+    // Placeholder-domeinen ALTIJD naar sourceOnly (ook als visible).
+    const bucket =
+      isInHiddenContainer($, el) || isPlaceholderEmail(email)
+        ? info.sourceOnly
+        : info.visible;
+    pushUnique(bucket.emails, email);
   });
+
   $('a[href^="tel:" i]').each((_, el) => {
     const href = $(el).attr("href") ?? "";
     const tel = href.replace(/^tel:/i, "").trim();
-    if (tel && !info.telephones.includes(tel)) info.telephones.push(tel);
+    if (!tel) return;
+    const bucket =
+      isInHiddenContainer($, el) || isPlaceholderTel(tel)
+        ? info.sourceOnly
+        : info.visible;
+    pushUnique(bucket.telephones, tel);
   });
 
-  // 3: <address> tags (kan meerdere zijn, bv. hoofdkantoor + servicedesk)
   $("address").each((_, el) => {
     const text = $(el).text().replace(/\s+/g, " ").trim();
-    if (text && !info.addresses.includes(text)) info.addresses.push(text);
+    if (!text) return;
+    const bucket = isInHiddenContainer($, el) ? info.sourceOnly : info.visible;
+    pushUnique(bucket.addresses, text);
   });
 
-  // 4: JSON-LD (LocalBusiness / Organization / @graph varianten)
+  // JSON-LD → visible (site-owner-authoritative, machine-readable). Zit in
+  // <script>-tag maar dat is de bedoelde vorm voor structured data.
   $('script[type="application/ld+json"]').each((_, el) => {
     const raw = $(el).contents().text().trim();
     if (!raw) return;
@@ -428,7 +588,7 @@ export function extractContactInfo($: cheerio.CheerioAPI): ContactInfo {
     try {
       parsed = JSON.parse(raw);
     } catch {
-      return; // kapot blok → skip, andere bronnen blijven werken
+      return;
     }
     if (Array.isArray(parsed)) {
       for (const entity of parsed) ingestSchemaEntity(entity, info);
@@ -440,26 +600,46 @@ export function extractContactInfo($: cheerio.CheerioAPI): ContactInfo {
   return info;
 }
 
+/** Merge één bucket (visible of sourceOnly) uit meerdere pagina's, dedup. */
+function mergeBucket(items: ContactBucket[]): ContactBucket {
+  const merged = emptyBucket();
+  for (const item of items) {
+    for (const e of item.emails) pushUnique(merged.emails, e);
+    for (const t of item.telephones) pushUnique(merged.telephones, t);
+    for (const a of item.addresses) pushUnique(merged.addresses, a);
+    for (const h of item.openingHours) pushUnique(merged.openingHours, h);
+    for (const s of item.socialLinks) pushUnique(merged.socialLinks, s);
+  }
+  return merged;
+}
+
 /**
- * Merge contact-info van meerdere pagina's tot één beeld:
- * - arrays worden gededupliceerd samengevoegd (eerste-voorkomen behoudt volgorde)
- * - scalar `name`: eerste niet-lege waarde wint (typisch de homepage-organisatie).
+ * Merge contact-info van meerdere pagina's tot één beeld. Visible en
+ * sourceOnly worden apart gededupliceerd. Scalar `name`: eerste niet-lege wint
+ * (typisch de homepage-organisatie).
  */
 export function mergeContactInfo(items: ContactInfo[]): ContactInfo {
   const merged = emptyContactInfo();
-  for (const item of items) {
-    if (!merged.name && item.name) merged.name = item.name;
-    for (const e of item.emails) if (!merged.emails.includes(e)) merged.emails.push(e);
-    for (const t of item.telephones)
-      if (!merged.telephones.includes(t)) merged.telephones.push(t);
-    for (const a of item.addresses)
-      if (!merged.addresses.includes(a)) merged.addresses.push(a);
-    for (const h of item.openingHours)
-      if (!merged.openingHours.includes(h)) merged.openingHours.push(h);
-    for (const s of item.socialLinks)
-      if (!merged.socialLinks.includes(s)) merged.socialLinks.push(s);
-  }
+  for (const item of items) if (!merged.name && item.name) merged.name = item.name;
+  merged.visible = mergeBucket(items.map((i) => i.visible));
+  merged.sourceOnly = mergeBucket(items.map((i) => i.sourceOnly));
   return merged;
+}
+
+/** Rendert een ContactBucket als YAML-regels met de gegeven indent. */
+function bucketToYaml(b: ContactBucket, indent: string): string[] {
+  const lines: string[] = [];
+  const push = (label: string, values: string[]) => {
+    if (!values.length) return;
+    lines.push(`${indent}${label}:`);
+    for (const v of values) lines.push(`${indent}  - ${v}`);
+  };
+  push("emails", b.emails);
+  push("telefoons", b.telephones);
+  push("adressen", b.addresses);
+  push("openingstijden", b.openingHours);
+  push("social", b.socialLinks);
+  return lines;
 }
 
 function createTurndown(): TurndownService {
@@ -910,13 +1090,16 @@ export async function urlToMarkdown(
       .filter((r) => r.status === "fulfilled" && r.value)
       .map((r) => (r as PromiseFulfilledResult<NonNullable<Awaited<ReturnType<typeof pageToMarkdown>>>>).value.contactInfo),
   );
-  const hasContactInfo =
-    mergedContactInfo.name ||
-    mergedContactInfo.emails.length ||
-    mergedContactInfo.telephones.length ||
-    mergedContactInfo.addresses.length ||
-    mergedContactInfo.openingHours.length ||
-    mergedContactInfo.socialLinks.length;
+  const bucketHas = (b: ContactBucket): boolean =>
+    b.emails.length > 0 ||
+    b.telephones.length > 0 ||
+    b.addresses.length > 0 ||
+    b.openingHours.length > 0 ||
+    b.socialLinks.length > 0;
+  const hasVisibleContact =
+    !!mergedContactInfo.name || bucketHas(mergedContactInfo.visible);
+  const hasSourceOnlyContact = bucketHas(mergedContactInfo.sourceOnly);
+  const hasContactInfo = hasVisibleContact || hasSourceOnlyContact;
 
   const frontmatterLines = [
     "---",
@@ -943,38 +1126,27 @@ export async function urlToMarkdown(
     ...(hasContactInfo
       ? [
           "# contact_gegevens = geaggregeerde contact-info uit tel:/mailto:/<address>/JSON-LD",
-          "# over alle gescraped pagina's. Bedoeld als betrouwbare basis voor advies over",
-          "# de contact-flow (compleetheid, prominente vindbaarheid, drempel).",
+          "# over alle gescraped pagina's.",
+          "# ONDERSCHEID:",
+          "#   zichtbaar        = staat in de gerenderde DOM + JSON-LD (site-owner-",
+          "#                      authoritative). MAG geciteerd worden als \"op de website\".",
+          "#   alleen_in_source = gevonden in HTML-source binnen hidden/template containers",
+          "#                      of op placeholder-domeinen (example.com, company.com etc.).",
+          "#                      NIET beweren dat dit op de webpagina staat; wél meldbaar",
+          "#                      als tech/marketing-hygiëne-signaal (bv. template niet",
+          "#                      correct ingevuld door de site-eigenaar).",
           "contact_gegevens:",
           ...(mergedContactInfo.name ? [`  naam: ${mergedContactInfo.name}`] : []),
-          ...(mergedContactInfo.emails.length
+          ...(hasVisibleContact
             ? [
-                "  emails:",
-                ...mergedContactInfo.emails.map((e) => `    - ${e}`),
+                "  zichtbaar:",
+                ...bucketToYaml(mergedContactInfo.visible, "    "),
               ]
             : []),
-          ...(mergedContactInfo.telephones.length
+          ...(hasSourceOnlyContact
             ? [
-                "  telefoons:",
-                ...mergedContactInfo.telephones.map((t) => `    - ${t}`),
-              ]
-            : []),
-          ...(mergedContactInfo.addresses.length
-            ? [
-                "  adressen:",
-                ...mergedContactInfo.addresses.map((a) => `    - ${a}`),
-              ]
-            : []),
-          ...(mergedContactInfo.openingHours.length
-            ? [
-                "  openingstijden:",
-                ...mergedContactInfo.openingHours.map((h) => `    - ${h}`),
-              ]
-            : []),
-          ...(mergedContactInfo.socialLinks.length
-            ? [
-                "  social:",
-                ...mergedContactInfo.socialLinks.map((s) => `    - ${s}`),
+                "  alleen_in_source:",
+                ...bucketToYaml(mergedContactInfo.sourceOnly, "    "),
               ]
             : []),
         ]
