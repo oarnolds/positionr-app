@@ -1,9 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { PRICING, calculateModelCostCents } from "@/lib/ai/pricing";
+import { calculateModelCostCents } from "@/lib/ai/pricing";
 
 const FETCH_TIMEOUT_MS = 6_000;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // Claude vision-limit per image
 const BATCH_SIZE = 8;
+// Default-model voor image-descriptions: Haiku 4.5. Kwaliteit is voldoende
+// voor de labeling-taak (Logo/Foto/Diagram/SKIP) en ~3x goedkoper dan Sonnet
+// 4.6 — bevestigd via de /modules/markdown/vergelijk tool op 2026-08-07 waarin
+// Haiku en Sonnet vergelijkbare labels leverden en Fable 5 (duurst) juist
+// slechter presteerde op logo-herkenning. Andere Claude-modules (rapport-
+// generatie, analyses) blijven Sonnet 4.6 gebruiken via PRICING.claude.model
+// omdat daar redenering de bottleneck is, niet cost.
+const DEFAULT_IMAGE_DESCRIPTION_MODEL = "claude-haiku-4-5-20251001";
 // Parallelle Vision-batches: Anthropic rate-limits genereus per minute, en met 4
 // parallel + BATCH_SIZE=8 zitten we op ~32 images "in flight" — ruim onder de
 // per-second image-limits die de meeste tier-3 accounts hebben. Meer parallel
@@ -201,13 +209,14 @@ async function poolMap<T, R>(
  * description) bij fouten zodat de scrape doorgaat.
  *
  * `options.model` laat de caller een ander Claude-model kiezen (voor de
- * /modules/markdown/vergelijk kost-vergelijking); default = PRICING.claude.model.
+ * /modules/markdown/vergelijk kost-vergelijking); default =
+ * DEFAULT_IMAGE_DESCRIPTION_MODEL (Haiku 4.5).
  */
 export async function describeImageBuffers(
   images: ImageInput[],
   options: { model?: string } = {},
 ): Promise<DescribeResult> {
-  const model = options.model ?? PRICING.claude.model;
+  const model = options.model ?? DEFAULT_IMAGE_DESCRIPTION_MODEL;
   const map: DescriptionMap = new Map();
   if (images.length === 0) {
     return { descriptions: map, usage: { inputTokens: 0, outputTokens: 0 }, costCents: 0, batchesOk: 0, batchesFailed: 0 };
