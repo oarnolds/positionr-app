@@ -5,6 +5,8 @@ import {
   PAINPOINTS_KEYS,
   HOWITWORKS_KEYS,
   FOUNDATIONS_KEYS,
+  FOUNDERS_KEYS,
+  AGENCY_KEYS,
 } from "./_home/keys";
 import { Hero } from "./_home/hero";
 import { PainPoints } from "./_home/pain-points";
@@ -23,6 +25,8 @@ const ACTIVE_KEYS = [
   ...PAINPOINTS_KEYS,
   ...HOWITWORKS_KEYS,
   ...FOUNDATIONS_KEYS,
+  ...FOUNDERS_KEYS,
+  ...AGENCY_KEYS,
 ] as const;
 
 export default async function HomePage() {
@@ -33,8 +37,8 @@ export default async function HomePage() {
       <PainPoints content={content} />
       <HowItWorks content={content} />
       <Foundations content={content} />
-      <Founders />
-      <AgencyComparison />
+      <Founders content={content} />
+      <AgencyComparison content={content} />
       <PlansTeaser />
       <Faq />
       <FinalCta />

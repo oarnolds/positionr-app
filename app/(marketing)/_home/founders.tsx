@@ -5,54 +5,54 @@ import { Linkedin } from "lucide-react";
 import Image from "next/image";
 
 import { useReveal } from "./use-reveal";
+import type { FoundersKey } from "./keys";
 
-/**
- * Oprichters-sectie: laat het gezicht en de ervaring zien achter Positionr.
- *
- * Foto's: leg jpg's neer op /public/founders/olivier.jpg en /martijn.jpg.
- * Zolang die niet bestaan, tonen we een cirkel met de initialen.
- * Om een echte foto te tonen: zet `photoSrc` op het pad; anders `null`.
- */
-type Founder = {
-  name: string;
+type FounderMeta = {
   initials: string;
-  role: string;
-  yearsPractice: string;
-  intro: string;
+  photoSrc: string | null;
   linkedInUrl: string | null;
-  photoSrc: string | null; // bv. "/founders/olivier.jpg"
+  nameKey: FoundersKey;
+  roleKey: FoundersKey;
+  yearsKey: FoundersKey;
+  introKey: FoundersKey;
 };
 
-const FOUNDERS: readonly Founder[] = [
+const FOUNDER_META: readonly FounderMeta[] = [
   {
-    name: "Olivier Arnolds",
     initials: "OA",
-    role: "Oprichter · Product & marketing",
-    yearsPractice: "30+ jaar in B2B-marketing en sales",
-    intro:
-      "Uit Amsterdam. Bouwt aan Positionr vanuit 30+ jaar ervaring in B2B-sales, marketing en business development. In elke module zit de manier waarop ik zelf een marketingvraag zou aanpakken: minder theorie, meer bruikbare stappen.",
-    linkedInUrl: "https://www.linkedin.com/in/olivierarnolds/",
     photoSrc: "/founders/olivier.jpg",
+    linkedInUrl: "https://www.linkedin.com/in/olivierarnolds/",
+    nameKey: "homepage.founders.olivier.name",
+    roleKey: "homepage.founders.olivier.role",
+    yearsKey: "homepage.founders.olivier.years",
+    introKey: "homepage.founders.olivier.intro",
   },
   {
-    name: "Martijn de Haas",
     initials: "MdH",
-    role: "Oprichter · Strategie",
-    yearsPractice: "TU Delft · eigenaar De Haas BCD",
-    intro:
-      "Strateeg met een achtergrond aan de TU Delft en jaren ervaring bij een multinational. Runt sinds jaren zijn eigen strategie-praktijk (De Haas BCD) en helpt organisaties van MKB tot overheid ambitie om te zetten in scherpe keuzes. In Positionr zit dezelfde manier van denken.",
-    linkedInUrl: "https://www.linkedin.com/in/dehaasmartijn/",
     photoSrc: "/founders/martijn.png",
+    linkedInUrl: "https://www.linkedin.com/in/dehaasmartijn/",
+    nameKey: "homepage.founders.martijn.name",
+    roleKey: "homepage.founders.martijn.role",
+    yearsKey: "homepage.founders.martijn.years",
+    introKey: "homepage.founders.martijn.intro",
   },
 ];
 
-function Avatar({ f }: { f: Founder }) {
-  if (f.photoSrc) {
+function Avatar({
+  initials,
+  photoSrc,
+  alt,
+}: {
+  initials: string;
+  photoSrc: string | null;
+  alt: string;
+}) {
+  if (photoSrc) {
     return (
       <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full ring-2 ring-white/80">
         <Image
-          src={f.photoSrc}
-          alt={`Portret van ${f.name}`}
+          src={photoSrc}
+          alt={`Portret van ${alt}`}
           fill
           sizes="80px"
           className="object-cover"
@@ -63,80 +63,87 @@ function Avatar({ f }: { f: Founder }) {
   return (
     <div
       className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-primary/15 font-display text-2xl font-bold text-primary ring-2 ring-white/80"
-      aria-label={f.name}
+      aria-label={alt}
     >
-      {f.initials}
+      {initials}
     </div>
   );
 }
 
-export function Founders() {
+export function Founders({
+  content,
+}: {
+  content: Record<FoundersKey, string>;
+}) {
   const { ref, revealed } = useReveal<HTMLDivElement>();
   return (
     <section className="mx-auto max-w-6xl px-6 py-24 lg:py-28">
       <div className="mb-12 max-w-3xl">
         <div className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
-          Achter Positionr.
+          {content["homepage.founders.eyebrow"]}
         </div>
         <h2
           className="mt-3 font-display text-4xl font-bold tracking-[-0.02em] text-ink-high md:text-5xl"
           style={{ lineHeight: 1.1 }}
         >
-          De ervaring die AI niet kan namaken.
+          {content["homepage.founders.title"]}
         </h2>
         <p className="mt-4 text-lg text-ink-mid">
-          Positionr is geen zwarte doos vol algoritmes. Elke module is gebouwd
-          door twee marketeers die dertig jaar aan cases, missers en succesvolle
-          keuzes hebben gecodificeerd. Wat je terugkrijgt is hún manier van
-          denken, niet die van de machine.
+          {content["homepage.founders.intro"]}
         </p>
       </div>
 
-      <div
-        ref={ref}
-        className="grid grid-cols-1 gap-6 md:grid-cols-2"
-      >
-        {FOUNDERS.map((f, i) => (
-          <motion.div
-            key={f.name}
-            initial={{ opacity: 0, y: 12 }}
-            animate={revealed ? { opacity: 1, y: 0 } : {}}
-            transition={{
-              type: "spring",
-              bounce: 0,
-              duration: 0.35,
-              delay: i * 0.08,
-            }}
-            className="rounded-2xl bg-white p-6 shadow-sm shadow-black/5 md:p-8"
-          >
-            <div className="flex items-start gap-4">
-              <Avatar f={f} />
-              <div className="min-w-0">
-                <div className="font-display text-xl font-bold text-ink-high">
-                  {f.name}
-                </div>
-                <div className="text-sm text-ink-mid">{f.role}</div>
-                <div className="mt-1 text-xs uppercase tracking-wider text-ink-mut">
-                  {f.yearsPractice}
+      <div ref={ref} className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {FOUNDER_META.map((f, i) => {
+          const name = content[f.nameKey];
+          return (
+            <motion.div
+              key={f.nameKey}
+              initial={{ opacity: 0, y: 12 }}
+              animate={revealed ? { opacity: 1, y: 0 } : {}}
+              transition={{
+                type: "spring",
+                bounce: 0,
+                duration: 0.35,
+                delay: i * 0.08,
+              }}
+              className="rounded-2xl bg-white p-6 shadow-sm shadow-black/5 md:p-8"
+            >
+              <div className="flex items-start gap-4">
+                <Avatar
+                  initials={f.initials}
+                  photoSrc={f.photoSrc}
+                  alt={name}
+                />
+                <div className="min-w-0">
+                  <div className="font-display text-xl font-bold text-ink-high">
+                    {name}
+                  </div>
+                  <div className="text-sm text-ink-mid">
+                    {content[f.roleKey]}
+                  </div>
+                  <div className="mt-1 text-xs uppercase tracking-wider text-ink-mut">
+                    {content[f.yearsKey]}
+                  </div>
                 </div>
               </div>
-            </div>
-            <p className="mt-5 text-sm leading-relaxed text-ink-mid">
-              {f.intro}
-            </p>
-            {f.linkedInUrl && (
-              <a
-                href={f.linkedInUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-              >
-                <Linkedin size={13} />
-                LinkedIn
-              </a>
-            )}
-          </motion.div>
-        ))}
+              <p className="mt-5 text-sm leading-relaxed text-ink-mid">
+                {content[f.introKey]}
+              </p>
+              {f.linkedInUrl && (
+                <a
+                  href={f.linkedInUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                >
+                  <Linkedin size={13} />
+                  LinkedIn
+                </a>
+              )}
+            </motion.div>
+          );
+        })}
       </div>
     </section>
   );

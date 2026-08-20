@@ -59,7 +59,34 @@ export const FOUNDATIONS_KEYS = [
   "homepage.foundations.card.kotler.body",
 ] as const satisfies readonly ContentKey[];
 
+export const FOUNDERS_KEYS = [
+  "homepage.founders.eyebrow",
+  "homepage.founders.title",
+  "homepage.founders.intro",
+  "homepage.founders.olivier.name",
+  "homepage.founders.olivier.role",
+  "homepage.founders.olivier.years",
+  "homepage.founders.olivier.intro",
+  "homepage.founders.martijn.name",
+  "homepage.founders.martijn.role",
+  "homepage.founders.martijn.years",
+  "homepage.founders.martijn.intro",
+] as const satisfies readonly ContentKey[];
+
+export const AGENCY_KEYS = [
+  "homepage.agency.eyebrow",
+  "homepage.agency.title",
+  "homepage.agency.tijd.left",
+  "homepage.agency.tijd.right",
+  "homepage.agency.prijs.left",
+  "homepage.agency.prijs.right",
+  "homepage.agency.controle.left",
+  "homepage.agency.controle.right",
+] as const satisfies readonly ContentKey[];
+
 export type HeroKey = (typeof HERO_KEYS)[number];
 export type PainPointsKey = (typeof PAINPOINTS_KEYS)[number];
 export type HowItWorksKey = (typeof HOWITWORKS_KEYS)[number];
 export type FoundationsKey = (typeof FOUNDATIONS_KEYS)[number];
+export type FoundersKey = (typeof FOUNDERS_KEYS)[number];
+export type AgencyKey = (typeof AGENCY_KEYS)[number];
