@@ -32,8 +32,8 @@ export function PainPoints() {
           Deze vragen krijgen wij dagelijks van ondernemers.
         </h2>
         <p className="mt-3 text-base text-ink-mid">
-          Blijf je zelf zitten met dit soort twijfels? Positionr geeft er in
-          minuten een gefundeerd antwoord op. Geen uren met een bureau, geen
+          Loop je hier zelf tegenaan? Positionr geeft je in minuten een
+          gefundeerd antwoord. Geen weken wachten op een bureau, geen
           buikgevoel.
         </p>
       </div>

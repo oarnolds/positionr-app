@@ -23,7 +23,7 @@ const STEPS: readonly Step[] = [
   {
     n: 2,
     title: "Onze AI analyseert je situatie",
-    body: "In ± 2 minuten combineren we jouw input met wetenschappelijk gefundeerde raamwerken (Cialdini, Ritson, Kotler). Geen algoritme-magie. Je ziet exact wat we doen.",
+    body: "In ± 2 minuten leggen we jouw input naast de raamwerken van Cialdini, Ritson en Kotler. Je ziet stap voor stap hoe we tot een advies komen.",
     kind: "progress",
   },
   {
@@ -158,7 +158,7 @@ export function HowItWorks() {
           className="mt-3 font-display text-4xl font-bold tracking-[-0.02em] text-ink-high md:text-5xl"
           style={{ lineHeight: 1.1 }}
         >
-          Van vraag tot toepasbaar antwoord in drie stappen.
+          Zo kom je in drie stappen bij een concreet antwoord.
         </h2>
       </div>
       <div className="space-y-20">

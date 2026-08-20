@@ -45,8 +45,9 @@ export function Hero() {
             transition={{ type: "spring", bounce: 0, duration: 0.35, delay: 0.12 }}
             className="mt-6 max-w-xl text-lg leading-relaxed text-ink-mid"
           >
-            Wat een bureau in dagen doet, krijg jij in minuten. Concreet, direct
-            toepasbaar, met wetenschappelijke basis.
+            Wat een bureau in dagen doet, krijg jij in minuten. Zonder
+            consultancy-uren, met een advies waar je meteen mee aan de slag
+            kan.
           </motion.p>
 
           <motion.div

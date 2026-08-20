@@ -15,12 +15,12 @@ const CARDS = [
   {
     label: "Mark Ritson",
     title: "Diagnose vóór creatie.",
-    body: "Wij analyseren eerst je categorie, doelgroep en positionering. Dán pas de tactiek. De aanpak die grote adverteerders van sub-schaal onderscheidt.",
+    body: "Wij kijken eerst naar je categorie, doelgroep en positionering. Pas daarna naar tactiek. Zo werken de sterkste adverteerders ook.",
     Icon: Target,
   },
   {
     label: "Philip Kotler",
-    title: "Klassieke marketingmix, modern toegepast.",
+    title: "De vier P's, up-to-date.",
     body: "Product, prijs, plaats, promotie, met de aanvullingen uit Kotler's latere werk over CX en H2H (human-to-human).",
     Icon: Grid3x3,
   },
@@ -42,9 +42,9 @@ export function Foundations() {
             Geen buikgevoel, maar 60 jaar marketingwetenschap.
           </h2>
           <p className="mt-4 text-lg text-ink-mid">
-            Elke aanbeveling komt uit raamwerken die aan universiteiten en de
-            sterkste bureaus dagelijks worden toegepast, vertaald naar jouw
-            context.
+            Elke aanbeveling leunt op raamwerken die op universiteiten en bij
+            de sterkste bureaus dagelijks in de praktijk zitten. Wij vertalen
+            ze naar jouw situatie.
           </p>
         </div>
         <div ref={ref} className="grid grid-cols-1 gap-6 md:grid-cols-3">

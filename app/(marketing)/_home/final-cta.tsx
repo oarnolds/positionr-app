@@ -28,8 +28,7 @@ export function FinalCta() {
           </Link>
         </div>
         <p className="mt-6 text-xs text-ink-mut">
-          Ruim 90% van de tijd zit je binnen 5 minuten met een concreet rapport
-          voor je.
+          In de meeste gevallen heb je binnen 5 minuten een rapport in handen.
         </p>
       </div>
     </section>
