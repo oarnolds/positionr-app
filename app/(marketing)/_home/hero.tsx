@@ -13,9 +13,9 @@ export function Hero() {
       <div className="pointer-events-none absolute -left-40 top-40 -z-10 h-[480px] w-[480px] rounded-full bg-primary/5 blur-[120px]" />
       <div className="pointer-events-none absolute -right-20 top-20 -z-10 h-[400px] w-[400px] rounded-full bg-coral/[0.04] blur-[100px]" />
 
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-6 py-24 lg:grid-cols-12 lg:gap-8 lg:py-32">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-6 py-24 lg:grid-cols-12 lg:gap-14 lg:py-32">
         {/* Tekst-kolom */}
-        <div className="lg:col-span-5">
+        <div className="min-w-0 lg:col-span-5">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -30,10 +30,15 @@ export function Hero() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ type: "spring", bounce: 0, duration: 0.35, delay: 0.06 }}
-            className="mt-6 font-display text-5xl font-bold tracking-[-0.02em] text-ink-high md:text-6xl lg:text-7xl"
-            style={{ lineHeight: 1.05, fontOpticalSizing: "auto" }}
+            className="mt-6 font-display text-[2.75rem] font-bold tracking-[-0.02em] text-ink-high hyphens-auto md:text-5xl lg:text-6xl"
+            style={{
+              lineHeight: 1.05,
+              fontOpticalSizing: "auto",
+              overflowWrap: "break-word",
+            }}
+            lang="nl"
           >
-            De second opinion voor je marketingbeslissingen.
+            De second opinion voor je marketing&shy;beslissingen.
           </motion.h1>
 
           <motion.p
