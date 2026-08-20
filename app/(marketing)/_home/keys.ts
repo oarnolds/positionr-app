@@ -114,5 +114,14 @@ export const FAQ_KEYS = [
 
 export type FoundersKey = (typeof FOUNDERS_KEYS)[number];
 export type AgencyKey = (typeof AGENCY_KEYS)[number];
+export const FINALCTA_KEYS = [
+  "homepage.finalcta.title",
+  "homepage.finalcta.subtitle",
+  "homepage.finalcta.cta_primary_label",
+  "homepage.finalcta.cta_secondary_label",
+  "homepage.finalcta.micro_copy",
+] as const satisfies readonly ContentKey[];
+
 export type PlansKey = (typeof PLANS_KEYS)[number];
 export type FaqKey = (typeof FAQ_KEYS)[number];
+export type FinalCtaKey = (typeof FINALCTA_KEYS)[number];
