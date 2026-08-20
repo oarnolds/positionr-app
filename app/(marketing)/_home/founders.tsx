@@ -42,7 +42,7 @@ const FOUNDERS: readonly Founder[] = [
     intro:
       "Strateeg met een achtergrond aan de TU Delft en jaren ervaring bij een multinational. Runt sinds jaren zijn eigen strategie-praktijk (De Haas BCD) en helpt organisaties van MKB tot overheid ambitie om te zetten in scherpe keuzes. In Positionr zit dezelfde manier van denken.",
     linkedInUrl: "https://www.linkedin.com/in/dehaasmartijn/",
-    photoSrc: null,
+    photoSrc: "/founders/martijn.png",
   },
 ];
 
