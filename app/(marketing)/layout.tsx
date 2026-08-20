@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { SharedMarketingFooter } from "./_layout/shared-footer";
 
 export default function MarketingLayout({
   children,
@@ -8,12 +9,12 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-white text-slate-900">
-      <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/80 backdrop-blur">
+    <div className="flex min-h-screen flex-col bg-cream text-ink-high">
+      <header className="sticky top-0 z-50 border-b border-black/[0.06] bg-cream/70 backdrop-blur-xl saturate-150 supports-[not_(backdrop-filter:blur(0))]:bg-cream/95">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link
             href="/"
-            className="text-xl font-bold tracking-tight text-slate-900"
+            className="font-display text-xl font-bold tracking-tight text-ink-high"
           >
             Positionr<span className="text-primary">.</span>
           </Link>
@@ -37,22 +38,7 @@ export default function MarketingLayout({
 
       <main className="flex-1">{children}</main>
 
-      <footer className="border-t border-slate-100 bg-slate-50">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 text-sm text-slate-500 sm:flex-row">
-          <span>© Positionr</span>
-          <nav className="flex gap-6">
-            <Link href="/voorwaarden" className="hover:text-slate-900">
-              Voorwaarden
-            </Link>
-            <Link href="/privacy" className="hover:text-slate-900">
-              Privacy
-            </Link>
-            <Link href="/login" className="hover:text-slate-900">
-              Inloggen
-            </Link>
-          </nav>
-        </div>
-      </footer>
+      <SharedMarketingFooter />
     </div>
   );
 }
