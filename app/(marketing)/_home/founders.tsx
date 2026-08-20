@@ -32,7 +32,7 @@ const FOUNDERS: readonly Founder[] = [
     intro:
       "Uit Amsterdam. Bouwt aan Positionr vanuit 30+ jaar ervaring in B2B-sales, marketing en business development. In elke module zit de manier waarop ik zelf een marketingvraag zou aanpakken: minder theorie, meer bruikbare stappen.",
     linkedInUrl: "https://www.linkedin.com/in/olivierarnolds/",
-    photoSrc: null,
+    photoSrc: "/founders/olivier.jpg",
   },
   {
     name: "Martijn de Haas",
