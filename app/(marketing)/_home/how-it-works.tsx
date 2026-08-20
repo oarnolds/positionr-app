@@ -3,33 +3,32 @@
 import { motion } from "motion/react";
 
 import { useReveal } from "./use-reveal";
+import type { HowItWorksKey } from "./keys";
 
 type StepKind = "form" | "progress" | "results";
 
-type Step = {
+const STEP_META: ReadonlyArray<{
   n: number;
-  title: string;
-  body: string;
+  titleKey: HowItWorksKey;
+  bodyKey: HowItWorksKey;
   kind: StepKind;
-};
-
-const STEPS: readonly Step[] = [
+}> = [
   {
     n: 1,
-    title: "Stel je vraag of upload je URL",
-    body: "Kies een module (Website Check, ICP-analyse, Concurrentieanalyse) en geef ons je bedrijf. Meer heb je niet nodig.",
+    titleKey: "homepage.howitworks.step.1.title",
+    bodyKey: "homepage.howitworks.step.1.body",
     kind: "form",
   },
   {
     n: 2,
-    title: "Onze AI analyseert je situatie",
-    body: "In ± 2 minuten leggen we jouw input naast de raamwerken van Cialdini, Ritson en Kotler. Je ziet stap voor stap hoe we tot een advies komen.",
+    titleKey: "homepage.howitworks.step.2.title",
+    bodyKey: "homepage.howitworks.step.2.body",
     kind: "progress",
   },
   {
     n: 3,
-    title: "Krijg concrete, geprioriteerde acties",
-    body: "Geen 40-pagina rapport dat op de plank belandt. Vijf acties met impact-score, direct toepasbaar deze week.",
+    titleKey: "homepage.howitworks.step.3.title",
+    bodyKey: "homepage.howitworks.step.3.body",
     kind: "results",
   },
 ] as const;
@@ -116,7 +115,19 @@ function StepScreenshot({ kind }: { kind: StepKind }) {
   );
 }
 
-function Row({ step, reverse }: { step: Step; reverse: boolean }) {
+function Row({
+  n,
+  title,
+  body,
+  kind,
+  reverse,
+}: {
+  n: number;
+  title: string;
+  body: string;
+  kind: StepKind;
+  reverse: boolean;
+}) {
   const { ref, revealed } = useReveal<HTMLDivElement>();
   const rotation = reverse ? "lg:rotate-[1deg]" : "lg:rotate-[-1deg]";
   return (
@@ -129,41 +140,52 @@ function Row({ step, reverse }: { step: Step; reverse: boolean }) {
     >
       <div className={`lg:col-span-5 ${reverse ? "lg:col-start-8 lg:row-start-1" : ""}`}>
         <div className="mb-3 font-display text-6xl font-bold text-primary">
-          {step.n}
+          {n}
         </div>
         <h3 className="font-display text-2xl font-bold text-ink-high md:text-3xl">
-          {step.title}
+          {title}
         </h3>
-        <p className="mt-3 text-base leading-relaxed text-ink-mid">{step.body}</p>
+        <p className="mt-3 text-base leading-relaxed text-ink-mid">{body}</p>
       </div>
       <div
         className={`lg:col-span-6 ${
           reverse ? "lg:col-start-1 lg:row-start-1" : "lg:col-start-7"
         } ${rotation}`}
       >
-        <StepScreenshot kind={step.kind} />
+        <StepScreenshot kind={kind} />
       </div>
     </motion.div>
   );
 }
 
-export function HowItWorks() {
+export function HowItWorks({
+  content,
+}: {
+  content: Record<HowItWorksKey, string>;
+}) {
   return (
     <section className="mx-auto max-w-6xl px-6 py-24 lg:py-32">
       <div className="mb-16 text-center">
         <div className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
-          Zo werkt het.
+          {content["homepage.howitworks.eyebrow"]}
         </div>
         <h2
           className="mt-3 font-display text-4xl font-bold tracking-[-0.02em] text-ink-high md:text-5xl"
           style={{ lineHeight: 1.1 }}
         >
-          Zo kom je in drie stappen bij een concreet antwoord.
+          {content["homepage.howitworks.title"]}
         </h2>
       </div>
       <div className="space-y-20">
-        {STEPS.map((s, i) => (
-          <Row key={s.n} step={s} reverse={i % 2 === 1} />
+        {STEP_META.map((s, i) => (
+          <Row
+            key={s.n}
+            n={s.n}
+            title={content[s.titleKey]}
+            body={content[s.bodyKey]}
+            kind={s.kind}
+            reverse={i % 2 === 1}
+          />
         ))}
       </div>
     </section>

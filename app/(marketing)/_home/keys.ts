@@ -33,5 +33,33 @@ export const PAINPOINTS_KEYS = [
   "homepage.painpoints.q.9",
 ] as const satisfies readonly ContentKey[];
 
+export const HOWITWORKS_KEYS = [
+  "homepage.howitworks.eyebrow",
+  "homepage.howitworks.title",
+  "homepage.howitworks.step.1.title",
+  "homepage.howitworks.step.1.body",
+  "homepage.howitworks.step.2.title",
+  "homepage.howitworks.step.2.body",
+  "homepage.howitworks.step.3.title",
+  "homepage.howitworks.step.3.body",
+] as const satisfies readonly ContentKey[];
+
+export const FOUNDATIONS_KEYS = [
+  "homepage.foundations.eyebrow",
+  "homepage.foundations.title",
+  "homepage.foundations.intro",
+  "homepage.foundations.card.cialdini.label",
+  "homepage.foundations.card.cialdini.title",
+  "homepage.foundations.card.cialdini.body",
+  "homepage.foundations.card.ritson.label",
+  "homepage.foundations.card.ritson.title",
+  "homepage.foundations.card.ritson.body",
+  "homepage.foundations.card.kotler.label",
+  "homepage.foundations.card.kotler.title",
+  "homepage.foundations.card.kotler.body",
+] as const satisfies readonly ContentKey[];
+
 export type HeroKey = (typeof HERO_KEYS)[number];
 export type PainPointsKey = (typeof PAINPOINTS_KEYS)[number];
+export type HowItWorksKey = (typeof HOWITWORKS_KEYS)[number];
+export type FoundationsKey = (typeof FOUNDATIONS_KEYS)[number];
