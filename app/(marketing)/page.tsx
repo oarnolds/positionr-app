@@ -1,4 +1,5 @@
 import { Hero } from "./_home/hero";
+import { PainPoints } from "./_home/pain-points";
 import { HowItWorks } from "./_home/how-it-works";
 import { Foundations } from "./_home/foundations";
 import { AgencyComparison } from "./_home/agency-comparison";
@@ -11,6 +12,7 @@ export default function HomePage() {
   return (
     <div className="bg-cream text-ink-high">
       <Hero />
+      <PainPoints />
       <HowItWorks />
       <Foundations />
       <AgencyComparison />
