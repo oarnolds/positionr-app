@@ -2,6 +2,7 @@ import { Hero } from "./_home/hero";
 import { PainPoints } from "./_home/pain-points";
 import { HowItWorks } from "./_home/how-it-works";
 import { Foundations } from "./_home/foundations";
+import { Founders } from "./_home/founders";
 import { AgencyComparison } from "./_home/agency-comparison";
 import { PlansTeaser } from "./_home/plans-teaser";
 import { Faq } from "./_home/faq";
@@ -15,6 +16,7 @@ export default function HomePage() {
       <PainPoints />
       <HowItWorks />
       <Foundations />
+      <Founders />
       <AgencyComparison />
       <PlansTeaser />
       <Faq />
