@@ -39,6 +39,23 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Homepage-warm palet (spec 1.1)
+        cream: {
+          DEFAULT: "#FBF9F5",
+          tint: "#F5EFE4",
+        },
+        coral: {
+          DEFAULT: "#E56A50",
+          hover: "#D25940",
+        },
+        mint: {
+          DEFAULT: "#6DB396",
+        },
+        ink: {
+          high: "#1A1A1F",
+          mid: "#4A4A55",
+          mut: "#8A8A95",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
