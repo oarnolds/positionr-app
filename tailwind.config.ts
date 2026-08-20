@@ -72,6 +72,12 @@ const config: Config = {
           "Roboto",
           "sans-serif",
         ],
+        display: [
+          "var(--font-fraunces)",
+          "Georgia",
+          "ui-serif",
+          "serif",
+        ],
       },
     },
   },
