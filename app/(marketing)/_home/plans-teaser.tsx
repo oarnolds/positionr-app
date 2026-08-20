@@ -2,23 +2,27 @@ import Link from "next/link";
 
 import { PLANS } from "@/lib/plans/registry";
 import { formatPriceEur } from "@/lib/plans/format";
+import type { PlansKey } from "./keys";
 
-export function PlansTeaser() {
+export function PlansTeaser({
+  content,
+}: {
+  content: Record<PlansKey, string>;
+}) {
   return (
     <section className="mx-auto max-w-6xl px-6 py-24">
       <div className="mb-12 max-w-3xl">
         <div className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
-          Pakketten.
+          {content["homepage.plans.eyebrow"]}
         </div>
         <h2
           className="mt-3 font-display text-4xl font-bold tracking-[-0.02em] text-ink-high md:text-5xl"
           style={{ lineHeight: 1.1 }}
         >
-          Eén jaarbedrag, alle modules in je pakket.
+          {content["homepage.plans.title"]}
         </h2>
         <p className="mt-4 text-lg text-ink-mid">
-          Geen uurtarieven, geen consultancy-add-ons. Een fractie van wat één
-          bureau-traject kost.
+          {content["homepage.plans.intro"]}
         </p>
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -52,7 +56,7 @@ export function PlansTeaser() {
                   : "border border-black/10 text-ink-high hover:bg-white"
               }`}
             >
-              Kies dit pakket
+              {content["homepage.plans.cta_label"]}
             </Link>
           </div>
         ))}
@@ -62,7 +66,7 @@ export function PlansTeaser() {
           href="/prijzen"
           className="font-semibold text-primary hover:underline"
         >
-          Bekijk alle features en modules per pakket →
+          {content["homepage.plans.all_features_link"]}
         </Link>
       </p>
     </section>

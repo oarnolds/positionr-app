@@ -7,6 +7,8 @@ import {
   FOUNDATIONS_KEYS,
   FOUNDERS_KEYS,
   AGENCY_KEYS,
+  PLANS_KEYS,
+  FAQ_KEYS,
 } from "./_home/keys";
 import { Hero } from "./_home/hero";
 import { PainPoints } from "./_home/pain-points";
@@ -27,6 +29,8 @@ const ACTIVE_KEYS = [
   ...FOUNDATIONS_KEYS,
   ...FOUNDERS_KEYS,
   ...AGENCY_KEYS,
+  ...PLANS_KEYS,
+  ...FAQ_KEYS,
 ] as const;
 
 export default async function HomePage() {
@@ -39,8 +43,8 @@ export default async function HomePage() {
       <Foundations content={content} />
       <Founders content={content} />
       <AgencyComparison content={content} />
-      <PlansTeaser />
-      <Faq />
+      <PlansTeaser content={content} />
+      <Faq content={content} />
       <FinalCta />
       <HomeFooter />
     </div>

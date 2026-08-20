@@ -88,5 +88,31 @@ export type HeroKey = (typeof HERO_KEYS)[number];
 export type PainPointsKey = (typeof PAINPOINTS_KEYS)[number];
 export type HowItWorksKey = (typeof HOWITWORKS_KEYS)[number];
 export type FoundationsKey = (typeof FOUNDATIONS_KEYS)[number];
+export const PLANS_KEYS = [
+  "homepage.plans.eyebrow",
+  "homepage.plans.title",
+  "homepage.plans.intro",
+  "homepage.plans.cta_label",
+  "homepage.plans.all_features_link",
+] as const satisfies readonly ContentKey[];
+
+export const FAQ_KEYS = [
+  "homepage.faq.title",
+  "homepage.faq.q.1",
+  "homepage.faq.a.1",
+  "homepage.faq.q.2",
+  "homepage.faq.a.2",
+  "homepage.faq.q.3",
+  "homepage.faq.a.3",
+  "homepage.faq.q.4",
+  "homepage.faq.a.4",
+  "homepage.faq.q.5",
+  "homepage.faq.a.5",
+  "homepage.faq.q.6",
+  "homepage.faq.a.6",
+] as const satisfies readonly ContentKey[];
+
 export type FoundersKey = (typeof FOUNDERS_KEYS)[number];
 export type AgencyKey = (typeof AGENCY_KEYS)[number];
+export type PlansKey = (typeof PLANS_KEYS)[number];
+export type FaqKey = (typeof FAQ_KEYS)[number];
