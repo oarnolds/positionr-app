@@ -9,19 +9,19 @@ const CARDS = [
   {
     label: "Cialdini",
     title: "Waarom mensen 'ja' zeggen.",
-    body: "Zes principes van invloed — reciprociteit, sociale bewijskracht, autoriteit, sympathie, schaarste, commitment — gebruikt om je propositie en CTA's te toetsen.",
+    body: "Zes principes van invloed (reciprociteit, sociale bewijskracht, autoriteit, sympathie, schaarste, commitment), gebruikt om je propositie en CTA's te toetsen.",
     Icon: Users,
   },
   {
     label: "Mark Ritson",
     title: "Diagnose vóór creatie.",
-    body: "Wij analyseren eerst je categorie, doelgroep en positionering — dan pas de tactiek. De aanpak die grote adverteerders van sub-schaal onderscheidt.",
+    body: "Wij analyseren eerst je categorie, doelgroep en positionering. Dán pas de tactiek. De aanpak die grote adverteerders van sub-schaal onderscheidt.",
     Icon: Target,
   },
   {
     label: "Philip Kotler",
     title: "Klassieke marketingmix, modern toegepast.",
-    body: "Product, prijs, plaats, promotie — met de aanvullingen uit Kotler's latere werk over CX en H2H (human-to-human).",
+    body: "Product, prijs, plaats, promotie, met de aanvullingen uit Kotler's latere werk over CX en H2H (human-to-human).",
     Icon: Grid3x3,
   },
 ] as const;
@@ -43,7 +43,7 @@ export function Foundations() {
           </h2>
           <p className="mt-4 text-lg text-ink-mid">
             Elke aanbeveling komt uit raamwerken die aan universiteiten en de
-            sterkste bureaus dagelijks worden toegepast — vertaald naar jouw
+            sterkste bureaus dagelijks worden toegepast, vertaald naar jouw
             context.
           </p>
         </div>

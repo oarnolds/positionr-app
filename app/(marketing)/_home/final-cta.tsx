@@ -11,7 +11,7 @@ export function FinalCta() {
           Klaar om zelf grip te krijgen?
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-lg text-ink-mid">
-          Begin met een gratis Website Check — geen account, ± 2 minuten.
+          Begin met een gratis Website Check. Geen account, ± 2 minuten.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link

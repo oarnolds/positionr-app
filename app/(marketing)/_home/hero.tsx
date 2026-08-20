@@ -9,7 +9,7 @@ import { MockupReport } from "./mockup-report";
 export function Hero() {
   return (
     <section className="relative overflow-hidden bg-cream">
-      {/* Achtergrond-blobs — subtile depth zonder afleiding */}
+      {/* Achtergrond-blobs voor subtile depth zonder afleiding */}
       <div className="pointer-events-none absolute -left-40 top-40 -z-10 h-[480px] w-[480px] rounded-full bg-primary/5 blur-[120px]" />
       <div className="pointer-events-none absolute -right-20 top-20 -z-10 h-[400px] w-[400px] rounded-full bg-coral/[0.04] blur-[100px]" />
 

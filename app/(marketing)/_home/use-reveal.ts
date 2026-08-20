@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 /**
  * IntersectionObserver-hook voor één-shot scroll-reveals.
  * Element krijgt `revealed` state true zodra ~15% in view komt.
- * Blijft true — geen "re-hide" bij terugscrollen.
+ * Blijft true; geen "re-hide" bij terugscrollen.
  * Respecteert prefers-reduced-motion door meteen true te zetten.
  */
 export function useReveal<T extends HTMLElement = HTMLDivElement>() {

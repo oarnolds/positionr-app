@@ -7,7 +7,7 @@ import { ChevronRight } from "lucide-react";
 const QA = [
   {
     q: "Kan ik dit ook zonder marketing-achtergrond gebruiken?",
-    a: "Ja. De rapportages leggen uit wat je ziet en welke acties je kunt nemen. Je hoeft geen marketing-jargon te kennen — we schrijven voor ondernemers, niet voor marketeers.",
+    a: "Ja. De rapportages leggen uit wat je ziet en welke acties je kunt nemen. Je hoeft geen marketing-jargon te kennen. We schrijven voor ondernemers, niet voor marketeers.",
   },
   {
     q: "Wat gebeurt er met mijn data?",
@@ -19,15 +19,15 @@ const QA = [
   },
   {
     q: "Kan ik opzeggen?",
-    a: "Je koopt een jaar toegang. Aan het einde loopt de licentie vanzelf af — geen automatische verlenging, geen kleine lettertjes.",
+    a: "Je koopt een jaar toegang. Aan het einde loopt de licentie vanzelf af. Geen automatische verlenging, geen kleine lettertjes.",
   },
   {
     q: "Hoe verhoudt Positionr zich tot mijn huidige bureau?",
-    a: "Positionr vervangt je bureau niet noodzakelijk — het geeft je een onafhankelijke second opinion en helpt bepalen waarop je bureau moet focussen.",
+    a: "Positionr vervangt je bureau niet noodzakelijk. Het geeft je een onafhankelijke second opinion en helpt bepalen waarop je bureau moet focussen.",
   },
   {
     q: "Wat als ik meer hulp nodig heb dan de tool geeft?",
-    a: "Neem contact op — we denken graag mee, of verwijzen je naar een specialist uit ons netwerk als dat beter past.",
+    a: "Neem contact op. We denken graag mee, of verwijzen je naar een specialist uit ons netwerk als dat beter past.",
   },
 ] as const;
 

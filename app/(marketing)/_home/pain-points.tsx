@@ -33,7 +33,7 @@ export function PainPoints() {
         </h2>
         <p className="mt-3 text-base text-ink-mid">
           Blijf je zelf zitten met dit soort twijfels? Positionr geeft er in
-          minuten een gefundeerd antwoord op — geen uren met een bureau, geen
+          minuten een gefundeerd antwoord op. Geen uren met een bureau, geen
           buikgevoel.
         </p>
       </div>

@@ -17,13 +17,13 @@ const STEPS: readonly Step[] = [
   {
     n: 1,
     title: "Stel je vraag of upload je URL",
-    body: "Kies een module — Website Check, ICP-analyse, Concurrentieanalyse — en geef ons je bedrijf. Meer heb je niet nodig.",
+    body: "Kies een module (Website Check, ICP-analyse, Concurrentieanalyse) en geef ons je bedrijf. Meer heb je niet nodig.",
     kind: "form",
   },
   {
     n: 2,
     title: "Onze AI analyseert je situatie",
-    body: "In ± 2 minuten combineren we jouw input met wetenschappelijk gefundeerde raamwerken (Cialdini, Ritson, Kotler). Geen algoritme-magie — je ziet exact wat we doen.",
+    body: "In ± 2 minuten combineren we jouw input met wetenschappelijk gefundeerde raamwerken (Cialdini, Ritson, Kotler). Geen algoritme-magie. Je ziet exact wat we doen.",
     kind: "progress",
   },
   {

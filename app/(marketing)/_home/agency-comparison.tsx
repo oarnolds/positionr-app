@@ -29,7 +29,7 @@ export function AgencyComparison() {
           Wat het verschil maakt.
         </div>
         <h3 className="mt-3 font-display text-2xl font-bold text-ink-high md:text-3xl">
-          Bureau of Positionr — dit weegt anders.
+          Bureau of Positionr: dit weegt anders.
         </h3>
       </div>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-3">

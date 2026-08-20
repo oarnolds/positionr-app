@@ -1,6 +1,6 @@
 /**
  * Statische mockup van een Website Check-rapport voor de hero-illustratie.
- * Inline SVG-achtig markup — later te vervangen door echte screenshot-render.
+ * Inline SVG-achtig markup. Later te vervangen door echte screenshot-render.
  */
 export function MockupReport() {
   return (
