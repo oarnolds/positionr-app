@@ -28,10 +28,10 @@ const FOUNDERS: readonly Founder[] = [
     name: "Olivier Arnolds",
     initials: "OA",
     role: "Oprichter · Product & marketing",
-    yearsPractice: "30+ jaar in marketing en tech",
+    yearsPractice: "30+ jaar in B2B-marketing en sales",
     intro:
-      "Bouwt aan Positionr vanuit de overtuiging dat MKB-ondernemers niet minder marketingkennis nodig hebben, maar makkelijker toegang tot die kennis. In elke module zit de manier waarop ik zelf een marketingvraag zou aanpakken.",
-    linkedInUrl: null,
+      "Uit Amsterdam. Bouwt aan Positionr vanuit 30+ jaar ervaring in B2B-sales, marketing en business development. In elke module zit de manier waarop ik zelf een marketingvraag zou aanpakken: minder theorie, meer bruikbare stappen.",
+    linkedInUrl: "https://www.linkedin.com/in/olivierarnolds/",
     photoSrc: null,
   },
   {
