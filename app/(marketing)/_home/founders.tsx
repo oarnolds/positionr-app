@@ -35,13 +35,13 @@ const FOUNDERS: readonly Founder[] = [
     photoSrc: null,
   },
   {
-    name: "Martijn",
-    initials: "M",
+    name: "Martijn de Haas",
+    initials: "MdH",
     role: "Oprichter · Strategie",
-    yearsPractice: "30+ jaar in marketing en strategie",
+    yearsPractice: "TU Delft · eigenaar De Haas BCD",
     intro:
-      "Werkt al decennia met directies aan strategische keuzes. Positionr is de gecodificeerde versie van die aanpak: dezelfde vragen die ik aan een bestuur zou stellen, nu ingebouwd in de modules die jij zelf doorloopt.",
-    linkedInUrl: null,
+      "Strateeg met een achtergrond aan de TU Delft en jaren ervaring bij een multinational. Runt sinds jaren zijn eigen strategie-praktijk (De Haas BCD) en helpt organisaties van MKB tot overheid ambitie om te zetten in scherpe keuzes. In Positionr zit dezelfde manier van denken.",
+    linkedInUrl: "https://www.linkedin.com/in/dehaasmartijn/",
     photoSrc: null,
   },
 ];
