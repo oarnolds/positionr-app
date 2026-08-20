@@ -29,19 +29,13 @@ vi.mock("@/lib/db/client", () => {
         values: (v: unknown) => {
           dbMock.inserts.push(v);
           // Drizzle .values() is awaitable én kan .onConflictDoUpdate hebben.
-          const awaitable: PromiseLike<undefined> & {
-            onConflictDoUpdate: (opts: { set: unknown }) => Promise<undefined>;
-          } = {
-            then: (resolve: (r: undefined) => unknown) => {
-              resolve(undefined);
-              return Promise.resolve(undefined);
-            },
+          // Mix een echte Promise met de extra method via Object.assign.
+          return Object.assign(Promise.resolve(undefined), {
             onConflictDoUpdate: async ({ set }: { set: unknown }) => {
               dbMock.updates.push(set);
               return undefined;
             },
-          };
-          return awaitable;
+          });
         },
       }),
       delete: () => ({
