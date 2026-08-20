@@ -366,3 +366,33 @@ export type MarkdownSnapshot = typeof markdownSnapshots.$inferSelect;
 export type NewMarkdownSnapshot = typeof markdownSnapshots.$inferInsert;
 export type SnapshotChunk = typeof snapshotChunks.$inferSelect;
 export type NewSnapshotChunk = typeof snapshotChunks.$inferInsert;
+
+// ── Site content ────────────────────────────────────────────────────
+// Key-value store voor bewerkbare marketing-copy (homepage in v1).
+// Wordt gelezen door lib/content/get.ts met fallback op CONTENT_META defaults;
+// geschreven door lib/content/save.ts (admin-guarded, sanitized).
+
+export const siteContent = pgTable("site_content", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedBy: uuid("updated_by"), // = auth.users.id, nullable
+});
+
+export const siteContentHistory = pgTable("site_content_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull(),
+  value: text("value").notNull(),
+  savedAt: timestamp("saved_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  savedBy: uuid("saved_by"), // = auth.users.id, nullable
+  note: text("note"),
+});
+
+export type SiteContent = typeof siteContent.$inferSelect;
+export type NewSiteContent = typeof siteContent.$inferInsert;
+export type SiteContentHistory = typeof siteContentHistory.$inferSelect;
+export type NewSiteContentHistory = typeof siteContentHistory.$inferInsert;
